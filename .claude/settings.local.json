@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir -p \"h:\\\\QCAdminPJ\\\\qc-line-extension\")"
+      "Bash(mkdir -p \"h:\\\\QCAdminPJ\\\\qc-line-extension\")",
+      "Bash(npm install *)",
+      "PowerShell(Get-Command node, npm -ErrorAction SilentlyContinue)",
+      "PowerShell(winget list nodejs 2>$null)",
+      "PowerShell(winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ"
