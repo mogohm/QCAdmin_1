@@ -1,14 +1,19 @@
 import { query } from '@/lib/db';
 
-async function safeQuery(fn, fallback) {
-  try { return await fn(); } catch (e) { console.error('query error:', e.message); return fallback; }
+async function safe(fn, fb) {
+  try { return await fn(); } catch (e) { console.error('query:', e.message); return fb; }
 }
 
-export async function GET() {
-  try {
-    const [kpiRows, ranking, promos, openCases, replyLog, lastActivity] = await Promise.all([
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const dateFrom = searchParams.get('from') || '2000-01-01';
+  const dateTo   = searchParams.get('to')   || '2099-12-31';
 
-      safeQuery(() => query`SELECT
+  try {
+    const [kpiRows, rankingAll, weeklySummary, promos, openCases, replyLog, lastActivity] = await Promise.all([
+
+      // KPI — กรองตามวันที่ถ้ามี
+      safe(() => query`SELECT
         (SELECT count(*) FROM line_customers)::int AS customers,
         (SELECT count(*) FROM customer_events WHERE event_type='register' AND status='pass')::int AS registered_pass,
         (SELECT count(*) FROM customer_events WHERE event_type='kyc' AND status='pass')::int AS kyc_pass,
@@ -16,47 +21,62 @@ export async function GET() {
         (SELECT coalesce(avg(response_seconds),0)::int FROM qc_scores) AS avg_response_sec,
         (SELECT coalesce(avg(final_score),0)::int FROM qc_scores) AS avg_score`, [{}]),
 
-      safeQuery(() => query`
+      // Ranking ทั้งหมด (frontend แสดง 10 + toggle)
+      safe(() => query`
         SELECT
           a.id, a.member_name,
-          count(q.id)::int                                                      AS cases,
-          coalesce(avg(q.final_score),0)::int                                   AS avg_score,
-          coalesce(avg(q.response_seconds),0)::int                              AS avg_response_sec,
-          (count(q.id) FILTER (WHERE q.final_score >= 85))::int                 AS good,
+          count(q.id)::int                                                             AS cases,
+          coalesce(avg(q.final_score),0)::int                                          AS avg_score,
+          coalesce(avg(q.response_seconds),0)::int                                     AS avg_response_sec,
+          (count(q.id) FILTER (WHERE q.final_score >= 85))::int                        AS good,
           (count(q.id) FILTER (WHERE q.final_score >= 70 AND q.final_score < 85))::int AS warn,
           (count(q.id) FILTER (WHERE q.final_score < 70 AND q.final_score IS NOT NULL))::int AS bad,
           max(q.created_at) AS last_reply_at
         FROM qc_admins a
         LEFT JOIN qc_scores q ON q.admin_id = a.id
+          AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
         WHERE a.is_active = true
         GROUP BY a.id, a.member_name
-        ORDER BY avg_score DESC, cases DESC
-        LIMIT 20`, []),
+        ORDER BY avg_score DESC, cases DESC`, []),
 
-      safeQuery(() => query`
+      // Weekly summary — 4 สัปดาห์ล่าสุด
+      safe(() => query`
+        SELECT
+          date_trunc('week', q.created_at)::date                     AS week_start,
+          count(q.id)::int                                            AS total_cases,
+          coalesce(avg(q.final_score),0)::int                         AS avg_score,
+          coalesce(avg(q.response_seconds),0)::int                    AS avg_response_sec,
+          (count(q.id) FILTER (WHERE q.final_score >= 85))::int       AS good,
+          (count(q.id) FILTER (WHERE q.final_score < 70))::int        AS bad,
+          count(DISTINCT q.admin_id)::int                             AS active_admins
+        FROM qc_scores q
+        WHERE q.created_at >= now() - interval '28 days'
+        GROUP BY date_trunc('week', q.created_at)
+        ORDER BY week_start DESC`, []),
+
+      safe(() => query`
         SELECT promotion_code, count(*)::int customer_count, coalesce(sum(amount),0)::numeric total_amount
         FROM customer_events WHERE promotion_code IS NOT NULL
         GROUP BY promotion_code ORDER BY total_amount DESC LIMIT 20`, []),
 
-      safeQuery(() => query`
+      safe(() => query`
         SELECT c.id, c.opened_at, lc.display_name, lc.line_user_id, m.message_text
         FROM conversations c
         JOIN line_customers lc ON lc.line_user_id = c.line_user_id
         LEFT JOIN LATERAL (
-          SELECT message_text FROM messages
-          WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1
+          SELECT message_text FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1
         ) m ON true
         WHERE c.status = 'open'
         ORDER BY c.opened_at DESC LIMIT 30`, []),
 
-      safeQuery(() => query`
+      safe(() => query`
         SELECT
           m.id, m.created_at,
-          a.member_name                   AS admin_name,
-          lc.display_name                 AS customer_name,
+          a.member_name     AS admin_name,
+          lc.display_name   AS customer_name,
           m.line_user_id,
-          m.message_text                  AS reply_text,
-          cust.message_text               AS customer_text,
+          m.message_text    AS reply_text,
+          cust.message_text AS customer_text,
           q.final_score, q.speed_score, q.correctness_score,
           q.sentiment_score, q.response_seconds,
           q.fail_reasons, q.matched_rules
@@ -66,27 +86,28 @@ export async function GET() {
         LEFT JOIN qc_scores q  ON q.admin_message_id = m.id
         LEFT JOIN messages cust ON cust.id = q.customer_message_id
         WHERE m.direction = 'admin'
-        ORDER BY m.created_at DESC
-        LIMIT 50`, []),
+          AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+        ORDER BY m.created_at DESC LIMIT 100`, []),
 
-      safeQuery(() => query`
+      safe(() => query`
         SELECT
-          (SELECT max(created_at) FROM messages WHERE direction = 'customer') AS last_customer_msg,
-          (SELECT max(created_at) FROM messages WHERE direction = 'admin')    AS last_admin_reply,
-          (SELECT max(first_seen_at) FROM line_customers)                     AS last_new_customer,
+          (SELECT max(created_at) FROM messages WHERE direction='customer') AS last_customer_msg,
+          (SELECT max(created_at) FROM messages WHERE direction='admin')    AS last_admin_reply,
+          (SELECT max(first_seen_at) FROM line_customers)                   AS last_new_customer,
           now() AS server_time`, [{}]),
     ]);
 
     return Response.json({
       kpi: kpiRows[0] || {},
-      ranking,
+      ranking: rankingAll,
+      weeklySummary,
       promos,
       openCases,
       replyLog,
       lastActivity: lastActivity[0] || {},
     });
   } catch (err) {
-    console.error('Dashboard fatal error:', err);
+    console.error('Dashboard fatal:', err);
     return Response.json({ error: String(err.message || err) }, { status: 500 });
   }
 }

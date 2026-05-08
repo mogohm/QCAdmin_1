@@ -65,6 +65,10 @@ async function runJob(job) {
         if (!m) { console.log(`  ข้าม ${nameText} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
 
+        // ข้ามถ้าไม่มี admin reply เลย (chat สีเขียว — ยังไม่ได้ตอบ)
+        const adminReplyCount = await page.locator('.chat-reverse').count();
+        if (adminReplyCount === 0) { process.stdout.write('○'); continue; }
+
         await updateJob(job.id, { current_chat: nameText, logged_count: logged });
 
         // ดึง admin messages ในช่วงวันที่
