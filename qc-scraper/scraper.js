@@ -100,7 +100,10 @@ async function runJob(job) {
 
         await updateJob(job.id, { current_chat: nameText, logged_count: logged });
 
-        // ดึง admin messages ในช่วงวันที่
+        // Scroll ขึ้นเพื่อโหลด chat history ให้ครบตามวันที่
+        await loadChatHistory(page, dateFrom);
+
+        // ดึง admin + customer messages ในช่วงวันที่
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
@@ -127,6 +130,63 @@ async function runJob(job) {
     console.error('❌', err.message);
   } finally {
     await browser.close();
+  }
+}
+
+// Scroll chat panel ขึ้นจนกว่าจะเห็นข้อมูลตั้งแต่วันที่ dateFrom
+async function loadChatHistory(page, dateFrom) {
+  const targetMs  = dateFrom.getTime();
+  const MAX_SCROLL = 40;
+
+  for (let i = 0; i < MAX_SCROLL; i++) {
+    // ตรวจ date separator อันแรกสุดที่เห็นใน DOM
+    const oldestMs = await page.evaluate(() => {
+      const separators = Array.from(document.querySelectorAll('.chatsys-date'));
+      if (!separators.length) return null;
+      const txt = separators[0].innerText?.trim();
+      if (!txt) return null;
+      const d = new Date(txt);
+      return isNaN(d) ? null : d.getTime();
+    });
+
+    if (oldestMs !== null && oldestMs <= targetMs) {
+      process.stdout.write(`📅`);
+      break; // โหลดพอแล้ว
+    }
+
+    // Scroll ขึ้น — หา scroll container จาก parent ของ .chat element
+    const scrolled = await page.evaluate(() => {
+      const chat = document.querySelector('.chat');
+      if (!chat) return false;
+      let el = chat.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if (s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') {
+          if (el.scrollHeight > el.clientHeight + 50) {
+            el.scrollTop = 0;
+            return true;
+          }
+        }
+        el = el.parentElement;
+      }
+      return false;
+    });
+
+    if (!scrolled) {
+      // fallback: ใช้ mouse wheel
+      const chatCenter = await page.evaluate(() => {
+        const el = document.querySelector('.chat');
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + 100 };
+      });
+      if (chatCenter) {
+        await page.mouse.move(chatCenter.x, chatCenter.y);
+        await page.mouse.wheel(0, -5000);
+      } else break;
+    }
+
+    await page.waitForTimeout(1000); // รอ LINE โหลด messages เพิ่ม
   }
 }
 
@@ -167,7 +227,9 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
 
       // ข้อความลูกค้า (ไม่ใช่ chat-reverse และไม่ใช่ chatsys)
       if (!node.classList.contains('chat-reverse') && !node.className.includes('chatsys')) {
-        const custEl = node.querySelector('.chat-item-text.user-select-text');
+        const custEl = node.querySelector('.chat-item-text.user-select-text')
+                    || node.querySelector('.chat-item-text')
+                    || node.querySelector('[class*="chat-text"]');
         const custText = custEl?.innerText?.trim() || '';
         if (custText) {
           lastCustomerText = custText;

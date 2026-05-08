@@ -43,26 +43,31 @@ export async function GET(req) {
              AND ce.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
           ) AS deposit_sum
         FROM qc_admins a
-        LEFT JOIN qc_scores q ON q.admin_id = a.id
-          AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+        LEFT JOIN (
+          SELECT q.* FROM qc_scores q
+          JOIN messages mq ON mq.id = q.admin_message_id
+          WHERE mq.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+        ) q ON q.admin_id = a.id
         WHERE a.is_active = true
         GROUP BY a.id, a.member_name
         ORDER BY avg_score DESC, cases DESC`, []),
 
-      // Weekly summary — 4 สัปดาห์ล่าสุด
+      // Weekly summary — แบ่งตามสัปดาห์ภายในช่วง filter
       safe(() => query`
         SELECT
-          date_trunc('week', q.created_at)::date                     AS week_start,
-          count(q.id)::int                                            AS total_cases,
-          coalesce(avg(q.final_score),0)::int                         AS avg_score,
-          coalesce(avg(q.response_seconds),0)::int                    AS avg_response_sec,
-          (count(q.id) FILTER (WHERE q.final_score >= 85))::int       AS good,
-          (count(q.id) FILTER (WHERE q.final_score < 70))::int        AS bad,
-          count(DISTINCT q.admin_id)::int                             AS active_admins
+          date_trunc('week', m.created_at)::date                                        AS week_start,
+          count(q.id)::int                                                               AS total_cases,
+          coalesce(avg(q.final_score),0)::int                                            AS avg_score,
+          coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int AS avg_response_sec,
+          (count(q.id) FILTER (WHERE q.final_score >= 85))::int                          AS good,
+          (count(q.id) FILTER (WHERE q.final_score < 70 AND q.final_score IS NOT NULL))::int AS bad,
+          count(DISTINCT q.admin_id)::int                                                AS active_admins
         FROM qc_scores q
-        WHERE q.created_at >= now() - interval '28 days'
-        GROUP BY date_trunc('week', q.created_at)
-        ORDER BY week_start DESC`, []),
+        JOIN messages m ON m.id = q.admin_message_id
+        WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+        GROUP BY date_trunc('week', m.created_at)
+        ORDER BY week_start DESC
+        LIMIT 12`, []),
 
       safe(() => query`
         SELECT promotion_code, count(*)::int customer_count, coalesce(sum(amount),0)::numeric total_amount

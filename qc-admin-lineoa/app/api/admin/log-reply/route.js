@@ -173,11 +173,12 @@ export async function POST(req) {
     INSERT INTO qc_scores (
       conversation_id, customer_message_id, admin_message_id, admin_id,
       response_seconds, speed_score, correctness_score, sentiment_score,
-      final_score, fail_reasons, matched_rules
+      final_score, fail_reasons, matched_rules, created_at
     ) VALUES (
       ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId},
       ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
-      ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)}
+      ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
+      ${adminMsg[0].created_at}
     ) RETURNING *
   `;
   qc.id = scoreRow[0].id;
