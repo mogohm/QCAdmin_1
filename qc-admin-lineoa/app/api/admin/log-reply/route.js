@@ -18,9 +18,22 @@ export async function OPTIONS() {
 export async function POST(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
 
-  const { line_user_id, admin_id, text } = await req.json();
-  if (!line_user_id || !admin_id || !text)
-    return Response.json({ error: 'line_user_id, admin_id, text required' }, { status: 400 });
+  const { line_user_id, admin_id, admin_name, text } = await req.json();
+  if (!line_user_id || !text)
+    return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
+
+  // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา
+  let resolvedAdminId = admin_id;
+  if (!resolvedAdminId && admin_name) {
+    const found = await query`
+      SELECT id FROM qc_admins
+      WHERE lower(member_name) LIKE ${'%' + admin_name.toLowerCase() + '%'} AND is_active = true
+      LIMIT 1
+    `;
+    resolvedAdminId = found[0]?.id || null;
+  }
+  if (!resolvedAdminId)
+    return Response.json({ error: 'ระบุ admin_id หรือ admin_name ที่ตรงกับในระบบ' }, { status: 400, headers: CORS });
 
   // หา open conversation ของ user นี้
   let conv = await query`
@@ -51,12 +64,12 @@ export async function POST(req) {
   // บันทึก admin message (ไม่ส่งผ่าน LINE อีกรอบ)
   const adminMsg = await query`
     INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text)
-    VALUES (${convId}, ${line_user_id}, ${admin_id}, 'admin', ${text})
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text})
     RETURNING *
   `;
 
   await query`
-    UPDATE conversations SET assigned_admin_id = ${admin_id} WHERE id = ${convId}
+    UPDATE conversations SET assigned_admin_id = ${resolvedAdminId} WHERE id = ${convId}
   `;
 
   // คำนวณ QC score
@@ -82,7 +95,7 @@ export async function POST(req) {
         response_seconds, speed_score, correctness_score, sentiment_score,
         final_score, fail_reasons, matched_rules
       ) VALUES (
-        ${convId}, ${lastCustomer[0].id}, ${adminMsg[0].id}, ${admin_id},
+        ${convId}, ${lastCustomer[0].id}, ${adminMsg[0].id}, ${resolvedAdminId},
         ${diff[0].sec}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
         ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)}
       ) RETURNING *

@@ -1,0 +1,14 @@
+{
+  "name": "qc-scraper",
+  "version": "1.0.0",
+  "description": "Bot ดึงข้อความแอดมินจาก chat.line.biz เข้า QC system",
+  "scripts": {
+    "login": "node login.js",
+    "start": "node scraper.js",
+    "watch": "node scraper.js --watch"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0",
+    "dotenv": "^16.4.5"
+  }
+}
