@@ -28,10 +28,9 @@ export async function POST(req) {
       body = JSON.parse(raw || "{}");
     } catch (e) {
       console.error("Invalid JSON body", e);
-      return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 200 });
+      return NextResponse.json({ ok: true, note: "Invalid JSON ignored" }, { status: 200 });
     }
 
-    // ให้ LINE Verify ผ่าน กรณีส่ง events ว่าง
     if (Array.isArray(body.events) && body.events.length === 0) {
       return NextResponse.json({ ok: true, verify: true }, { status: 200 });
     }
@@ -48,18 +47,18 @@ export async function POST(req) {
       const text = ev?.message?.text || "";
 
       await query(
-        `insert into line_events 
+        `insert into line_events
           (line_user_id, event_type, message_type, message_text, raw_json, created_at)
-         values 
+         values
           ($1, $2, $3, $4, $5, now())`,
         [userId, eventType, messageType, text, JSON.stringify(ev)]
       );
 
       if (eventType === "message" && messageType === "text" && userId) {
         await query(
-          `insert into conversations 
+          `insert into conversations
             (line_user_id, customer_message, status, created_at, updated_at)
-           values 
+           values
             ($1, $2, 'OPEN', now(), now())`,
           [userId, text]
         );
@@ -70,7 +69,7 @@ export async function POST(req) {
   } catch (err) {
     console.error("Webhook error:", err);
     return NextResponse.json(
-      { ok: false, error: "Webhook handled with error" },
+      { ok: true, error: "Webhook error handled" },
       { status: 200 }
     );
   }
