@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 function isPkAdmin(name) {
   const n = String(name || "").trim();
@@ -13,6 +14,8 @@ function isPkAdmin(name) {
 }
 
 export async function POST(req) {
+  if (!requireAdmin(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   try {
     const body = await req.json();
     const rawText = body.text || body.adminText || body.names || "";
@@ -25,16 +28,15 @@ export async function POST(req) {
     const pkAdmins = lines.filter(isPkAdmin);
 
     for (const name of pkAdmins) {
-  const normalizedName = name.trim().toLowerCase();
+      const normalizedName = name.trim().toLowerCase();
 
-  await query(
-    `insert into qc_admins (member_name, normalized_name, is_active, source, created_at)
-     values ($1, $2, true, 'line_oa_manage_permissions', now())
-     on conflict (normalized_name)
-     do update set is_active = true`,
-    [name, normalizedName]
-  );
-}
+      await query`
+        INSERT INTO qc_admins (member_name, normalized_name, is_active, source, created_at)
+        VALUES (${name}, ${normalizedName}, true, 'line_oa_manage_permissions', now())
+        ON CONFLICT (normalized_name)
+        DO UPDATE SET is_active = true
+      `;
+    }
 
     return NextResponse.json({
       ok: true,
