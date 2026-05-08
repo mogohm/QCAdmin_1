@@ -25,14 +25,16 @@ export async function POST(req) {
     const pkAdmins = lines.filter(isPkAdmin);
 
     for (const name of pkAdmins) {
-      await query(
-        `insert into admins (admin_name, is_active, created_at)
-         values ($1, true, now())
-         on conflict (admin_name)
-         do update set is_active = true`,
-        [name]
-      );
-    }
+  const normalizedName = name.trim().toLowerCase();
+
+  await query(
+    `insert into qc_admins (member_name, normalized_name, is_active, source, created_at)
+     values ($1, $2, true, 'line_oa_manage_permissions', now())
+     on conflict (normalized_name)
+     do update set is_active = true`,
+    [name, normalizedName]
+  );
+}
 
     return NextResponse.json({
       ok: true,
