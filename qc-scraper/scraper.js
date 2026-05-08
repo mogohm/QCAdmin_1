@@ -1,6 +1,3 @@
-/**
- * QC Scraper — poll งานจากเว็บ → คลิก chat ทีละ chat → ดึงข้อความแอดมิน → ส่ง QC API
- */
 require('dotenv').config();
 const { chromium } = require('playwright');
 const fs   = require('fs');
@@ -8,7 +5,7 @@ const path = require('path');
 
 const AUTH_FILE = path.join(__dirname, 'auth.json');
 const API_URL   = (process.env.QC_API_URL || '').replace(/\/$/, '');
-const API_KEY   = process.env.QC_API_KEY || '';
+const API_KEY   = process.env.QC_API_KEY  || '';
 const WATCH     = process.argv.includes('--watch');
 const HEADLESS  = !process.argv.includes('--headed');
 const POLL_MS   = 10000;
@@ -17,16 +14,16 @@ const POLL_MS   = 10000;
 async function apiFetch(endpoint, opts = {}) {
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...(opts.headers || {}) },
+    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, ...(opts.headers||{}) },
   });
   return res.json().catch(() => ({}));
 }
-const pollJob    = () => apiFetch('/api/scraper/poll');
-const updateJob  = (id, f) => apiFetch('/api/scraper/poll', { method: 'PATCH', body: JSON.stringify({ id, ...f }) });
-const postReply  = (lineUserId, text, adminName) =>
-  apiFetch('/api/admin/log-reply', { method: 'POST', body: JSON.stringify({ line_user_id: lineUserId, text, admin_name: adminName }) });
+const pollJob   = ()       => apiFetch('/api/scraper/poll');
+const updateJob = (id, f)  => apiFetch('/api/scraper/poll', { method:'PATCH', body: JSON.stringify({ id, ...f }) });
+const postReply = (uid, text, adminName) =>
+  apiFetch('/api/admin/log-reply', { method:'POST', body: JSON.stringify({ line_user_id: uid, text, admin_name: adminName }) });
 
-// ---- Main job runner ----
+// ---- Job runner ----
 async function runJob(job) {
   console.log(`\n📋 รับงาน: ${job.date_from} → ${job.date_to}`);
   await updateJob(job.id, { status: 'running' });
@@ -43,160 +40,120 @@ async function runJob(job) {
     await page.waitForTimeout(3000);
 
     if (page.url().includes('signin') || page.url().includes('login')) {
-      await updateJob(job.id, { status: 'error', error_text: 'Session หมดอายุ — รัน: node login.js' });
+      await updateJob(job.id, { status:'error', error_text:'Session หมดอายุ — รัน: node login.js' });
       return;
     }
 
-    // รอ chat list โหลด — หา item แรกใน sidebar
-    await page.waitForSelector('[class*="ChatListItem"],[class*="chatListItem"],[class*="chat-item"],[class*="ChatItem"]', { timeout: 15000 })
-      .catch(() => console.log('⚠️ ไม่พบ ChatListItem selector แบบ class, ลอง fallback...'));
-
-    // นับ chat items ทั้งหมดในหน้าก่อน
-    const totalChats = await countChatItems(page);
-    console.log(`พบ ${totalChats} chats ใน sidebar`);
-    await updateJob(job.id, { total_chats: totalChats });
+    // รอ chat list
+    await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
+    const total = await page.locator('.list-group-item-chat').count();
+    console.log(`พบ ${total} chats`);
+    await updateJob(job.id, { total_chats: total });
 
     let logged = 0;
-    for (let i = 0; i < totalChats; i++) {
+    for (let i = 0; i < total; i++) {
       try {
         // คลิก chat item ที่ index i
-        const customerName = await clickChatItem(page, i);
-        await page.waitForTimeout(1500);
+        const item = page.locator('.list-group-item-chat').nth(i);
+        const nameText = await item.locator('h5, .text-truncate, strong').first().innerText().catch(() => `chat ${i+1}`);
+        await item.click();
+        await page.waitForTimeout(2000);
 
         // อ่าน LINE user ID จาก URL
         const url = page.url();
         const m   = url.match(/\/(U[a-f0-9]{32})/i);
-        if (!m) { console.log(`  ข้าม index ${i} — URL ไม่มี user ID: ${url}`); continue; }
-
+        if (!m) { console.log(`  ข้าม ${nameText} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
-        await updateJob(job.id, { current_chat: customerName || lineUserId, logged_count: logged });
 
-        // ดึง admin messages
+        await updateJob(job.id, { current_chat: nameText, logged_count: logged });
+
+        // ดึง admin messages ในช่วงวันที่
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
-        if (msgs.length === 0) { process.stdout.write('.'); continue; }
+        if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        console.log(`\n  [${i + 1}/${totalChats}] ${customerName || lineUserId}: ${msgs.length} ข้อความแอดมิน`);
+        console.log(`\n  [${i+1}/${total}] ${nameText}: ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
           const r = await postReply(lineUserId, msg.text, msg.adminName);
-          if (r?.ok) { console.log(`    ✅ score ${r.qc?.finalScore ?? '—'} | "${msg.text.slice(0, 40)}"`); logged++; }
-          else        { console.log(`    ⚠️ ${r?.error} | "${msg.text.slice(0, 40)}"`); }
+          if (r?.ok) { console.log(`    ✅ score ${r.qc?.finalScore ?? '—'} (${msg.adminName}) "${msg.text.slice(0,40)}"`); logged++; }
+          else        { console.log(`    ⚠️ ${r?.error} "${msg.text.slice(0,40)}"`); }
         }
       } catch (e) {
         console.log(`\n  ⚠️ index ${i}: ${e.message}`);
       }
     }
 
-    await updateJob(job.id, { status: 'done', logged_count: logged, current_chat: null });
+    await updateJob(job.id, { status:'done', logged_count: logged, current_chat: null });
     console.log(`\n✅ เสร็จ — บันทึก QC ${logged} ข้อความ`);
 
   } catch (err) {
-    await updateJob(job.id, { status: 'error', error_text: err.message });
-    console.error('❌ Error:', err.message);
+    await updateJob(job.id, { status:'error', error_text: err.message });
+    console.error('❌', err.message);
   } finally {
     await browser.close();
   }
 }
 
-// นับ chat items ใน sidebar
-async function countChatItems(page) {
-  return page.evaluate(() => {
-    const selectors = [
-      '[class*="ChatListItem"]',
-      '[class*="chatListItem"]',
-      '[class*="ChatItem"]',
-      '[class*="chat-item"]',
-      '[class*="ConversationItem"]',
-    ];
-    for (const sel of selectors) {
-      const els = document.querySelectorAll(sel);
-      if (els.length > 0) return els.length;
-    }
-    // fallback: หา li ใน sidebar ที่มี avatar image
-    return document.querySelectorAll('ul li:has(img), nav li:has(img)').length;
-  });
-}
-
-// คลิก chat item ที่ index i แล้ว return ชื่อลูกค้า
-async function clickChatItem(page, index) {
-  return page.evaluate((idx) => {
-    const selectors = [
-      '[class*="ChatListItem"]',
-      '[class*="chatListItem"]',
-      '[class*="ChatItem"]',
-      '[class*="chat-item"]',
-      '[class*="ConversationItem"]',
-    ];
-    let items = [];
-    for (const sel of selectors) {
-      items = Array.from(document.querySelectorAll(sel));
-      if (items.length > 0) break;
-    }
-    if (!items.length) {
-      // fallback
-      items = Array.from(document.querySelectorAll('ul li:has(img), nav li:has(img)'));
-    }
-    const el = items[idx];
-    if (!el) return null;
-    const nameEl = el.querySelector('[class*="name"],[class*="Name"],[class*="title"],[class*="Title"]');
-    const name   = nameEl?.textContent?.trim() || null;
-    el.click();
-    return name;
-  }, index);
-}
-
-// ดึง admin messages จาก chat ที่เปิดอยู่
+// ดึงเฉพาะ admin messages ในช่วงวันที่
 async function extractAdminMessages(page, dateFrom, dateTo) {
   return page.evaluate(({ fromMs, toMs }) => {
     const results = [];
 
-    // ลอง selector หลายแบบสำหรับ admin bubble (ฝั่งขวา)
-    const selectors = [
-      '[class*="outgoing"]',
-      '[class*="Outgoing"]',
-      '[class*="sent"]',
-      '[class*="Sent"]',
-      '[class*="operator"]',
-      '[class*="Operator"]',
-      '[class*="myMessage"]',
-      '[class*="selfMessage"]',
-    ];
+    // วันที่จาก date separator — สร้าง map: index → date
+    let currentDate = null;
+    const allNodes = Array.from(document.querySelectorAll('.chatsys-date, .chat'));
 
-    let bubbles = [];
-    for (const sel of selectors) {
-      bubbles = Array.from(document.querySelectorAll(sel));
-      if (bubbles.length > 0) break;
-    }
-
-    // fallback: bubble ที่ X position > 45% width → น่าจะเป็นฝั่งขวา
-    if (!bubbles.length) {
-      const allBubbles = document.querySelectorAll('[class*="message"],[class*="Message"],[class*="bubble"],[class*="Bubble"],[class*="chat"],[class*="Chat"]');
-      bubbles = Array.from(allBubbles).filter(el => {
-        const r = el.getBoundingClientRect();
-        return r.width > 50 && r.height > 20 && r.left > window.innerWidth * 0.45;
-      });
-    }
-
-    for (const el of bubbles) {
-      const textEl = el.querySelector('p,[class*="text"],[class*="Text"],[class*="content"],[class*="Content"]') || el;
-      const text   = textEl.innerText?.trim() || '';
-      if (!text || text.length < 2) continue;
-
-      // หา timestamp
-      const timeEl = el.closest('[class*="message"],[class*="Message"],[class*="item"],[class*="Item"]')
-        ?.querySelector('time,[datetime],[class*="time"],[class*="Time"]');
-      const rawTs  = timeEl?.getAttribute('datetime') || timeEl?.innerText || '';
-      const ts     = rawTs ? new Date(rawTs) : null;
-
-      if (ts && !isNaN(ts)) {
-        if (ts.getTime() < fromMs || ts.getTime() > toMs) continue;
+    for (const node of allNodes) {
+      // date separator
+      if (node.classList.contains('chatsys-date')) {
+        const raw = node.innerText?.trim();
+        if (raw) {
+          const parsed = new Date(raw);
+          if (!isNaN(parsed)) currentDate = parsed;
+        }
+        continue;
       }
 
-      // ชื่อ agent
-      const agentEl = el.closest('[class*="message"],[class*="Message"],[class*="item"],[class*="Item"]')
-        ?.querySelector('[class*="sender"],[class*="Sender"],[class*="agent"],[class*="Agent"],[class*="operator"],[class*="staff"]');
-      const adminName = agentEl?.innerText?.trim() || null;
+      // เฉพาะ admin message (chat-reverse)
+      if (!node.classList.contains('chat-reverse')) continue;
 
-      results.push({ text, timestamp: ts?.toISOString() || null, adminName });
+      // ข้อความ
+      const textEl = node.querySelector('.chat-item-text.user-select-text');
+      const text   = textEl?.innerText?.trim() || '';
+      if (!text || text.length < 1) continue;
+
+      // timestamp จาก time element ใน bubble หรือใช้ currentDate
+      const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
+      const rawTime = timeEl?.getAttribute('datetime') || timeEl?.innerText?.trim() || '';
+      let ts = null;
+      if (rawTime && currentDate) {
+        // rawTime อาจเป็น "17:36" → รวมกับ currentDate
+        const timeParts = rawTime.match(/(\d{1,2}):(\d{2})/);
+        if (timeParts) {
+          ts = new Date(currentDate);
+          ts.setHours(parseInt(timeParts[1]), parseInt(timeParts[2]), 0, 0);
+        }
+      } else if (rawTime) {
+        ts = new Date(rawTime);
+      }
+
+      // กรองช่วงวันที่
+      if (ts && !isNaN(ts)) {
+        if (ts.getTime() < fromMs || ts.getTime() > toMs) continue;
+      } else if (currentDate) {
+        // ถ้าไม่มี time แต่มี date → เช็ค date เฉยๆ
+        if (currentDate.getTime() < fromMs || currentDate.getTime() > toMs) continue;
+      }
+
+      // ชื่อแอดมินจาก .chat-content (บรรทัดแรกก่อน .chat-body)
+      const contentEl = node.querySelector('.chat-content');
+      let adminName   = null;
+      if (contentEl) {
+        const clone = contentEl.cloneNode(true);
+        clone.querySelectorAll('.chat-body, .chat-main, .chat-item').forEach(e => e.remove());
+        adminName = clone.innerText?.trim().split('\n')[0]?.trim() || null;
+      }
+
+      results.push({ text, adminName, timestamp: ts?.toISOString() || null });
     }
 
     return results;
@@ -209,10 +166,10 @@ async function loop() {
   try {
     const job = await pollJob();
     if (job?.id) {
-      console.log(`รับงาน id=${job.id}`);
+      console.log(`รับงาน (${job.date_from} → ${job.date_to})`);
       await runJob(job);
     } else {
-      process.stdout.write('ไม่มีงาน\n');
+      console.log('ว่าง');
     }
   } catch (e) {
     console.error('poll error:', e.message);
@@ -220,13 +177,13 @@ async function loop() {
 }
 
 (async () => {
-  if (!API_URL)                  { console.error('❌ ตั้งค่า QC_API_URL ใน .env ก่อน'); process.exit(1); }
-  if (!fs.existsSync(AUTH_FILE)) { console.error('❌ ไม่พบ auth.json — รัน: node login.js ก่อน'); process.exit(1); }
+  if (!API_URL)                  { console.error('❌ ตั้งค่า QC_API_URL ใน .env'); process.exit(1); }
+  if (!fs.existsSync(AUTH_FILE)) { console.error('❌ ไม่พบ auth.json — รัน: node login.js'); process.exit(1); }
 
-  console.log(`🤖 QC Scraper พร้อม | API: ${API_URL} | mode: ${HEADLESS ? 'headless' : 'headed'}`);
+  console.log(`🤖 QC Scraper | ${API_URL} | ${HEADLESS ? 'headless' : 'headed'}`);
   await loop();
   if (WATCH) {
-    console.log(`⏰ poll ทุก ${POLL_MS / 1000}s — กด Ctrl+C เพื่อหยุด`);
+    console.log(`⏰ poll ทุก ${POLL_MS/1000}s`);
     setInterval(loop, POLL_MS);
   }
 })();
