@@ -38,10 +38,11 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState(todayStr());
   const [filterApplied, setFilterApplied] = useState({ from: weekAgo(), to: todayStr() });
   const tickRef = useRef(null);
+  const filterRef = useRef({ from: weekAgo(), to: todayStr() });
 
   const load = (from, to) => {
-    const f = from || filterApplied.from;
-    const t = to   || filterApplied.to;
+    const f = from || filterRef.current.from;
+    const t = to   || filterRef.current.to;
     fetch(`/api/dashboard?from=${f}&to=${t}`)
       .then(r => r.json())
       .then(data => { setD(data); setLastFetch(new Date()); setFetchOk(!data.error); })
@@ -56,6 +57,7 @@ export default function Dashboard() {
   }, []);
 
   function applyFilter() {
+    filterRef.current = { from: dateFrom, to: dateTo };
     setFilterApplied({ from: dateFrom, to: dateTo });
     load(dateFrom, dateTo);
   }
@@ -63,6 +65,7 @@ export default function Dashboard() {
     const f = toISO(new Date(Date.now() - days * 86400000));
     const t = todayStr();
     setDateFrom(f); setDateTo(t);
+    filterRef.current = { from: f, to: t };
     setFilterApplied({ from: f, to: t });
     load(f, t);
   }

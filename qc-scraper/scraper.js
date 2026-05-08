@@ -57,7 +57,10 @@ async function runJob(job) {
         const item = page.locator('.list-group-item-chat').nth(i);
         const nameText = await item.locator('h5, .text-truncate, strong').first().innerText().catch(() => `chat ${i+1}`);
         await item.click();
-        await page.waitForTimeout(2000);
+
+        // รอให้ URL เปลี่ยนเป็น chat URL (มี user ID)
+        try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 8000 }); } catch {}
+        await page.waitForTimeout(1500);
 
         // อ่าน LINE user ID จาก URL
         const url = page.url();
@@ -65,9 +68,15 @@ async function runJob(job) {
         if (!m) { console.log(`  ข้าม ${nameText} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
 
-        // ข้ามถ้าไม่มี admin reply เลย (chat สีเขียว — ยังไม่ได้ตอบ)
-        const adminReplyCount = await page.locator('.chat-reverse').count();
-        if (adminReplyCount === 0) { process.stdout.write('○'); continue; }
+        // ข้ามถ้า message ล่าสุดมาจากลูกค้า (แอดมินยังไม่ได้ตอบ = จุดสีเขียว)
+        const lastMsgIsAdmin = await page.evaluate(() => {
+          const msgs = Array.from(document.querySelectorAll('.chat')).filter(
+            el => !el.className.includes('chatsys')
+          );
+          if (!msgs.length) return false;
+          return msgs[msgs.length - 1].classList.contains('chat-reverse');
+        });
+        if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
 
         await updateJob(job.id, { current_chat: nameText, logged_count: logged });
 
@@ -75,11 +84,15 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        console.log(`\n  [${i+1}/${total}] ${nameText}: ${msgs.length} ข้อความ`);
+        console.log(`\n  [${i+1}/${total}] ${nameText} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
           const r = await postReply(lineUserId, msg.text, msg.adminName);
-          if (r?.ok) { console.log(`    ✅ score ${r.qc?.finalScore ?? '—'} (${msg.adminName}) "${msg.text.slice(0,40)}"`); logged++; }
-          else        { console.log(`    ⚠️ ${r?.error} "${msg.text.slice(0,40)}"`); }
+          if (r?.ok) {
+            console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"`);
+            logged++;
+          } else {
+            console.log(`    ⚠️ [${r?.error}] admin="${msg.adminName}" "${msg.text.slice(0,40)}"`);
+          }
         }
       } catch (e) {
         console.log(`\n  ⚠️ index ${i}: ${e.message}`);

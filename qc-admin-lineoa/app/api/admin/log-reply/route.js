@@ -22,7 +22,7 @@ export async function POST(req) {
   if (!line_user_id || !text)
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
-  // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา
+  // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา หรือสร้างใหม่อัตโนมัติ
   let resolvedAdminId = admin_id;
   if (!resolvedAdminId && admin_name) {
     const found = await query`
@@ -30,10 +30,28 @@ export async function POST(req) {
       WHERE lower(member_name) LIKE ${'%' + admin_name.toLowerCase() + '%'} AND is_active = true
       LIMIT 1
     `;
-    resolvedAdminId = found[0]?.id || null;
+    if (found[0]) {
+      resolvedAdminId = found[0].id;
+    } else {
+      // สร้าง admin ใหม่อัตโนมัติจากชื่อที่ scraper ดึงมา
+      const norm = admin_name.toLowerCase().replace(/[^a-z0-9ก-๙]/g, '_').slice(0, 80);
+      const created = await query`
+        INSERT INTO qc_admins (member_name, normalized_name, is_active, source)
+        VALUES (${admin_name}, ${norm + '_' + Date.now()}, true, 'scraper')
+        RETURNING id
+      `;
+      resolvedAdminId = created[0].id;
+    }
   }
   if (!resolvedAdminId)
-    return Response.json({ error: 'ระบุ admin_id หรือ admin_name ที่ตรงกับในระบบ' }, { status: 400, headers: CORS });
+    return Response.json({ error: 'ระบุ admin_id หรือ admin_name' }, { status: 400, headers: CORS });
+
+  // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
+  await query`
+    INSERT INTO line_customers (line_user_id, display_name)
+    VALUES (${line_user_id}, ${line_user_id})
+    ON CONFLICT (line_user_id) DO NOTHING
+  `;
 
   // หา open conversation ของ user นี้
   let conv = await query`
@@ -73,38 +91,42 @@ export async function POST(req) {
   `;
 
   // คำนวณ QC score
-  let qc = null;
+  const settings = await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
+  const rules = await query`SELECT rule_code, rule_name, category, question_keywords, answer_keywords FROM knowledge_rules WHERE is_active = true`;
+
+  let responseSeconds = null;
+  let customerMsgId = null;
   if (lastCustomer[0]) {
-    const settings = await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
-    const rules = await query`SELECT rule_code, rule_name, category, question_keywords, answer_keywords FROM knowledge_rules WHERE is_active = true`;
     const diff = await query`
       SELECT EXTRACT(EPOCH FROM (${adminMsg[0].created_at}::timestamptz - ${lastCustomer[0].created_at}::timestamptz))::int AS sec
     `;
-
-    qc = scoreReply({
-      customerText: lastCustomer[0].message_text,
-      adminText: text,
-      responseSeconds: diff[0].sec,
-      responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
-      rules,
-    });
-
-    const scoreRow = await query`
-      INSERT INTO qc_scores (
-        conversation_id, customer_message_id, admin_message_id, admin_id,
-        response_seconds, speed_score, correctness_score, sentiment_score,
-        final_score, fail_reasons, matched_rules
-      ) VALUES (
-        ${convId}, ${lastCustomer[0].id}, ${adminMsg[0].id}, ${resolvedAdminId},
-        ${diff[0].sec}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
-        ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)}
-      ) RETURNING *
-    `;
-    qc.id = scoreRow[0].id;
-
-    if (qc.finalScore < 70 || qc.failReasons.length)
-      await sendTelegram(`QC FAIL: score ${qc.finalScore}\n${qc.failReasons.join(', ')}\nAdmin: ${admin_id}`).catch(() => {});
+    responseSeconds = diff[0].sec;
+    customerMsgId = lastCustomer[0].id;
   }
+
+  const qc = scoreReply({
+    customerText: lastCustomer[0]?.message_text || '',
+    adminText: text,
+    responseSeconds: responseSeconds ?? 0,
+    responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
+    rules,
+  });
+
+  const scoreRow = await query`
+    INSERT INTO qc_scores (
+      conversation_id, customer_message_id, admin_message_id, admin_id,
+      response_seconds, speed_score, correctness_score, sentiment_score,
+      final_score, fail_reasons, matched_rules
+    ) VALUES (
+      ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId},
+      ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
+      ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)}
+    ) RETURNING *
+  `;
+  qc.id = scoreRow[0].id;
+
+  if (qc.finalScore < 70 || qc.failReasons.length)
+    await sendTelegram(`QC FAIL: score ${qc.finalScore}\n${qc.failReasons.join(', ')}\nAdmin: ${admin_name || admin_id}`).catch(() => {});
 
   return Response.json({ ok: true, qc }, { headers: CORS });
 }
