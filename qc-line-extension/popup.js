@@ -5,8 +5,14 @@ const saveBtn = document.getElementById('saveBtn');
 const loadBtn = document.getElementById('loadBtn');
 const statusEl = document.getElementById('status');
 
-// โหลดค่าที่บันทึกไว้
-chrome.storage.sync.get({ apiUrl: '', apiKey: '', adminId: '' }, (s) => {
+const DEFAULTS = {
+  apiUrl: 'https://qc-admin-1-oo1hvt7kh-mogohms-projects.vercel.app',
+  apiKey: 'PKQC2026SUPERADMIN',
+  adminId: '',
+};
+
+// โหลดค่าที่บันทึกไว้ (ถ้ายังไม่มีใช้ default)
+chrome.storage.sync.get(DEFAULTS, (s) => {
   apiUrlEl.value = s.apiUrl;
   apiKeyEl.value = s.apiKey;
   if (s.apiUrl) loadAdmins(s.apiUrl, s.apiKey, s.adminId);
