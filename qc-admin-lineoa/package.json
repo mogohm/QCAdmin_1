@@ -1,0 +1,1 @@
+{"name":"qc-admin-lineoa","version":"1.0.0","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start","db:init":"node scripts/init-db.js"},"dependencies":{"@neondatabase/serverless":"latest","next":"latest","react":"latest","react-dom":"latest","lucide-react":"latest"},"devDependencies":{}}
