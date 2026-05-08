@@ -3,10 +3,20 @@ import { requireAdmin } from '@/lib/auth';
 import { scoreReply } from '@/lib/qc-engine';
 import { sendTelegram } from '@/lib/telegram';
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 // เรียกจาก Browser Extension — รับ line_user_id แทน conversation_id
 // send_line = false เสมอ (ส่งไปแล้วจาก LINE OA Manager)
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
 
   const { line_user_id, admin_id, text } = await req.json();
   if (!line_user_id || !admin_id || !text)
@@ -83,5 +93,5 @@ export async function POST(req) {
       await sendTelegram(`QC FAIL: score ${qc.finalScore}\n${qc.failReasons.join(', ')}\nAdmin: ${admin_id}`).catch(() => {});
   }
 
-  return Response.json({ ok: true, qc });
+  return Response.json({ ok: true, qc }, { headers: CORS });
 }
