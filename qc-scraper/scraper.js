@@ -35,8 +35,13 @@ async function apiFetch(endpoint, opts = {}) {
 }
 const pollJob   = ()       => apiFetch('/api/scraper/poll');
 const updateJob = (id, f)  => apiFetch('/api/scraper/poll', { method:'PATCH', body: JSON.stringify({ id, ...f }) });
-const postReply = (uid, text, adminName) =>
-  apiFetch('/api/admin/log-reply', { method:'POST', body: JSON.stringify({ line_user_id: uid, text, admin_name: adminName }) });
+const postReply = (uid, text, adminName, customerText, adminTs, customerTs) =>
+  apiFetch('/api/admin/log-reply', { method:'POST', body: JSON.stringify({
+    line_user_id: uid, text, admin_name: adminName,
+    customer_text: customerText || null,
+    admin_ts:    adminTs    || null,
+    customer_ts: customerTs || null,
+  }) });
 
 // ---- Job runner ----
 async function runJob(job) {
@@ -101,7 +106,7 @@ async function runJob(job) {
 
         console.log(`\n  [${i+1}/${total}] ${nameText} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
-          const r = await postReply(lineUserId, msg.text, msg.adminName);
+          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs);
           if (r?.ok) {
             console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"`);
             logged++;
@@ -125,13 +130,28 @@ async function runJob(job) {
   }
 }
 
-// ดึงเฉพาะ admin messages ในช่วงวันที่
+// ดึง admin messages + customer message ก่อนหน้า ในช่วงวันที่
 async function extractAdminMessages(page, dateFrom, dateTo) {
   return page.evaluate(({ fromMs, toMs }) => {
     const results = [];
+    let currentDate      = null;
+    let lastCustomerText = null;
+    let lastCustomerTs   = null;
 
-    // วันที่จาก date separator — สร้าง map: index → date
-    let currentDate = null;
+    function extractTs(node, currentDate) {
+      const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
+      const rawTime = timeEl?.getAttribute('datetime') || timeEl?.innerText?.trim() || '';
+      if (!rawTime) return null;
+      const parts = rawTime.match(/(\d{1,2}):(\d{2})/);
+      if (parts && currentDate) {
+        const d = new Date(currentDate);
+        d.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
+        return isNaN(d) ? null : d.toISOString();
+      }
+      const d = new Date(rawTime);
+      return isNaN(d) ? null : d.toISOString();
+    }
+
     const allNodes = Array.from(document.querySelectorAll('.chatsys-date, .chat'));
 
     for (const node of allNodes) {
@@ -145,38 +165,36 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
         continue;
       }
 
-      // เฉพาะ admin message (chat-reverse)
+      // ข้อความลูกค้า (ไม่ใช่ chat-reverse และไม่ใช่ chatsys)
+      if (!node.classList.contains('chat-reverse') && !node.className.includes('chatsys')) {
+        const custEl = node.querySelector('.chat-item-text.user-select-text');
+        const custText = custEl?.innerText?.trim() || '';
+        if (custText) {
+          lastCustomerText = custText;
+          lastCustomerTs   = extractTs(node, currentDate);
+        }
+        continue;
+      }
+
       if (!node.classList.contains('chat-reverse')) continue;
 
-      // ข้อความ
+      // ข้อความ admin
       const textEl = node.querySelector('.chat-item-text.user-select-text');
       const text   = textEl?.innerText?.trim() || '';
       if (!text || text.length < 1) continue;
 
-      // timestamp จาก time element ใน bubble หรือใช้ currentDate
-      const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
-      const rawTime = timeEl?.getAttribute('datetime') || timeEl?.innerText?.trim() || '';
-      let ts = null;
-      if (rawTime && currentDate) {
-        // rawTime อาจเป็น "17:36" → รวมกับ currentDate
-        const timeParts = rawTime.match(/(\d{1,2}):(\d{2})/);
-        if (timeParts) {
-          ts = new Date(currentDate);
-          ts.setHours(parseInt(timeParts[1]), parseInt(timeParts[2]), 0, 0);
-        }
-      } else if (rawTime) {
-        ts = new Date(rawTime);
-      }
+      // timestamp admin
+      const tsIso = extractTs(node, currentDate);
+      const ts    = tsIso ? new Date(tsIso) : null;
 
       // กรองช่วงวันที่
       if (ts && !isNaN(ts)) {
         if (ts.getTime() < fromMs || ts.getTime() > toMs) continue;
       } else if (currentDate) {
-        // ถ้าไม่มี time แต่มี date → เช็ค date เฉยๆ
         if (currentDate.getTime() < fromMs || currentDate.getTime() > toMs) continue;
       }
 
-      // ชื่อแอดมินจาก .chat-content (บรรทัดแรกก่อน .chat-body)
+      // ชื่อแอดมินจาก .chat-content
       const contentEl = node.querySelector('.chat-content');
       let adminName   = null;
       if (contentEl) {
@@ -185,7 +203,7 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
         adminName = clone.innerText?.trim().split('\n')[0]?.trim() || null;
       }
 
-      results.push({ text, adminName, timestamp: ts?.toISOString() || null });
+      results.push({ text, adminName, timestamp: tsIso, customerText: lastCustomerText, customerTs: lastCustomerTs });
     }
 
     return results;

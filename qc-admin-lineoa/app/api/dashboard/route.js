@@ -18,20 +18,30 @@ export async function GET(req) {
         (SELECT count(*) FROM customer_events WHERE event_type='register' AND status='pass')::int AS registered_pass,
         (SELECT count(*) FROM customer_events WHERE event_type='kyc' AND status='pass')::int AS kyc_pass,
         (SELECT coalesce(sum(amount),0) FROM customer_events WHERE event_type='deposit')::numeric AS deposit_total,
-        (SELECT coalesce(avg(response_seconds),0)::int FROM qc_scores) AS avg_response_sec,
+        (SELECT coalesce(avg(response_seconds) FILTER (WHERE response_seconds > 0),0)::int FROM qc_scores) AS avg_response_sec,
         (SELECT coalesce(avg(final_score),0)::int FROM qc_scores) AS avg_score`, [{}]),
 
       // Ranking ทั้งหมด (frontend แสดง 10 + toggle)
       safe(() => query`
         SELECT
           a.id, a.member_name,
-          count(q.id)::int                                                             AS cases,
-          coalesce(avg(q.final_score),0)::int                                          AS avg_score,
-          coalesce(avg(q.response_seconds),0)::int                                     AS avg_response_sec,
-          (count(q.id) FILTER (WHERE q.final_score >= 85))::int                        AS good,
-          (count(q.id) FILTER (WHERE q.final_score >= 70 AND q.final_score < 85))::int AS warn,
+          count(q.id)::int                                                              AS cases,
+          coalesce(avg(q.final_score),0)::int                                           AS avg_score,
+          coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int AS avg_response_sec,
+          (count(q.id) FILTER (WHERE q.final_score >= 85))::int                         AS good,
+          (count(q.id) FILTER (WHERE q.final_score >= 70 AND q.final_score < 85))::int  AS warn,
           (count(q.id) FILTER (WHERE q.final_score < 70 AND q.final_score IS NOT NULL))::int AS bad,
-          max(q.created_at) AS last_reply_at
+          max(q.created_at) AS last_reply_at,
+          (SELECT count(*)::int FROM customer_events ce
+           WHERE ce.metadata->>'admin_id' = a.id::text
+             AND ce.event_type = 'register'
+             AND ce.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+          ) AS reg_count,
+          (SELECT coalesce(sum(ce.amount),0)::numeric FROM customer_events ce
+           WHERE ce.metadata->>'admin_id' = a.id::text
+             AND ce.event_type = 'deposit'
+             AND ce.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+          ) AS deposit_sum
         FROM qc_admins a
         LEFT JOIN qc_scores q ON q.admin_id = a.id
           AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')

@@ -198,7 +198,7 @@ export default function Dashboard() {
             </div>
             <table className="table">
               <thead>
-                <tr><th>#</th><th>Admin</th><th>Cases</th><th>Score</th><th>ตอบเฉลี่ย</th><th>ตอบล่าสุด</th></tr>
+                <tr><th>#</th><th>Admin</th><th>Cases</th><th>Score</th><th>ตอบเฉลี่ย</th><th>สมัคร</th><th>ยอดเติม</th><th>ตอบล่าสุด</th></tr>
               </thead>
               <tbody>
                 {visibleRanking.map((r, i) => (
@@ -208,16 +208,20 @@ export default function Dashboard() {
                       <td><b>{r.member_name}</b></td>
                       <td>{r.cases}</td>
                       <td className={'score ' + scoreClass(r.avg_score)}>{r.avg_score} {scoreLabel(r.avg_score)}</td>
-                      <td>{fmtSec(r.avg_response_sec)}</td>
+                      <td>{r.avg_response_sec > 0 ? fmtSec(r.avg_response_sec) : '—'}</td>
+                      <td style={{ color: '#16a34a', fontWeight: 600 }}>{r.reg_count || 0}</td>
+                      <td style={{ color: '#2196f3', fontWeight: 600 }}>{Number(r.deposit_sum || 0).toLocaleString()}</td>
                       <td style={{ fontSize: 12, color: '#888' }}>{r.last_reply_at ? timeAgo(r.last_reply_at) : '—'}</td>
                     </tr>
                     {expandAdmin === r.id && (
                       <tr key={r.id + '-d'}>
-                        <td colSpan={6} style={{ background: '#f8fafc', padding: '8px 16px', fontSize: 13 }}>
+                        <td colSpan={8} style={{ background: '#f8fafc', padding: '8px 16px', fontSize: 13 }}>
                           <div style={{ display: 'flex', gap: 24, marginBottom: 6 }}>
                             <span>✅ ดี: <b style={{ color: '#22c55e' }}>{r.good}</b></span>
                             <span>⚠️ พอใช้: <b style={{ color: '#f59e0b' }}>{r.warn}</b></span>
                             <span>❌ ต่ำ: <b style={{ color: '#ef4444' }}>{r.bad}</b></span>
+                            <span>📋 สมัคร: <b style={{ color: '#16a34a' }}>{r.reg_count || 0}</b></span>
+                            <span>💰 เติม: <b style={{ color: '#2196f3' }}>{Number(r.deposit_sum || 0).toLocaleString()}</b></span>
                           </div>
                           <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                             {(d?.replyLog || []).filter(x => x.admin_name === r.member_name).slice(0, 8).map((x, j) => (

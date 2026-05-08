@@ -18,7 +18,7 @@ export async function OPTIONS() {
 export async function POST(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
 
-  const { line_user_id, admin_id, admin_name, text } = await req.json();
+  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts } = await req.json();
   if (!line_user_id || !text)
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
@@ -46,17 +46,34 @@ export async function POST(req) {
   if (!resolvedAdminId)
     return Response.json({ error: 'ระบุ admin_id หรือ admin_name' }, { status: 400, headers: CORS });
 
-  // ป้องกัน duplicate — ถ้าข้อความเดียวกันของ admin คนเดียวใน 48 ชม.
+  // ป้องกัน duplicate — ข้อความเดียวกัน admin คนเดียว ภายใน 7 วัน
   const dup = await query`
-    SELECT id FROM messages
-    WHERE line_user_id = ${line_user_id}
-      AND admin_id    = ${resolvedAdminId}
-      AND message_text = ${text}
-      AND direction   = 'admin'
-      AND created_at  > now() - interval '48 hours'
+    SELECT m.id, m.conversation_id FROM messages m
+    WHERE m.line_user_id = ${line_user_id}
+      AND m.admin_id     = ${resolvedAdminId}
+      AND m.message_text = ${text}
+      AND m.direction    = 'admin'
+      AND m.created_at   > now() - interval '7 days'
     LIMIT 1
   `;
-  if (dup[0]) return Response.json({ ok: true, duplicate: true }, { headers: CORS });
+  if (dup[0]) {
+    // ถ้ามี customer_text ส่งมาใหม่ ให้เพิ่มเข้า conversation เดิมที่ยังไม่มี
+    if (customer_text) {
+      const existCust = await query`
+        SELECT id FROM messages
+        WHERE conversation_id = ${dup[0].conversation_id}
+          AND direction = 'customer' AND message_text = ${customer_text}
+        LIMIT 1
+      `;
+      if (!existCust[0]) {
+        await query`
+          INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
+          VALUES (${dup[0].conversation_id}, ${line_user_id}, 'customer', ${customer_text})
+        `;
+      }
+    }
+    return Response.json({ ok: true, duplicate: true }, { headers: CORS });
+  }
 
   // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
   await query`
@@ -84,6 +101,29 @@ export async function POST(req) {
 
   const convId = conv[0].id;
 
+  // บันทึกข้อความลูกค้าที่ scraper ส่งมา พร้อม timestamp จริงจาก LINE
+  if (customer_text) {
+    const existCust = await query`
+      SELECT id FROM messages
+      WHERE conversation_id = ${convId} AND direction = 'customer' AND message_text = ${customer_text}
+      LIMIT 1
+    `;
+    if (!existCust[0]) {
+      const custAt = customer_ts || null;
+      if (custAt) {
+        await query`
+          INSERT INTO messages (conversation_id, line_user_id, direction, message_text, created_at)
+          VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text}, ${custAt}::timestamptz)
+        `;
+      } else {
+        await query`
+          INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
+          VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text})
+        `;
+      }
+    }
+  }
+
   // ดึงข้อความลูกค้าล่าสุด (สำหรับคำนวณ response time)
   const lastCustomer = await query`
     SELECT * FROM messages
@@ -91,8 +131,13 @@ export async function POST(req) {
     ORDER BY created_at DESC LIMIT 1
   `;
 
-  // บันทึก admin message (ไม่ส่งผ่าน LINE อีกรอบ)
-  const adminMsg = await query`
+  // บันทึก admin message พร้อม timestamp จริงจาก LINE
+  const adminAt = admin_ts || null;
+  const adminMsg = adminAt ? await query`
+    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, created_at)
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${adminAt}::timestamptz)
+    RETURNING *
+  ` : await query`
     INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text)
     VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text})
     RETURNING *
@@ -139,6 +184,49 @@ export async function POST(req) {
 
   if (qc.finalScore < 70 || qc.failReasons.length)
     await sendTelegram(`QC FAIL: score ${qc.finalScore}\n${qc.failReasons.join(', ')}\nAdmin: ${admin_name || admin_id}`).catch(() => {});
+
+  // ---- Auto-detect customer events ----
+  const allText = [text, customer_text || ''].join(' ');
+
+  // สมัครผ่าน: มีเบอร์โทรหรือเลขบัญชีในบทสนทนา
+  const hasPhone   = /0[689]\d{8}/.test(allText.replace(/[\s-]/g, ''));
+  const hasBankAcc = /\b\d{10}\b/.test(allText.replace(/[\s-]/g, ''));
+  if (hasPhone || hasBankAcc) {
+    const existReg = await query`
+      SELECT id FROM customer_events
+      WHERE line_user_id = ${line_user_id} AND event_type = 'register'
+      LIMIT 1
+    `;
+    if (!existReg[0]) {
+      await query`
+        INSERT INTO customer_events (line_user_id, event_type, status, metadata)
+        VALUES (${line_user_id}, 'register', 'pass', ${JSON.stringify({
+          admin_id: resolvedAdminId, admin_name: admin_name || null,
+          detected: hasPhone ? 'phone' : 'bank_account',
+        })})
+      `;
+    }
+  }
+
+  // ยอดเติม: ลูกค้าแจ้งยอดเงินในข้อความ
+  if (customer_text) {
+    const depositRe = /(?:โอน|ฝาก|เติม|deposit)[^\d]{0,10}(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:บาท|฿)/gi;
+    const matches = [...customer_text.matchAll(depositRe)];
+    for (const m of matches) {
+      const raw = (m[1] || m[2] || '').replace(/,/g, '');
+      const amount = parseFloat(raw);
+      if (amount >= 1 && amount <= 10000000) {
+        await query`
+          INSERT INTO customer_events (line_user_id, event_type, amount, metadata)
+          VALUES (${line_user_id}, 'deposit', ${amount}, ${JSON.stringify({
+            admin_id: resolvedAdminId, admin_name: admin_name || null,
+            detected_text: customer_text.slice(0, 200),
+          })})
+        `;
+        break; // บันทึกแค่ครั้งเดียวต่อ message
+      }
+    }
+  }
 
   return Response.json({ ok: true, qc }, { headers: CORS });
 }

@@ -1,56 +1,76 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today    = () => new Date().toISOString().slice(0, 10);
 const yesterday = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
 function statusColor(s) {
-  return s === 'done' ? '#22c55e' : s === 'running' ? '#2196f3' : s === 'error' ? '#ef4444' : s === 'cancelled' ? '#9ca3af' : '#f59e0b';
+  return s === 'done' ? '#22c55e' : s === 'running' ? '#2196f3'
+       : s === 'error' ? '#ef4444' : s === 'cancelled' ? '#9ca3af' : '#f59e0b';
 }
 function statusLabel(s) {
-  return { pending: '⏳ รอ scraper รับงาน', running: '🔄 กำลังดึงข้อมูล...', done: '✅ เสร็จแล้ว', error: '❌ เกิดข้อผิดพลาด', cancelled: '🚫 ยกเลิกแล้ว' }[s] || s;
+  return { pending: '⏳ รอ scraper รับงาน', running: '🔄 กำลังดึงข้อมูล', done: '✅ เสร็จแล้ว', error: '❌ ผิดพลาด', cancelled: '🚫 ยกเลิก' }[s] || s;
 }
-function fmtCountdown(sec) {
-  if (sec <= 0) return '0:00';
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+function fmtCountdown(ms) {
+  if (!ms || ms <= 0) return '0:00';
+  const s = Math.ceil(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+function readCfg() {
+  try { return JSON.parse(localStorage.getItem('qc_schedule') || 'null'); } catch { return null; }
 }
 
 export default function ScraperPage() {
-  const [key, setKey] = useState(() => typeof localStorage !== 'undefined' ? localStorage.getItem('qc_api_key') || '' : '');
+  const [key, setKey]         = useState('');
   const [dateFrom, setDateFrom] = useState(yesterday());
-  const [dateTo, setDateTo] = useState(today());
-  const [jobs, setJobs] = useState([]);
+  const [dateTo, setDateTo]   = useState(today());
+  const [jobs, setJobs]       = useState([]);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg]         = useState('');
 
-  // Schedule state
-  const [scheduleOn, setScheduleOn] = useState(false);
-  const [scheduleMin, setScheduleMin] = useState(30);
-  const [countdown, setCountdown] = useState(0);
-  const scheduleRef = useRef(null);
-  const countdownRef = useRef(null);
+  // schedule
+  const [cfg, setCfg]         = useState(null);   // localStorage schedule config
+  const [intervalMin, setIntervalMin] = useState(30);
+  const [countdown, setCountdown]     = useState(0);
+  const tickRef = useRef(null);
   const pollRef = useRef(null);
 
+  // ---- load ----
   const loadJobs = async () => {
     try {
-      const r = await fetch('/api/scraper/job');
+      const r  = await fetch('/api/scraper/job');
       const data = await r.json();
       setJobs(Array.isArray(data) ? data : []);
-    } catch (_) {}
+    } catch {}
   };
 
   useEffect(() => {
+    // Load saved key
+    const saved = localStorage.getItem('qc_api_key') || '';
+    if (saved) setKey(saved);
+
+    // Load schedule config
+    const c = readCfg();
+    if (c) { setCfg(c); setIntervalMin(c.intervalMin || 30); }
+
     loadJobs();
     pollRef.current = setInterval(loadJobs, 3000);
-    return () => clearInterval(pollRef.current);
+
+    // countdown tick
+    tickRef.current = setInterval(() => {
+      const c2 = readCfg();
+      if (c2?.on && c2.nextRun) {
+        setCountdown(Math.max(0, c2.nextRun - Date.now()));
+      }
+    }, 1000);
+
+    return () => { clearInterval(pollRef.current); clearInterval(tickRef.current); };
   }, []);
 
-  // save key to localStorage
-  useEffect(() => {
-    if (key) localStorage.setItem('qc_api_key', key);
-  }, [key]);
+  useEffect(() => { if (key) localStorage.setItem('qc_api_key', key); }, [key]);
 
-  async function submitJob(from, to) {
+  // ---- submit job ----
+  async function submitJob(from, to, quiet = false) {
     if (!key) { setMsg('ใส่ ADMIN_API_KEY ก่อน'); return false; }
     try {
       const r = await fetch('/api/scraper/job', {
@@ -59,63 +79,42 @@ export default function ScraperPage() {
         body: JSON.stringify({ date_from: from, date_to: to }),
       });
       const d = await r.json();
-      if (d.ok) { loadJobs(); return true; }
-      setMsg('❌ ' + d.error);
-      return false;
+      if (d.ok) { if (!quiet) setMsg('✅ สร้าง job แล้ว'); loadJobs(); return true; }
+      setMsg('❌ ' + d.error); return false;
     } catch (e) { setMsg('❌ ' + e.message); return false; }
   }
 
   async function startJob() {
     setLoading(true); setMsg('');
-    const ok = await submitJob(dateFrom, dateTo);
-    if (ok) setMsg('✅ สร้าง job แล้ว — รอ scraper รับงาน');
+    await submitJob(dateFrom, dateTo);
     setLoading(false);
   }
 
-  function startSchedule() {
+  // ---- schedule ----
+  function enableSchedule() {
     if (!key) { setMsg('ใส่ ADMIN_API_KEY ก่อน'); return; }
-    setScheduleOn(true);
+    const intervalMs = intervalMin * 60 * 1000;
+    const nextRun    = Date.now() + intervalMs;
+    const newCfg     = { on: true, key, intervalMin, intervalMs, nextRun };
+    localStorage.setItem('qc_schedule', JSON.stringify(newCfg));
+    setCfg(newCfg);
+    setCountdown(intervalMs);
     setMsg('');
-    const intervalSec = scheduleMin * 60;
-    setCountdown(intervalSec);
-
     // สร้าง job ทันที
-    submitJob(today(), today()).then(ok => {
-      if (ok) setMsg(`✅ สร้าง job แล้ว — จะทำอีกใน ${scheduleMin} นาที`);
+    submitJob(today(), today(), true).then(ok => {
+      if (ok) setMsg(`✅ สร้าง job ทันที — รันครั้งหน้าใน ${intervalMin} นาที`);
     });
-
-    // countdown tick
-    countdownRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) return intervalSec; // reset
-        return prev - 1;
-      });
-    }, 1000);
-
-    // auto-create job ทุก XX นาที
-    scheduleRef.current = setInterval(() => {
-      submitJob(today(), today()).then(ok => {
-        if (ok) setMsg(`🔄 Auto-job: ${new Date().toLocaleTimeString('th-TH')}`);
-      });
-    }, intervalSec * 1000);
   }
 
-  function stopSchedule() {
-    setScheduleOn(false);
-    setCountdown(0);
-    clearInterval(scheduleRef.current);
-    clearInterval(countdownRef.current);
-    setMsg('⏹️ หยุด schedule แล้ว');
+  function disableSchedule() {
+    const newCfg = { on: false };
+    localStorage.setItem('qc_schedule', JSON.stringify(newCfg));
+    setCfg(newCfg);
+    setMsg('⏹️ ปิด Auto-Schedule แล้ว');
   }
 
-  useEffect(() => {
-    return () => {
-      clearInterval(scheduleRef.current);
-      clearInterval(countdownRef.current);
-    };
-  }, []);
-
-  const activeJob = jobs.find(j => j.status === 'running' || j.status === 'pending');
+  const scheduleOn = cfg?.on === true;
+  const activeJob  = jobs.find(j => j.status === 'running' || j.status === 'pending');
 
   return (
     <div className="shell">
@@ -127,180 +126,223 @@ export default function ScraperPage() {
           <a className="active" href="/scraper">Scraper</a>
           <a href="/docs">Setup Docs</a>
         </nav>
-      </aside>
-
-      <main className="main">
-        <h1>Scraper Control</h1>
-        <p className="muted">
-          ดึงข้อความที่แอดมินตอบจาก chat.line.biz เข้าระบบ QC — เฉพาะ chat ที่มีการตอบแล้วเท่านั้น<br />
-          ต้องเปิด scraper (<code>node scraper.js --watch</code>) ทิ้งไว้บนเครื่องก่อน
-        </p>
-
-        {/* API Key + Create Job */}
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h2>สร้าง Scrape Job</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>วันที่เริ่ม</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 6 }} />
+        {/* sidebar schedule status */}
+        <div style={{ marginTop: 'auto', padding: '16px 0', fontSize: 12 }}>
+          <div style={{
+            padding: '10px 12px', borderRadius: 8,
+            background: scheduleOn ? '#f0fdf4' : '#f8fafc',
+            border: `1px solid ${scheduleOn ? '#86efac' : '#e5e7eb'}`,
+          }}>
+            <div style={{ fontWeight: 600, color: scheduleOn ? '#16a34a' : '#888', marginBottom: 4 }}>
+              {scheduleOn ? '⏰ Auto-Schedule ON' : '⏰ Auto-Schedule OFF'}
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>วันที่สิ้นสุด</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 6 }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>ADMIN_API_KEY</label>
-              <input type="password" value={key} onChange={e => setKey(e.target.value)}
-                placeholder="key..."
-                style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 6 }} />
-            </div>
-          </div>
-          <button onClick={startJob} disabled={loading || !!activeJob}
-            style={{ padding: '8px 24px', opacity: (loading || activeJob) ? 0.6 : 1 }}>
-            {loading ? '...' : activeJob ? 'มี job อยู่แล้ว' : '▶ เริ่ม Scrape ทันที'}
-          </button>
-          {msg && (
-            <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 6, fontSize: 13,
-              background: msg.startsWith('✅') || msg.startsWith('🔄') ? '#f0fdf4' : msg.startsWith('⏹️') ? '#f8fafc' : '#fef2f2',
-              color: msg.startsWith('✅') || msg.startsWith('🔄') ? '#16a34a' : msg.startsWith('⏹️') ? '#555' : '#dc2626' }}>
-              {msg}
-            </div>
-          )}
-        </div>
-
-        {/* Schedule */}
-        <div className="card" style={{ marginBottom: 16, border: scheduleOn ? '2px solid #22c55e' : '1px solid #e5e7eb' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            ⏰ ตั้งเวลา Auto-Scrape
             {scheduleOn && (
-              <span style={{ fontSize: 13, fontWeight: 400, color: '#22c55e', background: '#f0fdf4', padding: '2px 10px', borderRadius: 20 }}>
-                กำลังทำงาน
-              </span>
-            )}
-          </h2>
-          <p className="muted" style={{ marginBottom: 12 }}>
-            สร้าง job อัตโนมัติทุก XX นาที โดยใช้วันที่วันนี้ — ต้องเปิดหน้านี้ค้างไว้
-          </p>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label style={{ fontSize: 13, color: '#555' }}>ทุก</label>
-              <select
-                value={scheduleMin}
-                onChange={e => setScheduleMin(Number(e.target.value))}
-                disabled={scheduleOn}
-                style={{ padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}>
-                {[15, 30, 60, 90, 120].map(m => (
-                  <option key={m} value={m}>{m} นาที</option>
-                ))}
-              </select>
-              <label style={{ fontSize: 13, color: '#555' }}>ครั้ง</label>
-            </div>
-
-            {!scheduleOn ? (
-              <button onClick={startSchedule}
-                style={{ padding: '8px 20px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-                ▶ เปิดใช้งาน
-              </button>
-            ) : (
               <>
-                <button onClick={stopSchedule}
-                  style={{ padding: '8px 20px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
-                  ⏹ หยุด
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: '#666' }}>รันครั้งหน้าใน:</div>
-                  <div style={{
-                    fontSize: 22, fontWeight: 700, fontFamily: 'monospace',
-                    color: countdown <= 60 ? '#ef4444' : '#2196f3',
-                    minWidth: 60, textAlign: 'center',
-                  }}>
-                    {fmtCountdown(countdown)}
-                  </div>
-                  <div style={{ fontSize: 13, color: '#888' }}>นาที:วินาที</div>
+                <div style={{ color: '#555' }}>ทุก {cfg.intervalMin} นาที</div>
+                <div style={{ color: '#2196f3', fontWeight: 700, fontFamily: 'monospace', fontSize: 16, marginTop: 4 }}>
+                  {fmtCountdown(countdown)}
                 </div>
               </>
             )}
           </div>
-          {scheduleOn && (
-            <div style={{ marginTop: 12, fontSize: 12, color: '#888', background: '#f8fafc', padding: '8px 12px', borderRadius: 6 }}>
-              💡 ทำงานเฉพาะขณะที่หน้านี้เปิดอยู่ — หากต้องการให้ทำงานอัตโนมัติโดยไม่ต้องเปิดเบราว์เซอร์ ให้รัน:<br />
-              <code style={{ background: '#e5e7eb', padding: '2px 6px', borderRadius: 4 }}>node scraper.js --watch --schedule={scheduleMin}</code>
-            </div>
-          )}
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="top">
+          <div>
+            <h1>Scraper Control</h1>
+            <p className="muted">ดึงข้อความแอดมินจาก chat.line.biz เข้าระบบ QC</p>
+          </div>
         </div>
 
-        {/* Active Job Status */}
-        {activeJob && (
+        {/* ===== ACTIVE JOB STATUS (ถ้ามี) ===== */}
+        {activeJob ? (
           <div style={{
-            background: '#eff6ff', border: '2px solid #2196f3', borderRadius: 12,
-            padding: 20, marginBottom: 16,
+            background: activeJob.status === 'running' ? '#eff6ff' : '#fffbeb',
+            border: `2px solid ${activeJob.status === 'running' ? '#2196f3' : '#f59e0b'}`,
+            borderRadius: 12, padding: 20, marginBottom: 20,
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, color: '#1d4ed8' }}>กำลังทำงาน</h2>
-              <span style={{ fontSize: 13, color: '#666' }}>
-                {activeJob.date_from} → {activeJob.date_to}
-              </span>
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: statusColor(activeJob.status), marginBottom: 8 }}>
-              {statusLabel(activeJob.status)}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: statusColor(activeJob.status) }}>
+                {statusLabel(activeJob.status)}
+              </div>
+              <span style={{ fontSize: 12, color: '#666' }}>{activeJob.date_from} — {activeJob.date_to}</span>
             </div>
             {activeJob.total_chats > 0 && (
-              <div style={{ marginBottom: 8 }}>
+              <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span>บันทึกแล้ว {activeJob.logged_count} / {activeJob.total_chats} chats</span>
-                  <span>{Math.round((activeJob.logged_count / activeJob.total_chats) * 100)}%</span>
+                  <span>บันทึก {activeJob.logged_count} / {activeJob.total_chats} chats</span>
+                  <b>{Math.round((activeJob.logged_count / activeJob.total_chats) * 100)}%</b>
                 </div>
-                <div style={{ background: '#dbeafe', borderRadius: 4, height: 8 }}>
+                <div style={{ background: '#dbeafe', borderRadius: 6, height: 10, overflow: 'hidden' }}>
                   <div style={{
-                    background: '#2196f3', borderRadius: 4, height: 8,
+                    background: '#2196f3', height: 10, borderRadius: 6,
                     width: `${Math.round((activeJob.logged_count / activeJob.total_chats) * 100)}%`,
                     transition: 'width 0.5s',
                   }} />
                 </div>
-              </div>
+              </>
             )}
             {activeJob.current_chat && (
-              <div style={{ fontSize: 12, color: '#666' }}>
-                กำลังดึง: {activeJob.current_chat}
+              <div style={{ fontSize: 12, color: '#555', marginTop: 6 }}>
+                🔍 {activeJob.current_chat}
               </div>
             )}
           </div>
+        ) : (
+          <div style={{
+            background: '#f0fdf4', border: '1px solid #86efac',
+            borderRadius: 10, padding: '10px 16px', marginBottom: 20,
+            fontSize: 13, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <span>ไม่มี job กำลังทำงาน</span>
+            {scheduleOn && <span style={{ marginLeft: 'auto', color: '#555' }}>รันครั้งหน้าใน <b style={{ fontFamily: 'monospace' }}>{fmtCountdown(countdown)}</b></span>}
+          </div>
         )}
 
-        {/* Job History */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+
+          {/* ===== AUTO SCHEDULE ===== */}
+          <div className="card" style={{
+            border: scheduleOn ? '2px solid #22c55e' : '1px solid #e5e7eb',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            {scheduleOn && (
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                background: 'linear-gradient(90deg,#22c55e,#16a34a)',
+              }} />
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <h2 style={{ margin: 0 }}>⏰ Auto-Schedule</h2>
+              {scheduleOn && (
+                <span style={{ fontSize: 12, background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
+                  ACTIVE
+                </span>
+              )}
+            </div>
+
+            {scheduleOn ? (
+              <div>
+                <div style={{ fontSize: 13, color: '#555', marginBottom: 8 }}>
+                  สร้าง job อัตโนมัติทุก <b>{cfg.intervalMin} นาที</b>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#888' }}>รันครั้งหน้าใน:</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'monospace', color: countdown < 60000 ? '#ef4444' : '#2196f3' }}>
+                    {fmtCountdown(countdown)}
+                  </div>
+                </div>
+                {/* progress bar for countdown */}
+                <div style={{ background: '#e5e7eb', borderRadius: 4, height: 6, marginBottom: 16 }}>
+                  <div style={{
+                    background: '#22c55e', borderRadius: 4, height: 6,
+                    width: `${100 - Math.round((countdown / (cfg.intervalMs || 1)) * 100)}%`,
+                    transition: 'width 1s linear',
+                  }} />
+                </div>
+                <button onClick={disableSchedule} style={{
+                  width: '100%', padding: '8px', background: '#fef2f2', color: '#ef4444',
+                  border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 600,
+                }}>
+                  ⏹ ปิด Auto-Schedule
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+                  เปิดให้ scraper สร้าง job อัตโนมัติโดยไม่ต้องกดเอง<br />
+                  <span style={{ fontSize: 12, color: '#999' }}>ทำงานตลอดที่แอปเปิดอยู่</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <label style={{ fontSize: 13, color: '#555', whiteSpace: 'nowrap' }}>ทำงานทุก</label>
+                  <select value={intervalMin} onChange={e => setIntervalMin(Number(e.target.value))}
+                    style={{ flex: 1, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6 }}>
+                    {[15, 30, 45, 60, 90, 120].map(m => <option key={m} value={m}>{m} นาที</option>)}
+                  </select>
+                </div>
+                <button onClick={enableSchedule} style={{
+                  width: '100%', padding: '10px', background: '#22c55e', color: '#fff',
+                  border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                }}>
+                  ▶ เปิด Auto-Schedule
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ===== MANUAL JOB ===== */}
+          <div className="card">
+            <h2>▶ Scrape ทันที</h2>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>ADMIN_API_KEY</label>
+              <input type="password" value={key} onChange={e => setKey(e.target.value)} placeholder="key..."
+                style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>จาก</label>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                  style={{ width: '100%', padding: '7px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>ถึง</label>
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                  style={{ width: '100%', padding: '7px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }} />
+              </div>
+            </div>
+            <button onClick={startJob} disabled={loading || !!activeJob} style={{
+              width: '100%', padding: '10px', fontWeight: 700,
+              opacity: (loading || activeJob) ? 0.5 : 1, cursor: (loading || activeJob) ? 'not-allowed' : 'pointer',
+            }}>
+              {loading ? '...' : activeJob ? 'มี job อยู่แล้ว' : '▶ เริ่ม Scrape'}
+            </button>
+            {msg && (
+              <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, fontSize: 12,
+                background: msg.startsWith('✅') ? '#f0fdf4' : msg.startsWith('⏹') ? '#f8fafc' : '#fef2f2',
+                color: msg.startsWith('✅') ? '#16a34a' : msg.startsWith('⏹') ? '#555' : '#dc2626',
+              }}>{msg}</div>
+            )}
+          </div>
+        </div>
+
+        {/* ===== JOB HISTORY ===== */}
         <div className="card">
           <h2>ประวัติ Jobs</h2>
           {jobs.length === 0
-            ? <div style={{ color: '#999' }}>ยังไม่มี job</div>
+            ? <div style={{ color: '#999', padding: '16px 0' }}>ยังไม่มี job</div>
             : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>วันที่สร้าง</th>
-                    <th>ช่วงวันที่</th>
-                    <th>สถานะ</th>
-                    <th>Chat</th>
-                    <th>บันทึก</th>
-                    <th>ใช้เวลา</th>
-                    <th>หมายเหตุ</th>
+                    <th>เวลา</th><th>ช่วงวันที่</th><th>สถานะ</th>
+                    <th>Chat</th><th>บันทึก</th><th>ใช้เวลา</th><th>หมายเหตุ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {jobs.map(j => {
-                    const duration = j.started_at && j.finished_at
-                      ? Math.round((new Date(j.finished_at) - new Date(j.started_at)) / 1000) + 's'
-                      : j.started_at ? 'กำลังทำงาน...' : '—';
+                    const sec = j.started_at && j.finished_at
+                      ? Math.round((new Date(j.finished_at) - new Date(j.started_at)) / 1000)
+                      : null;
                     return (
                       <tr key={j.id}>
-                        <td style={{ fontSize: 12, color: '#888' }}>{new Date(j.created_at).toLocaleString('th-TH')}</td>
+                        <td style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>
+                          {new Date(j.created_at).toLocaleString('th-TH')}
+                        </td>
                         <td style={{ fontSize: 12 }}>{j.date_from} — {j.date_to}</td>
-                        <td><span style={{ color: statusColor(j.status), fontWeight: 600 }}>{statusLabel(j.status)}</span></td>
+                        <td>
+                          <span style={{ color: statusColor(j.status), fontWeight: 600, fontSize: 12 }}>
+                            {statusLabel(j.status)}
+                          </span>
+                        </td>
                         <td>{j.total_chats || '—'}</td>
-                        <td>{j.logged_count || '—'}</td>
-                        <td style={{ fontSize: 12 }}>{duration}</td>
-                        <td style={{ fontSize: 12, color: '#ef4444' }}>{j.error_text || ''}</td>
+                        <td style={{ fontWeight: j.logged_count > 0 ? 600 : 400, color: j.logged_count > 0 ? '#16a34a' : '#999' }}>
+                          {j.logged_count || '—'}
+                        </td>
+                        <td style={{ fontSize: 12 }}>{sec !== null ? `${sec}s` : j.started_at ? '...' : '—'}</td>
+                        <td style={{ fontSize: 12, color: '#ef4444', maxWidth: 160 }}>{j.error_text || ''}</td>
                       </tr>
                     );
                   })}
@@ -310,16 +352,14 @@ export default function ScraperPage() {
           }
         </div>
 
-        {/* Instructions */}
+        {/* ===== INSTRUCTIONS ===== */}
         <div className="card" style={{ marginTop: 16, background: '#f8fafc', fontSize: 13 }}>
-          <h2>วิธีเปิด Scraper</h2>
+          <h2>วิธีเปิด Scraper บนเครื่อง</h2>
           <div style={{ fontFamily: 'monospace', lineHeight: 2.2 }}>
             <div style={{ color: '#888' }}># poll งาน (รอรับ job จากเว็บ)</div>
             <div>node scraper.js --watch</div>
-            <div style={{ marginTop: 6, color: '#888' }}># poll + สร้าง job อัตโนมัติทุก 30 นาที (ไม่ต้องเปิดเบราว์เซอร์)</div>
+            <div style={{ marginTop: 6, color: '#888' }}># หรือรันพร้อม schedule อัตโนมัติ ไม่ต้องเปิดเบราว์เซอร์</div>
             <div>node scraper.js --watch --schedule=30</div>
-            <div style={{ marginTop: 6, color: '#888' }}># ตั้งค่าใน .env แทน arg</div>
-            <div style={{ color: '#888' }}>SCHEDULE_MINUTES=30</div>
           </div>
         </div>
       </main>
