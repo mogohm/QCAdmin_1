@@ -52,10 +52,10 @@ export async function GET(req) {
         GROUP BY a.id, a.member_name
         ORDER BY avg_score DESC, cases DESC`, []),
 
-      // Weekly summary — แบ่งตามสัปดาห์ภายในช่วง filter
+      // Daily summary — แบ่งตามวัน 28 วันล่าสุด
       safe(() => query`
         SELECT
-          date_trunc('week', m.created_at)::date                                        AS week_start,
+          m.created_at::date                                                             AS day,
           count(q.id)::int                                                               AS total_cases,
           coalesce(avg(q.final_score),0)::int                                            AS avg_score,
           coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int AS avg_response_sec,
@@ -65,9 +65,9 @@ export async function GET(req) {
         FROM qc_scores q
         JOIN messages m ON m.id = q.admin_message_id
         WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-        GROUP BY date_trunc('week', m.created_at)
-        ORDER BY week_start DESC
-        LIMIT 12`, []),
+        GROUP BY m.created_at::date
+        ORDER BY day DESC
+        LIMIT 28`, []),
 
       safe(() => query`
         SELECT promotion_code, count(*)::int customer_count, coalesce(sum(amount),0)::numeric total_amount
@@ -99,13 +99,7 @@ export async function GET(req) {
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
         LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id
         LEFT JOIN qc_scores q       ON q.admin_message_id = m.id
-        LEFT JOIN LATERAL (
-          SELECT message_text FROM messages c2
-          WHERE c2.conversation_id = m.conversation_id
-            AND c2.direction = 'customer'
-            AND c2.created_at <= m.created_at
-          ORDER BY c2.created_at DESC LIMIT 1
-        ) cust ON true
+        LEFT JOIN messages cust     ON cust.id = q.customer_message_id
         WHERE m.direction = 'admin'
           AND m.admin_id IS NOT NULL
           AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')

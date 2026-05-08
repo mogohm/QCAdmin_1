@@ -162,18 +162,20 @@ export default function Dashboard() {
           <K title="คะแนนเฉลี่ย" v={k.avg_score || 0} />
         </section>
 
-        {/* Weekly summary */}
+        {/* Daily summary */}
         {(d?.weeklySummary || []).length > 0 && (
           <section className="card" style={{ marginTop: 16 }}>
-            <h2>สรุปรายสัปดาห์ (4 สัปดาห์ล่าสุด)</h2>
+            <h2>สรุปรายวัน ({(d.weeklySummary || []).length} วัน)</h2>
             <table className="table">
               <thead>
-                <tr><th>สัปดาห์</th><th>Cases</th><th>Avg Score</th><th>ตอบเฉลี่ย</th><th>✅ ดี</th><th>❌ ต่ำ</th><th>Admin active</th></tr>
+                <tr><th>วันที่</th><th>Cases</th><th>Avg Score</th><th>ตอบเฉลี่ย</th><th>✅ ดี</th><th>❌ ต่ำ</th><th>Admin active</th></tr>
               </thead>
               <tbody>
                 {(d.weeklySummary || []).map((w, i) => (
                   <tr key={i}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{fmtWeek(w.week_start)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {w.day ? new Date(w.day).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
+                    </td>
                     <td>{w.total_cases}</td>
                     <td className={'score ' + scoreClass(w.avg_score)}>{w.avg_score}</td>
                     <td>{fmtSec(w.avg_response_sec)}</td>
