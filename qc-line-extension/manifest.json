@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "QC Admin Logger",
+  "version": "1.0",
+  "description": "บันทึก QC อัตโนมัติเมื่อแอดมินตอบลูกค้าใน chat.line.biz",
+
+  "permissions": ["storage", "notifications"],
+  "host_permissions": ["https://chat.line.biz/*"],
+
+  "content_scripts": [
+    {
+      "matches": ["https://chat.line.biz/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "QC Admin Logger"
+  },
+
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

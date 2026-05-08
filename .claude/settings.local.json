@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"h:\\\\QCAdminPJ\\\\qc-line-extension\")"
+    ],
+    "additionalDirectories": [
+      "h:\\QCAdminPJ"
+    ]
+  }
+}
