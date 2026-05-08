@@ -121,6 +121,9 @@ export async function POST(req) {
           VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text})
         `;
       }
+    } else if (customer_ts) {
+      // แก้ timestamp ที่อาจเคย insert ด้วย now() — ให้ LATERAL join หาเจอ
+      await query`UPDATE messages SET created_at = ${customer_ts}::timestamptz WHERE id = ${existCust[0].id}`;
     }
   }
 
@@ -189,9 +192,16 @@ export async function POST(req) {
   // ---- Auto-detect customer events ----
   const allText = [text, customer_text || ''].join(' ');
 
-  // สมัครผ่าน: มีเบอร์โทรหรือเลขบัญชีในบทสนทนา
-  const hasPhone   = /0[689]\d{8}/.test(allText.replace(/[\s-]/g, ''));
-  const hasBankAcc = /\b\d{10}\b/.test(allText.replace(/[\s-]/g, ''));
+  // สมัครผ่าน: ค้นหาเบอร์โทร/เลขบัญชีในข้อความ admin + customer 5 ล่าสุดของ conversation
+  // (scraper ส่งแค่ข้อความก่อนหน้า 1 ข้อความ ข้อมูลสมัครอาจอยู่ในข้อความก่อนหน้านั้น)
+  const recentCust = await query`
+    SELECT message_text FROM messages
+    WHERE conversation_id = ${convId} AND direction = 'customer'
+    ORDER BY created_at DESC LIMIT 5
+  `;
+  const regSearchText = [text, ...recentCust.map(r => r.message_text)].join(' ').replace(/[\s\-.()]/g, '');
+  const hasPhone   = /0[689]\d{8}/.test(regSearchText);
+  const hasBankAcc = /\b\d{10,12}\b/.test(regSearchText);
   if (hasPhone || hasBankAcc) {
     const existReg = await query`
       SELECT id FROM customer_events

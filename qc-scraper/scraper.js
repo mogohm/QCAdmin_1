@@ -111,7 +111,7 @@ async function runJob(job) {
         for (const msg of msgs) {
           const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs);
           if (r?.ok) {
-            console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"`);
+            console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"${msg.customerText ? ` | คำถาม: "${msg.customerText.slice(0,40)}"` : ' | คำถาม: -'}`);
             logged++;
           } else {
             console.log(`    ⚠️ [${r?.error}] admin="${msg.adminName}" "${msg.text.slice(0,40)}"`);
