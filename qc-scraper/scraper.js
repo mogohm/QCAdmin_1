@@ -10,6 +10,21 @@ const WATCH     = process.argv.includes('--watch');
 const HEADLESS  = !process.argv.includes('--headed');
 const POLL_MS   = 10000;
 
+// --schedule=30 → สร้าง job อัตโนมัติทุก 30 นาที (ใช้วันที่วันนี้)
+const scheduleArg = process.argv.find(a => a.startsWith('--schedule='));
+const SCHEDULE_MIN = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parseInt(process.env.SCHEDULE_MINUTES || '0');
+
+const toISO = d => d.toISOString().slice(0, 10);
+async function createAutoJob() {
+  const today = toISO(new Date());
+  const r = await apiFetch('/api/scraper/job', {
+    method: 'POST',
+    body: JSON.stringify({ date_from: today, date_to: today }),
+  });
+  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน ${today} → ${today}`);
+  else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
+}
+
 // ---- API helpers ----
 async function apiFetch(endpoint, opts = {}) {
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -197,10 +212,17 @@ async function loop() {
   if (!API_URL)                  { console.error('❌ ตั้งค่า QC_API_URL ใน .env'); process.exit(1); }
   if (!fs.existsSync(AUTH_FILE)) { console.error('❌ ไม่พบ auth.json — รัน: node login.js'); process.exit(1); }
 
-  console.log(`🤖 QC Scraper | ${API_URL} | ${HEADLESS ? 'headless' : 'headed'}`);
+  console.log(`🤖 QC Scraper | ${API_URL} | ${HEADLESS ? 'headless' : 'headed'}${SCHEDULE_MIN ? ` | auto-job ทุก ${SCHEDULE_MIN} นาที` : ''}`);
+
+  // ถ้าตั้ง schedule ให้สร้าง job ทันทีตอนเริ่ม และซ้ำทุก XX นาที
+  if (SCHEDULE_MIN > 0) {
+    await createAutoJob();
+    setInterval(createAutoJob, SCHEDULE_MIN * 60 * 1000);
+  }
+
   await loop();
-  if (WATCH) {
-    console.log(`⏰ poll ทุก ${POLL_MS/1000}s`);
+  if (WATCH || SCHEDULE_MIN > 0) {
+    if (WATCH) console.log(`⏰ poll ทุก ${POLL_MS/1000}s`);
     setInterval(loop, POLL_MS);
   }
 })();

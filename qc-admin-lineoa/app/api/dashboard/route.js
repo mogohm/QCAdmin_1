@@ -81,11 +81,18 @@ export async function GET(req) {
           q.sentiment_score, q.response_seconds,
           q.fail_reasons, q.matched_rules
         FROM messages m
-        JOIN qc_admins a       ON a.id = m.admin_id
-        JOIN line_customers lc ON lc.line_user_id = m.line_user_id
-        LEFT JOIN qc_scores q  ON q.admin_message_id = m.id
-        LEFT JOIN messages cust ON cust.id = q.customer_message_id
+        LEFT JOIN qc_admins a       ON a.id = m.admin_id
+        LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id
+        LEFT JOIN qc_scores q       ON q.admin_message_id = m.id
+        LEFT JOIN LATERAL (
+          SELECT message_text FROM messages c2
+          WHERE c2.conversation_id = m.conversation_id
+            AND c2.direction = 'customer'
+            AND c2.created_at <= m.created_at
+          ORDER BY c2.created_at DESC LIMIT 1
+        ) cust ON true
         WHERE m.direction = 'admin'
+          AND m.admin_id IS NOT NULL
           AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
         ORDER BY m.created_at DESC LIMIT 100`, []),
 

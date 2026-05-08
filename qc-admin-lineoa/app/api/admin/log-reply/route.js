@@ -46,6 +46,18 @@ export async function POST(req) {
   if (!resolvedAdminId)
     return Response.json({ error: 'ระบุ admin_id หรือ admin_name' }, { status: 400, headers: CORS });
 
+  // ป้องกัน duplicate — ถ้าข้อความเดียวกันของ admin คนเดียวใน 48 ชม.
+  const dup = await query`
+    SELECT id FROM messages
+    WHERE line_user_id = ${line_user_id}
+      AND admin_id    = ${resolvedAdminId}
+      AND message_text = ${text}
+      AND direction   = 'admin'
+      AND created_at  > now() - interval '48 hours'
+    LIMIT 1
+  `;
+  if (dup[0]) return Response.json({ ok: true, duplicate: true }, { headers: CORS });
+
   // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
   await query`
     INSERT INTO line_customers (line_user_id, display_name)
