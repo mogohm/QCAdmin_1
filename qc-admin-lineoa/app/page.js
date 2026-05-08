@@ -33,9 +33,10 @@ export default function Dashboard() {
         setD(data);
         setLastFetch(new Date());
         setFetchOk(!data.error);
+        if (data.error) console.error('Dashboard API error:', data.error);
         setPulse(p => !p);
       })
-      .catch(() => setFetchOk(false));
+      .catch(e => { setFetchOk(false); console.error('Dashboard fetch failed:', e); });
   };
 
   useEffect(() => {
@@ -96,6 +97,19 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Error banner */}
+        {d?.error && (
+          <div style={{
+            background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8,
+            padding: '10px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13,
+          }}>
+            <b>❌ Dashboard API Error:</b> {d.error}
+            <div style={{ marginTop: 4, color: '#999', fontSize: 12 }}>
+              เช็ค: 1) DATABASE_URL ใน Vercel env vars  2) รัน schema.sql แล้วหรือยัง (init-db)  3) ดูที่ /api/health
+            </div>
+          </div>
+        )}
 
         {/* Activity pulse bar */}
         <div style={{
