@@ -58,6 +58,7 @@ export default function Dashboard() {
         <nav className="nav">
           <a className="active" href="/">Dashboard</a>
           <a href="/admin">Admin Console</a>
+          <a href="/scraper">Scraper</a>
           <a href="/docs">Setup Docs</a>
         </nav>
 

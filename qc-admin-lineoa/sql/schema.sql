@@ -82,6 +82,20 @@ CREATE TABLE IF NOT EXISTS customer_events (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS scraper_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date_from DATE NOT NULL,
+  date_to DATE NOT NULL,
+  status TEXT DEFAULT 'pending',
+  total_chats INT DEFAULT 0,
+  logged_count INT DEFAULT 0,
+  current_chat TEXT,
+  error_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,

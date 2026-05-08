@@ -88,6 +88,7 @@ export default function Admin() {
         <nav className="nav">
           <a href="/">Dashboard</a>
           <a className="active" href="/admin">Admin Console</a>
+          <a href="/scraper">Scraper</a>
           <a href="/docs">Setup Docs</a>
         </nav>
       </aside>
