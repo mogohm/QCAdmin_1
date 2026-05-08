@@ -40,7 +40,8 @@ async function run() {
   const page    = await context.newPage();
 
   try {
-    await page.goto('https://chat.line.biz/', { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto('https://chat.line.biz/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForTimeout(3000); // รอ React render
 
     // ตรวจว่า session ยังใช้ได้
     if (page.url().includes('signin') || page.url().includes('login')) {
@@ -56,8 +57,8 @@ async function run() {
     let logged = 0;
     for (const { url, lineUserId, customerName } of convLinks) {
       try {
-        await page.goto(url, { waitUntil: 'networkidle', timeout: 20000 });
-        await page.waitForTimeout(800);
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await page.waitForTimeout(2000); // รอ messages โหลด
 
         const sinceIso = state.lastSeen[lineUserId] || null;
         const messages = await extractAdminMessages(page, sinceIso);
