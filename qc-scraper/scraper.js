@@ -76,22 +76,33 @@ async function runJob(job) {
     for (let i = 0; i < total; i++) {
       try {
         // ดึงชื่อลูกค้าจาก list item ก่อน click
-        // หาบรรทัดที่ไม่ใช่ตัวเลข/เวลา/reference number → นั่นคือ LINE display name
         const nameText = await page.evaluate((idx) => {
           const items = document.querySelectorAll('.list-group-item-chat');
           const item  = items[idx];
           if (!item) return null;
-          const link  = item.querySelector('a[href="#"]');
-          if (!link)  return null;
+
+          // วิธีที่ 1: alt text ของ profile picture (LINE OA มักใส่ชื่อไว้ที่นี่)
+          const img = item.querySelector('img[src*="line-scdn.net"], img[src*="profile.line"]');
+          const altName = img?.alt?.trim();
+          if (altName && altName.length > 0 && altName.length < 80) return altName;
+
+          // วิธีที่ 2: title หรือ aria-label ของ link
+          const link = item.querySelector('a[href="#"]');
+          const titleName = link?.title?.trim() || link?.getAttribute('aria-label')?.trim();
+          if (titleName && titleName.length > 0 && titleName.length < 80) return titleName;
+
+          // วิธีที่ 3: หาบรรทัดที่เป็นชื่อจริง (ไม่ใช่ตัวเลข/เวลา/ข้อความยาว)
+          if (!link) return null;
           const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
           if (!lines || !lines.length) return null;
           for (const line of lines) {
-            if (/^[\d\s\/\-\(\)]+$/.test(line))   continue; // ข้ามถ้าเป็นตัวเลขล้วน
-            if (/^\d{1,2}:\d{2}/.test(line))       continue; // ข้ามถ้าเป็น timestamp
-            if (line.length > 60)                  continue; // ข้ามถ้ายาวเกิน (น่าจะเป็น last message)
+            if (/^[\d\s\/\-\(\)\.]+$/.test(line))  continue; // ตัวเลขล้วน
+            if (/^\d{1,2}:\d{2}/.test(line))        continue; // timestamp
+            if (line.length > 50)                   continue; // ยาวเกิน = last message
+            if (/^(You sent|ส่ง|photo|sticker|image|file)/i.test(line)) continue; // media preview
             return line;
           }
-          return lines[0]; // fallback: บรรทัดแรก
+          return null;
         }, i).catch(() => null);
 
         // คลิก chat item ที่ index i
