@@ -363,8 +363,8 @@
   <!-- ── Hero ── -->
   <div class="hero" id="top">
     <div class="tags">
-      <span class="badge badge-green">✅ Production Ready (Core)</span>
-      <span class="badge badge-blue">Next.js 14</span>
+      <span class="badge badge-green">✅ Production Ready</span>
+      <span class="badge badge-blue">Next.js 15</span>
       <span class="badge badge-cyan">Neon PostgreSQL</span>
       <span class="badge badge-purple">Playwright</span>
       <span class="badge badge-amber">LINE Messaging API</span>
@@ -372,7 +372,7 @@
     <h1>QC Admin LINE OA</h1>
     <p class="subtitle">ระบบตรวจคุณภาพการตอบแชท LINE OA แบบ near real-time<br>วัดความเร็ว · ความถูกต้อง · น้ำเสียง และสร้าง ranking admin อัตโนมัติ</p>
     <div class="meta">
-      <div class="meta-item"><strong>Stack:</strong> Next.js 14 App Router + Neon Postgres + Playwright</div>
+      <div class="meta-item"><strong>Stack:</strong> Next.js 15 App Router + Neon Postgres + Playwright</div>
       <div class="meta-item"><strong>Deploy:</strong> Vercel + Neon</div>
       <div class="meta-item"><strong>Scraper:</strong> Node.js standalone (local/VPS)</div>
       <div class="meta-item"><strong>Notify:</strong> Telegram Bot</div>
@@ -566,6 +566,11 @@
         <tr><td>LINE Webhook รับข้อความลูกค้า</td><td>Upsert customer profile + สร้าง conversation อัตโนมัติ, verify HMAC signature</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Playwright Scraper ดึง message pairs</td><td>Admin + customer message พร้อม timestamp จริงจาก LINE, scroll ย้อนหลังตามวันที่</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>ข้ามแชทที่ยังไม่ตอบ</td><td>ตรวจว่า message ล่าสุดเป็น admin reply ก่อนเข้า — ข้ามถ้ายังเป็นสีเขียว</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>MIN_IDLE_MINUTES</td><td>ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า N นาที (ป้องกัน interrupt admin ที่กำลังทำงาน)</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Auto-job จาก .env</td><td>SCHEDULE_MINUTES=30 สร้าง job อัตโนมัติทุกรอบโดยไม่ต้องกด /scraper</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>start.bat</td><td>ดับเบิ้ลคลิกเดียวเพื่อรัน scraper บน Windows — ตรวจ auth.json ก่อน, restart ด้วย R</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>--yesterday / --date=</td><td>ระบุวันที่สำหรับ scrape โดยไม่ต้องแก้ code เช่น <code>node scraper.js --yesterday</code></td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>ดึงชื่อลูกค้าจาก LINE</td><td>ดึงชื่อ LINE display name จาก auto-response welcome message และ list item ก่อน click</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>QC Scoring Engine</td><td>Speed + Correctness + Sentiment + Bot penalty — สูตร weighted average</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Duplicate prevention</td><td>7-day window check ป้องกัน message เดิมถูก insert ซ้ำจากการ scrape ซ้ำ</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Timestamp preservation</td><td>Timestamp จริงของ LINE messages บันทึกลง <code>created_at</code> ทั้ง customer และ admin msg</td><td class="status-done">✅ พร้อม</td></tr>
@@ -589,6 +594,31 @@
         <tr><td>Promotion Performance</td><td>ยอด + จำนวนลูกค้า แยก promotion_code</td><td class="status-done">✅</td></tr>
         <tr><td>System Status</td><td>Online/Offline indicator + เวลา server + last activity timestamps</td><td class="status-done">✅</td></tr>
         <tr><td>Auto-refresh</td><td>Reload ข้อมูลทุก 30 วินาที โดยไม่กระพริบหน้าจอ</td><td class="status-done">✅</td></tr>
+        <tr><td>Clickable Customer Name</td><td>คลิกชื่อลูกค้าใน Reply Log → ไป Customer Profile page</td><td class="status-done">✅</td></tr>
+      </tbody>
+    </table>
+
+    <h3>QC Rules (/rules)</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>ดู Rules ทั้งหมด</td><td>แสดง rule_code, category, keywords, weight, สถานะ ใน table</td><td class="status-done">✅</td></tr>
+        <tr><td>เพิ่ม Rule</td><td>Form modal กรอก rule_code, rule_name, category, question/answer keywords (comma-separated), weight</td><td class="status-done">✅</td></tr>
+        <tr><td>แก้ไข Rule</td><td>PATCH <code>/api/config/rules/:id</code> — แก้ได้ทุก field ยกเว้น rule_code</td><td class="status-done">✅</td></tr>
+        <tr><td>Toggle Active/Inactive</td><td>คลิกปุ่มสถานะเพื่อเปิด/ปิด rule โดยไม่ต้องลบ</td><td class="status-done">✅</td></tr>
+        <tr><td>ลบ Rule</td><td>DELETE <code>/api/config/rules/:id</code> พร้อม confirm dialog</td><td class="status-done">✅</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Customer Profile (/customer/[line_user_id])</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>Customer Header</td><td>ชื่อ, LINE user ID, status badges: สมัคร/KYC/ยอดเติมรวม/พบครั้งแรก</td><td class="status-done">✅</td></tr>
+        <tr><td>QC Stats</td><td>Conversations ทั้งหมด, total QC scores, avg score, avg response time</td><td class="status-done">✅</td></tr>
+        <tr><td>Event Timeline</td><td>Register, KYC, Deposit แต่ละรายการพร้อมวันที่และสถานะ</td><td class="status-done">✅</td></tr>
+        <tr><td>Conversations List</td><td>แต่ละ conversation พร้อม admin, ช่วงเวลา, คะแนน QC, good/warn/bad counts · คลิก expand</td><td class="status-done">✅</td></tr>
+        <tr><td>Chat Modal</td><td>ปุ่มดูแชทเปิด Chat Modal แสดงบทสนทนาพร้อม QC score รายข้อความ</td><td class="status-done">✅</td></tr>
       </tbody>
     </table>
 
@@ -620,27 +650,13 @@
   <section id="features-todo">
     <h2>สิ่งที่ยังไม่มี / ยังเป็นปัญหา ⚠️</h2>
 
-    <h3>ฟีเจอร์ที่ขาด (สำคัญ)</h3>
+    <h3>ฟีเจอร์ที่ขาด</h3>
     <ul class="todo-list">
-      <li>
-        <span class="icon">🔴</span>
-        <div>
-          <strong>Knowledge Rules UI</strong> — API <code>GET/POST /api/config/rules</code> พร้อมแล้วแต่ไม่มีหน้าจัดการ
-          ตอนนี้ต้องเรียก API ตรง หรือแก้ใน <code>sql/schema.sql</code> ทำให้ <em>correctness score ใช้ heuristic เป็นหลัก</em>
-          ซึ่งไม่แม่นยำเท่า rules จริง
-        </div>
-      </li>
-      <li>
-        <span class="icon">🔴</span>
-        <div>
-          <strong>Conversation Close / Reopen UI</strong> — DB มี <code>conversations.status</code> แต่ไม่มีปุ่ม toggle ใน frontend
-          Open Cases จึงสะสมไม่มีวันลด
-        </div>
-      </li>
       <li>
         <span class="icon">🟠</span>
         <div>
-          <strong>Customer Profile Page</strong> — ไม่มีหน้าดูประวัติลูกค้าทั้งหมด (บทสนทนาทั้งหมด, events, total deposits)
+          <strong>Conversation Close / Reopen UI</strong> — DB มี <code>conversations.status</code> แต่ไม่มีปุ่ม toggle ใน frontend
+          Open Cases จึงสะสมไม่มีวันลด
         </div>
       </li>
       <li>
@@ -729,12 +745,30 @@
       <div style="font-size:13px;color:var(--muted);">Schedule state เก็บใน localStorage — ไม่หายเมื่อเปลี่ยนหน้า</div>
     </div>
 
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/rules — QC Rules Management</strong>
+        <span class="badge badge-amber">⚙️ Config</span>
+      </div>
+      <p>เพิ่ม/แก้ไข/ลบ knowledge_rules ผ่าน UI — toggle active/inactive, ไม่ต้องแก้ DB โดยตรง</p>
+      <div style="font-size:13px;color:var(--muted);">ต้องกรอก Admin API Key เพื่อ write operations</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/customer/[line_user_id] — Customer Profile</strong>
+        <span class="badge badge-green">👤 Profile</span>
+      </div>
+      <p>ดูประวัติลูกค้าแต่ละคน: status badges, QC stats, event timeline, รายการ conversations, ปุ่มดูแชท</p>
+      <div style="font-size:13px;color:var(--muted);">เข้าได้จากคลิกชื่อลูกค้าใน Reply Log หรือ URL โดยตรง</div>
+    </div>
+
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <strong style="font-size:16px;">/docs — Setup Documentation</strong>
         <span class="badge badge-cyan">Docs</span>
       </div>
-      <p>คู่มือติดตั้ง: LINE Messaging API, Import Admin, Deploy Vercel+Neon, วิธีใช้งาน, Customer Events API</p>
+      <p>คู่มือติดตั้ง: Scraper setup, LINE Messaging API, Import Admin, Deploy Vercel+Neon, QC Rules, Customer Profile</p>
     </div>
   </section>
 
@@ -751,11 +785,20 @@
     <pre><span class="comment"># Login และบันทึก session ก่อน (ทำครั้งแรก หรือเมื่อ session หมดอายุ)</span>
 node login.js
 
-<span class="comment"># Scrape ครั้งเดียว (ไม่ loop)</span>
+<span class="comment"># รันปกติ (headless, ใช้วันที่จาก .env / auto-job)</span>
 node scraper.js
 
-<span class="comment"># Watch mode — poll ทุก 10 วินาทีตลอด</span>
-node scraper.js --watch
+<span class="comment"># มีหน้าต่าง browser — ใช้ตอน debug</span>
+node scraper.js --headed
+
+<span class="comment"># ดึงข้อมูลเมื่อวาน</span>
+node scraper.js --yesterday
+
+<span class="comment"># ดึงวันที่ระบุ</span>
+node scraper.js --date=2026-05-01
+
+<span class="comment"># ดับเบิ้ลคลิกบน Windows (ตรวจ auth.json, restart ด้วย R)</span>
+start.bat
 
 <span class="comment"># Auto-create job ทุก 30 นาที + watch</span>
 node scraper.js --schedule=30
@@ -952,7 +995,27 @@ node scraper.js --headed --watch
         <tr>
           <td><span class="method post">POST</span></td>
           <td><code>/api/config/rules</code></td>
-          <td>เพิ่ม/แก้ rule · body: <code>{ rule_code, rule_name, category, question_keywords[], answer_keywords[], weight }</code></td>
+          <td>เพิ่ม/อัปเดต rule (upsert by rule_code) · body: <code>{ rule_code, rule_name, category, question_keywords[], answer_keywords[], weight }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method patch">PATCH</span></td>
+          <td><code>/api/config/rules/:id</code></td>
+          <td>แก้ไข rule เดี่ยว · เช่น <code>{ is_active: false }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method" style="background:rgba(239,68,68,0.15);color:#f87171;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;">DELETE</span></td>
+          <td><code>/api/config/rules/:id</code></td>
+          <td>ลบ rule</td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/customer/:line_user_id</code></td>
+          <td>ข้อมูลลูกค้าครบ: customer info + events + conversations + QC stats</td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/chat/:line_user_id</code></td>
+          <td>บทสนทนาพร้อม QC scores รายข้อความ (ใช้โดย Chat Modal)</td>
         </tr>
         <tr>
           <td><span class="method get">GET</span></td>
