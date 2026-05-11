@@ -23,16 +23,21 @@ function sameDay(a, b) {
 export default function ChatModal({ user, onClose }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState(null);
   const [activeId, setActiveId] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (!user?.line_user_id) { setData(null); return; }
-    setLoading(true); setData(null); setActiveId(null);
+    if (!user?.line_user_id) { setData(null); setError(null); return; }
+    setLoading(true); setData(null); setError(null); setActiveId(null);
     fetch(`/api/chat/${user.line_user_id}`)
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => {
+        if (d.error) setError(d.error);
+        else setData(d);
+        setLoading(false);
+      })
+      .catch(err => { setError(String(err)); setLoading(false); });
   }, [user?.line_user_id]);
 
   useEffect(() => {
@@ -118,8 +123,19 @@ export default function ChatModal({ user, onClose }) {
           {loading && (
             <div style={{ textAlign: 'center', padding: 48, color: '#555', fontSize: 14 }}>⏳ กำลังโหลด...</div>
           )}
-          {!loading && msgs.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 48, color: '#666', fontSize: 14 }}>ไม่พบข้อมูลแชท</div>
+          {!loading && error && (
+            <div style={{ textAlign: 'center', padding: 32, color: '#dc2626', fontSize: 13 }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>เกิดข้อผิดพลาด</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 11, background: '#fef2f2', padding: 8, borderRadius: 6, wordBreak: 'break-all' }}>{error}</div>
+            </div>
+          )}
+          {!loading && !error && msgs.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 48, color: '#666', fontSize: 14 }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+              <div>ไม่พบข้อมูลแชท</div>
+              <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>{user?.line_user_id}</div>
+            </div>
           )}
 
           {msgs.map((msg, i) => {

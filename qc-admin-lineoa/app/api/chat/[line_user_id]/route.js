@@ -1,7 +1,12 @@
 import { query } from '@/lib/db';
 
 export async function GET(req, { params }) {
-  const { line_user_id } = params;
+  try {
+  const { line_user_id } = await params;
+
+  if (!line_user_id) {
+    return Response.json({ error: 'line_user_id required', customer: null, messages: [] }, { status: 400 });
+  }
 
   const [customer, messages] = await Promise.all([
     query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
@@ -33,4 +38,8 @@ export async function GET(req, { params }) {
   ]);
 
   return Response.json({ customer: customer[0] || null, messages });
+  } catch (err) {
+    console.error('Chat API error:', err);
+    return Response.json({ error: String(err.message || err), customer: null, messages: [] }, { status: 500 });
+  }
 }
