@@ -75,6 +75,17 @@ async function runJob(job) {
     let logged = 0;
     for (let i = 0; i < total; i++) {
       try {
+        // ดึงชื่อลูกค้าจาก list item ก่อน click (first line ของ <a href="#"> = display name)
+        const nameText = await page.evaluate((idx) => {
+          const items = document.querySelectorAll('.list-group-item-chat');
+          const item  = items[idx];
+          if (!item) return null;
+          const link  = item.querySelector('a[href="#"]');
+          if (!link)  return null;
+          const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          return (lines && lines[0]) ? lines[0] : null;
+        }, i).catch(() => null);
+
         // คลิก chat item ที่ index i
         const item = page.locator('.list-group-item-chat').nth(i);
         await item.click();
@@ -129,39 +140,6 @@ async function runJob(job) {
 
         if (!idleEnough) { process.stdout.write('⏳'); continue; }
 
-        // ดึงชื่อลูกค้า — ลองหลาย selector ตามที่ LINE OA อาจใช้
-        const nameText = await page.evaluate(() => {
-          // --- จาก chat header (หลังคลิกแล้ว) ---
-          const headerSelectors = [
-            '.chat-header-name', '.chat-header .name', '.chat-header h2', '.chat-header h3',
-            '[class*="chatHeader"] [class*="name"]', '[class*="chat-detail"] h2',
-            '[class*="chat-detail"] h3', '.chat-panel-header .name', '.chat-panel-header h2',
-            '[class*="profile"] h2', '[class*="profile"] h3',
-          ];
-          for (const sel of headerSelectors) {
-            const txt = document.querySelector(sel)?.innerText?.trim();
-            if (txt && txt.length > 0 && txt.length < 100) return txt;
-          }
-          return null;
-        }).catch(() => null);
-
-        // DEBUG: แสดง HTML ของ list item แรก + chat header เพื่อหา selector ที่ถูก
-        if (i === 0) {
-          await page.evaluate(() => {
-            // dump list item
-            const item = document.querySelector('.list-group-item-chat');
-            console.log('[DEBUG LIST ITEM HTML]', item ? item.outerHTML.slice(0, 600) : 'not found');
-            // dump chat header / top of chat view
-            const header = document.querySelector(
-              '.chat-header, [class*="chatHeader"], [class*="chat-header"], ' +
-              '[class*="chatDetail"], [class*="chat-detail"], ' +
-              '.card-header, .navbar'
-            );
-            console.log('[DEBUG CHAT HEADER HTML]', header ? header.outerHTML.slice(0, 600) : 'not found');
-          }).catch(() => {});
-        }
-
-        console.log(`  ชื่อลูกค้า: "${nameText || '(ดึงไม่ได้ — ดู [DEBUG] ใน console)'}"`);
         await updateJob(job.id, { current_chat: nameText || lineUserId, logged_count: logged });
 
         // Scroll ขึ้นเพื่อโหลด chat history ให้ครบตามวันที่
@@ -171,7 +149,7 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        console.log(`\n  [${i+1}/${total}] ${nameText} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
+        console.log(`\n  [${i+1}/${total}] ${nameText || lineUserId.slice(0,12)} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
           const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, nameText);
           if (r?.ok) {
@@ -261,6 +239,7 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
     let currentDate      = null;
     let lastCustomerText = null;
     let lastCustomerTs   = null;
+    let lastAdminName    = null; // carry forward: LINE OA ไม่แสดงชื่อซ้ำสำหรับข้อความต่อเนื่อง
 
     function extractTs(node, currentDate) {
       const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
@@ -321,6 +300,7 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
       }
 
       // ชื่อแอดมินจาก .chat-content
+      // LINE OA ซ่อนชื่อถ้าส่งหลายข้อความติดกัน → ใช้ชื่อล่าสุดที่เห็น
       const contentEl = node.querySelector('.chat-content');
       let adminName   = null;
       if (contentEl) {
@@ -328,6 +308,8 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
         clone.querySelectorAll('.chat-body, .chat-main, .chat-item').forEach(e => e.remove());
         adminName = clone.innerText?.trim().split('\n')[0]?.trim() || null;
       }
+      if (!adminName && lastAdminName) adminName = lastAdminName;
+      if (adminName)  lastAdminName = adminName;
 
       results.push({ text, adminName, timestamp: tsIso, customerText: lastCustomerText, customerTs: lastCustomerTs });
     }
