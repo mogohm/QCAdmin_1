@@ -10,7 +10,9 @@
       "Bash(mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/api/chat\" && mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/api/chat/[line_user_id]\" && echo \"done\")",
       "Bash(mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/chat/[line_user_id]\" && echo \"done\")",
       "Bash(node login.js)",
-      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; where.exe node 2>$null; ls \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; ls \"$env:APPDATA\\\\nvm\" -ErrorAction SilentlyContinue | Select-Object -First 5)"
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; where.exe node 2>$null; ls \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; ls \"$env:APPDATA\\\\nvm\" -ErrorAction SilentlyContinue | Select-Object -First 5)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
