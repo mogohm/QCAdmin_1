@@ -75,7 +75,8 @@ async function runJob(job) {
     let logged = 0;
     for (let i = 0; i < total; i++) {
       try {
-        // ดึงชื่อลูกค้าจาก list item ก่อน click (first line ของ <a href="#"> = display name)
+        // ดึงชื่อลูกค้าจาก list item ก่อน click
+        // หาบรรทัดที่ไม่ใช่ตัวเลข/เวลา/reference number → นั่นคือ LINE display name
         const nameText = await page.evaluate((idx) => {
           const items = document.querySelectorAll('.list-group-item-chat');
           const item  = items[idx];
@@ -83,7 +84,14 @@ async function runJob(job) {
           const link  = item.querySelector('a[href="#"]');
           if (!link)  return null;
           const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-          return (lines && lines[0]) ? lines[0] : null;
+          if (!lines || !lines.length) return null;
+          for (const line of lines) {
+            if (/^[\d\s\/\-\(\)]+$/.test(line))   continue; // ข้ามถ้าเป็นตัวเลขล้วน
+            if (/^\d{1,2}:\d{2}/.test(line))       continue; // ข้ามถ้าเป็น timestamp
+            if (line.length > 60)                  continue; // ข้ามถ้ายาวเกิน (น่าจะเป็น last message)
+            return line;
+          }
+          return lines[0]; // fallback: บรรทัดแรก
         }, i).catch(() => null);
 
         // คลิก chat item ที่ index i
