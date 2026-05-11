@@ -12,7 +12,8 @@ const POLL_MS   = 10000;
 
 // --schedule=30 → สร้าง job อัตโนมัติทุก 30 นาที (ใช้วันที่วันนี้)
 const scheduleArg = process.argv.find(a => a.startsWith('--schedule='));
-const SCHEDULE_MIN = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parseInt(process.env.SCHEDULE_MINUTES || '0');
+const SCHEDULE_MIN   = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parseInt(process.env.SCHEDULE_MINUTES  || '0');
+const MIN_IDLE_MIN   = parseInt(process.env.MIN_IDLE_MINUTES || '30');
 
 const toISO = d => d.toISOString().slice(0, 10);
 async function createAutoJob() {
@@ -112,7 +113,7 @@ async function runJob(job) {
         }).catch(() => null);
 
 
-        // ข้ามถ้า message ล่าสุดมาจากลูกค้า (แอดมินยังไม่ได้ตอบ = จุดสีเขียว)
+        // ข้ามถ้า message ล่าสุดมาจากลูกค้า (แอดมินยังไม่ได้ตอบ)
         const lastMsgIsAdmin = await page.evaluate(() => {
           const msgs = Array.from(document.querySelectorAll('.chat')).filter(
             el => !el.className.includes('chatsys')
@@ -121,6 +122,44 @@ async function runJob(job) {
           return msgs[msgs.length - 1].classList.contains('chat-reverse');
         });
         if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
+
+        // ข้ามถ้า admin ตอบล่าสุดยังไม่ถึง MIN_IDLE_MIN นาที
+        // (admin อาจยังทำงานอยู่ในแชทนี้ ถ้า scrape เลยอาจรบกวน)
+        const idleEnough = await page.evaluate((minIdleMs) => {
+          const adminMsgs = Array.from(document.querySelectorAll('.chat.chat-reverse'))
+            .filter(el => !el.className.includes('chatsys'));
+          if (!adminMsgs.length) return true;
+
+          const last = adminMsgs[adminMsgs.length - 1];
+          const timeEl = last.querySelector('time, [class*="time"]');
+          if (!timeEl) return true; // หา timestamp ไม่เจอ → ผ่านไปก่อน
+
+          const raw = timeEl.getAttribute('datetime') || timeEl.innerText?.trim() || '';
+          if (!raw) return true;
+
+          const now = Date.now();
+
+          // ถ้าเป็น ISO / full datetime
+          const fullTs = new Date(raw);
+          if (!isNaN(fullTs)) return (now - fullTs.getTime()) >= minIdleMs;
+
+          // ถ้าเป็น HH:MM เท่านั้น → ประมาณด้วยวันนี้/เมื่อวาน
+          const parts = raw.match(/(\d{1,2}):(\d{2})/);
+          if (parts) {
+            const d = new Date();
+            d.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
+            let msgTs = d.getTime();
+            if (msgTs > now) msgTs -= 86400000; // ถ้าดูเหมือนอนาคต = เมื่อวาน
+            return (now - msgTs) >= minIdleMs;
+          }
+
+          return true;
+        }, MIN_IDLE_MIN * 60 * 1000).catch(() => true);
+
+        if (!idleEnough) {
+          process.stdout.write('⏳'); // admin ยังทำงานอยู่ → ข้าม
+          continue;
+        }
 
         // ถ้าดึงชื่อไม่ได้ ให้ dump HTML header เพื่อ debug (เฉพาะ chat แรก)
         if (!nameText && i === 0) {
@@ -346,6 +385,7 @@ async function loop() {
   } else {
     console.log(`⏰ Mode : รอรับ job จากหน้าเว็บ (SCHEDULE_MINUTES=0)`);
   }
+  console.log(`💤 Idle : ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า ${MIN_IDLE_MIN} นาที`);
   console.log('='.repeat(50));
   console.log();
 
