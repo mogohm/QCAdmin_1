@@ -79,6 +79,7 @@ export default function Dashboard() {
   const visibleRanking = showAllAdmins ? ranking : ranking.slice(0, 10);
 
   return (
+    <>
     <div className="shell">
       <aside className="side">
         <div className="brand">QC<span>Admin</span></div>
@@ -345,6 +346,7 @@ export default function Dashboard() {
     </div>
 
     <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
+    </>
   );
 }
 
