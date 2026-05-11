@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+import ChatModal from './components/ChatModal';
 
 const toISO = d => d.toISOString().slice(0, 10);
 const weekAgo = () => toISO(new Date(Date.now() - 7 * 86400000));
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [lastFetch, setLastFetch] = useState(null);
   const [fetchOk, setFetchOk] = useState(null);
   const [expandAdmin, setExpandAdmin] = useState(null);
+  const [chatUser, setChatUser] = useState(null);
   const [showAllAdmins, setShowAllAdmins] = useState(false);
   const [dateFrom, setDateFrom] = useState(weekAgo());
   const [dateTo, setDateTo] = useState(todayStr());
@@ -241,9 +243,10 @@ export default function Dashboard() {
                                   {x.final_score ?? '—'}
                                 </span>
                                 {x.line_user_id && (
-                                  <a href={`/chat/${x.line_user_id}`} target="_blank"
-                                    style={{ fontSize: 16, textDecoration: 'none', alignSelf: 'center', opacity: 0.7 }}
-                                    title="ดูแชท">💬</a>
+                                  <button
+                                    onClick={() => setChatUser({ line_user_id: x.line_user_id, name: x.customer_name || x.line_user_id })}
+                                    style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', opacity: 0.7, padding: 0, alignSelf: 'center' }}
+                                    title="ดูแชท">💬</button>
                                 )}
                               </div>
                             ))}
@@ -311,9 +314,10 @@ export default function Dashboard() {
                         </td>
                         <td>
                           {r.line_user_id && (
-                            <a href={`/chat/${r.line_user_id}`} target="_blank"
-                              style={{ fontSize: 18, textDecoration: 'none', opacity: 0.7 }}
-                              title="ดูแชทเหมือน LINE">💬</a>
+                            <button
+                              onClick={() => setChatUser({ line_user_id: r.line_user_id, name: r.customer_name || r.line_user_id })}
+                              style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', opacity: 0.7, padding: 0 }}
+                              title="ดูแชทเหมือน LINE">💬</button>
                           )}
                         </td>
                       </tr>
@@ -339,6 +343,8 @@ export default function Dashboard() {
 
       <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
     </div>
+
+    <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
   );
 }
 

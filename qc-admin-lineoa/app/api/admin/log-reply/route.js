@@ -66,10 +66,17 @@ export async function POST(req) {
         LIMIT 1
       `;
       if (!existCust[0]) {
-        await query`
-          INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
-          VALUES (${dup[0].conversation_id}, ${line_user_id}, 'customer', ${customer_text})
-        `;
+        if (customer_ts) {
+          await query`
+            INSERT INTO messages (conversation_id, line_user_id, direction, message_text, created_at)
+            VALUES (${dup[0].conversation_id}, ${line_user_id}, 'customer', ${customer_text}, ${customer_ts}::timestamptz)
+          `;
+        } else {
+          await query`
+            INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
+            VALUES (${dup[0].conversation_id}, ${line_user_id}, 'customer', ${customer_text})
+          `;
+        }
       }
     }
     return Response.json({ ok: true, duplicate: true }, { headers: CORS });

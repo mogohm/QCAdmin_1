@@ -80,17 +80,19 @@ export async function POST(req) {
           convId = newConv[0].id;
         }
 
-        // 3. Insert message
-        await query`
-          INSERT INTO messages (conversation_id, line_user_id, direction, message_text, line_message_id)
-          VALUES (
-            ${convId},
-            ${userId},
-            'customer',
-            ${text},
-            ${ev?.message?.id || null}
-          )
-        `;
+        // 3. Insert message — ใช้ timestamp จริงจาก LINE event (Unix ms)
+        const lineTs = ev.timestamp ? new Date(ev.timestamp).toISOString() : null;
+        if (lineTs) {
+          await query`
+            INSERT INTO messages (conversation_id, line_user_id, direction, message_text, line_message_id, created_at)
+            VALUES (${convId}, ${userId}, 'customer', ${text}, ${ev?.message?.id || null}, ${lineTs}::timestamptz)
+          `;
+        } else {
+          await query`
+            INSERT INTO messages (conversation_id, line_user_id, direction, message_text, line_message_id)
+            VALUES (${convId}, ${userId}, 'customer', ${text}, ${ev?.message?.id || null})
+          `;
+        }
       }
     }
 
