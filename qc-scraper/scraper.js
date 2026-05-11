@@ -111,11 +111,10 @@ async function runJob(job) {
           const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
           if (!lines || !lines.length) return null;
           for (const line of lines) {
-            if (/^[\d\s\/\-\(\)\.]+$/.test(line))  continue; // ตัวเลขล้วน
-            if (/^\d{1,2}:\d{2}/.test(line))        continue; // timestamp
-            if (line.length > 40)                   continue; // ยาวเกิน = last message
+            if (/^\d{1,2}:\d{2}/.test(line))        continue; // timestamp HH:MM
+            if (line.length > 40)                   continue; // ยาวเกิน = last message preview
             if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
-            return line;
+            return line; // รับทุกรูปแบบ รวมถึง "1062540/0648951211" ที่เป็นชื่อ LINE จริง
           }
           return null;
         }, i).catch(() => null);
