@@ -35,12 +35,13 @@ async function apiFetch(endpoint, opts = {}) {
 }
 const pollJob   = ()       => apiFetch('/api/scraper/poll');
 const updateJob = (id, f)  => apiFetch('/api/scraper/poll', { method:'PATCH', body: JSON.stringify({ id, ...f }) });
-const postReply = (uid, text, adminName, customerText, adminTs, customerTs) =>
+const postReply = (uid, text, adminName, customerText, adminTs, customerTs, customerName) =>
   apiFetch('/api/admin/log-reply', { method:'POST', body: JSON.stringify({
     line_user_id: uid, text, admin_name: adminName,
-    customer_text: customerText || null,
-    admin_ts:    adminTs    || null,
-    customer_ts: customerTs || null,
+    customer_text:  customerText  || null,
+    admin_ts:       adminTs       || null,
+    customer_ts:    customerTs    || null,
+    customer_name:  customerName  || null,
   }) });
 
 // ---- Job runner ----
@@ -109,7 +110,7 @@ async function runJob(job) {
 
         console.log(`\n  [${i+1}/${total}] ${nameText} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
-          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs);
+          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, nameText);
           if (r?.ok) {
             console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"${msg.customerText ? ` | คำถาม: "${msg.customerText.slice(0,40)}"` : ' | คำถาม: -'}`);
             logged++;

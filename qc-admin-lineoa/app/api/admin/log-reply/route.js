@@ -18,7 +18,7 @@ export async function OPTIONS() {
 export async function POST(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
 
-  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts } = await req.json();
+  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts, customer_name } = await req.json();
   if (!line_user_id || !text)
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
@@ -45,6 +45,16 @@ export async function POST(req) {
   }
   if (!resolvedAdminId)
     return Response.json({ error: 'ระบุ admin_id หรือ admin_name' }, { status: 400, headers: CORS });
+
+  // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
+  // ถ้ามี customer_name จาก scraper (ชื่อที่เห็นใน LINE OA) ให้อัปเดตด้วย
+  await query`
+    INSERT INTO line_customers (line_user_id, display_name)
+    VALUES (${line_user_id}, ${customer_name || null})
+    ON CONFLICT (line_user_id)
+    DO UPDATE SET
+      display_name = COALESCE(EXCLUDED.display_name, line_customers.display_name)
+  `;
 
   // ป้องกัน duplicate — ข้อความเดียวกัน admin คนเดียว ภายใน 7 วัน
   const dup = await query`
@@ -81,13 +91,6 @@ export async function POST(req) {
     }
     return Response.json({ ok: true, duplicate: true }, { headers: CORS });
   }
-
-  // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
-  await query`
-    INSERT INTO line_customers (line_user_id, display_name)
-    VALUES (${line_user_id}, ${line_user_id})
-    ON CONFLICT (line_user_id) DO NOTHING
-  `;
 
   // หา open conversation ของ user นี้
   let conv = await query`
