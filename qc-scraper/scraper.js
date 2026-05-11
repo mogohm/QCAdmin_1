@@ -168,18 +168,22 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        // ดึงชื่อลูกค้าจาก auto-response welcome message (แม่นที่สุด — priority 1)
-        // format: "ยินดีต้อนรับ คุณ [NAME] เข้าสู่..." หรือ "สวัสดีค่ะ คุณ [NAME] ยินดี..."
-        let displayName = null;
-        for (const msg of msgs.slice(0, 8)) {
-          const m = msg.text.match(/คุณ\s+(.+?)\s+(?:เข้าสู่|ยินดีต้อน)/);
-          if (m && m[1].trim().length > 0 && m[1].trim().length < 60) {
-            displayName = m[1].trim();
-            break;
+        // ดึงชื่อลูกค้าจาก system welcome message (.chatsys) — LINE OA ระบุชื่อจาก profile จริง
+        const autoResponseName = await page.evaluate(() => {
+          const nodes = Array.from(document.querySelectorAll('.chatsys'));
+          for (const node of nodes) {
+            const text = node.innerText?.trim() || '';
+            const m = text.match(/คุณ\s+(.+?)\s+(?:เข้าสู่|ยินดีต้อน)/);
+            if (m) {
+              const name = m[1].trim();
+              if (name.length > 0 && name.length < 60) return name;
+            }
           }
-        }
+          return null;
+        }).catch(() => null);
+
         // fallback: ชื่อที่ดึงจาก list item ก่อนคลิก
-        if (!displayName) displayName = nameText;
+        const displayName = autoResponseName || nameText || null;
 
         console.log(`\n  [${i+1}/${total}] ${displayName || lineUserId.slice(0,12)} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
