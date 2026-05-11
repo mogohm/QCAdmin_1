@@ -95,9 +95,11 @@ async function runJob(job) {
           if (!item) return null;
 
           // วิธีที่ 1: alt text ของ profile picture (LINE OA มักใส่ชื่อไว้ที่นี่)
-          const img = item.querySelector('img[src*="line-scdn.net"], img[src*="profile.line"]');
-          const altName = img?.alt?.trim();
-          if (altName && altName.length > 0 && altName.length < 80) return altName;
+          const imgs = Array.from(item.querySelectorAll('img'));
+          for (const img of imgs) {
+            const alt = img.alt?.trim();
+            if (alt && alt.length > 0 && alt.length < 80) return alt;
+          }
 
           // วิธีที่ 2: title หรือ aria-label ของ link
           const link = item.querySelector('a[href="#"]');
@@ -111,8 +113,8 @@ async function runJob(job) {
           for (const line of lines) {
             if (/^[\d\s\/\-\(\)\.]+$/.test(line))  continue; // ตัวเลขล้วน
             if (/^\d{1,2}:\d{2}/.test(line))        continue; // timestamp
-            if (line.length > 50)                   continue; // ยาวเกิน = last message
-            if (/^(You sent|ส่ง|photo|sticker|image|file)/i.test(line)) continue; // media preview
+            if (line.length > 40)                   continue; // ยาวเกิน = last message
+            if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
             return line;
           }
           return null;
@@ -181,9 +183,10 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        // ดึงชื่อลูกค้าจาก system welcome message (.chatsys) — LINE OA ระบุชื่อจาก profile จริง
+        // ดึงชื่อลูกค้าจาก auto-response welcome message — อยู่ใน .chat-reverse (ไม่ใช่ .chatsys)
+        // format: "ยินดีต้อนรับ คุณ [NAME] เข้าสู่..." หรือ "สวัสดีค่ะ คุณ [NAME] ยินดี..."
         const autoResponseName = await page.evaluate(() => {
-          const nodes = Array.from(document.querySelectorAll('.chatsys'));
+          const nodes = Array.from(document.querySelectorAll('.chat-reverse, .chatsys'));
           for (const node of nodes) {
             const text = node.innerText?.trim() || '';
             const m = text.match(/คุณ\s+(.+?)\s+(?:เข้าสู่|ยินดีต้อน)/);
