@@ -76,7 +76,6 @@ async function runJob(job) {
       try {
         // คลิก chat item ที่ index i
         const item = page.locator('.list-group-item-chat').nth(i);
-        const nameText = await item.locator('h5, .text-truncate, strong').first().innerText().catch(() => `chat ${i+1}`);
         await item.click();
 
         // รอให้ URL เปลี่ยนเป็น chat URL (มี user ID)
@@ -86,8 +85,32 @@ async function runJob(job) {
         // อ่าน LINE user ID จาก URL
         const url = page.url();
         const m   = url.match(/\/(U[a-f0-9]{32})/i);
-        if (!m) { console.log(`  ข้าม ${nameText} — ไม่พบ user ID ใน URL`); continue; }
+        if (!m) { console.log(`  ข้ามแชท ${i+1} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
+
+        // ดึงชื่อลูกค้าจาก header ของหน้าแชท (แม่นยำกว่าดึงจาก list item)
+        const nameText = await page.evaluate(() => {
+          const candidates = [
+            // หา element ที่มีข้อความอยู่ใน header/toolbar ของ chat view
+            document.querySelector('.chat-header-name'),
+            document.querySelector('.chat-header .name'),
+            document.querySelector('.chat-header h2'),
+            document.querySelector('.chat-header h3'),
+            document.querySelector('[class*="chatHeader"] [class*="name"]'),
+            document.querySelector('[class*="chat-detail"] h2'),
+            document.querySelector('[class*="chat-detail"] h3'),
+            document.querySelector('[class*="profile"] [class*="name"]'),
+            // fallback: แถบบนสุดของ chat panel (มักจะเป็นชื่อลูกค้า)
+            document.querySelector('.chat-panel-header .name'),
+            document.querySelector('.chat-panel-header h2'),
+          ];
+          for (const el of candidates) {
+            const txt = el?.innerText?.trim();
+            if (txt && txt.length > 0 && txt.length < 100) return txt;
+          }
+          return null;
+        }).catch(() => null);
+
 
         // ข้ามถ้า message ล่าสุดมาจากลูกค้า (แอดมินยังไม่ได้ตอบ = จุดสีเขียว)
         const lastMsgIsAdmin = await page.evaluate(() => {
@@ -99,7 +122,19 @@ async function runJob(job) {
         });
         if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
 
-        await updateJob(job.id, { current_chat: nameText, logged_count: logged });
+        // ถ้าดึงชื่อไม่ได้ ให้ dump HTML header เพื่อ debug (เฉพาะ chat แรก)
+        if (!nameText && i === 0) {
+          const headerHtml = await page.evaluate(() => {
+            const panel = document.querySelector('.chat-panel, .chat-view, [class*="chatPanel"], [class*="chatView"], main');
+            if (!panel) return 'ไม่พบ chat panel';
+            // คืนแค่ 500 ตัวอักษรแรกของ HTML เพื่อ debug
+            return panel.innerHTML.slice(0, 800);
+          }).catch(() => '');
+          if (headerHtml) console.log(`\n[DEBUG] header HTML ตัวอย่าง:\n${headerHtml}\n`);
+        }
+        console.log(`  ชื่อลูกค้า: "${nameText || '(ดึงไม่ได้)'}"`);
+
+        await updateJob(job.id, { current_chat: nameText || lineUserId, logged_count: logged });
 
         // Scroll ขึ้นเพื่อโหลด chat history ให้ครบตามวันที่
         await loadChatHistory(page, dateFrom);
