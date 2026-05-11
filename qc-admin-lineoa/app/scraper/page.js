@@ -125,6 +125,7 @@ export default function ScraperPage() {
           <a href="/admin">Admin Console</a>
           <a className="active" href="/scraper">Scraper</a>
           <a href="/docs">Setup Docs</a>
+          <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
         {/* sidebar schedule status */}
         <div style={{ marginTop: 'auto', padding: '16px 0', fontSize: 12 }}>

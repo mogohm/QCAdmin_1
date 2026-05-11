@@ -5,7 +5,8 @@
       "Bash(npm install *)",
       "PowerShell(Get-Command node, npm -ErrorAction SilentlyContinue)",
       "PowerShell(winget list nodejs 2>$null)",
-      "PowerShell(winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1)"
+      "PowerShell(winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1)",
+      "Bash(Copy-Item \"h:\\\\QCAdminPJ\\\\PROJECT_DOCS.html\" \"h:\\\\QCAdminPJ\\\\qc-admin-lineoa\\\\public\\\\PROJECT_DOCS.html\" -Force)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ"

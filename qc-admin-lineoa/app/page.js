@@ -85,6 +85,7 @@ export default function Dashboard() {
           <a href="/admin">Admin Console</a>
           <a href="/scraper">Scraper</a>
           <a href="/docs">Setup Docs</a>
+          <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
         <div style={{ marginTop: 'auto', padding: '16px 0', fontSize: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>

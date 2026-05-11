@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QC Admin LINE OA — Project Documentation</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2535;
+    --border: #2a3347;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+    --purple: #a855f7;
+    --font: 'Segoe UI', 'Noto Sans Thai', sans-serif;
+    --mono: 'Cascadia Code', 'Consolas', monospace;
+    --radius: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  nav.sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar .logo {
+    padding: 0 24px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .sidebar .logo .brand { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .sidebar .logo .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sidebar a {
+    display: block;
+    padding: 8px 24px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover { color: var(--text); background: var(--bg3); }
+  .sidebar .nav-section {
+    padding: 16px 24px 4px;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  /* Main */
+  main.content {
+    flex: 1;
+    max-width: 920px;
+    padding: 48px 56px;
+    overflow-x: hidden;
+  }
+
+  /* ── Typography ── */
+  h1 { font-size: 32px; font-weight: 800; line-height: 1.2; margin-bottom: 8px; }
+  h2 {
+    font-size: 20px; font-weight: 700; margin: 48px 0 16px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--accent); }
+  p { color: var(--muted); margin-bottom: 12px; }
+  strong { color: var(--text); }
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--cyan);
+  }
+  pre {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #a5d6ff;
+    line-height: 1.6;
+    margin: 16px 0;
+  }
+  pre .comment { color: #6e7e9c; }
+  pre .key { color: var(--amber); }
+  pre .val { color: #86efac; }
+  pre .str { color: #fca5a5; }
+
+  /* ── Section ── */
+  section { margin-bottom: 0; }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #1a2540 0%, #0f1117 60%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 44px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero .tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .hero h1 { color: #fff; }
+  .hero .subtitle { color: var(--muted); font-size: 16px; margin-top: 10px; }
+  .hero .meta { display: flex; gap: 24px; margin-top: 20px; flex-wrap: wrap; }
+  .hero .meta-item { font-size: 13px; color: var(--muted); }
+  .hero .meta-item strong { color: var(--text); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 100px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-blue  { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-green { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .badge-amber { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .badge-red   { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-purple{ background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+  .badge-cyan  { background: rgba(6,182,212,0.12);  color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .mini-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .mini-card .mc-title { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .mini-card .mc-val { font-size: 18px; font-weight: 700; }
+
+  /* ── Architecture Flow ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 24px 0;
+    row-gap: 12px;
+  }
+  .flow-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .flow-box .fb-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .flow-box .fb-label { font-weight: 600; color: var(--text); }
+  .flow-box .fb-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .flow-arrow {
+    font-size: 18px;
+    color: var(--accent);
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+  .flow-box.highlight { border-color: var(--accent); background: rgba(59,130,246,0.07); }
+
+  /* ── Feature Table ── */
+  .feature-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .feature-table th {
+    text-align: left; padding: 10px 14px;
+    background: var(--bg3); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+  }
+  .feature-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: top; }
+  .feature-table tr:last-child td { border-bottom: none; }
+  .feature-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .status-done    { color: var(--green); }
+  .status-partial { color: var(--amber); }
+  .status-todo    { color: var(--red); }
+
+  /* ── API Table ── */
+  .api-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .api-table th { text-align: left; padding: 8px 12px; background: var(--bg3); font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .api-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+  .api-table tr:last-child td { border-bottom: none; }
+  .method { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .get  { background: rgba(34,197,94,0.15); color: var(--green); }
+  .post { background: rgba(59,130,246,0.15); color: var(--accent); }
+  .patch{ background: rgba(245,158,11,0.15); color: var(--amber); }
+
+  /* ── Score Bar ── */
+  .score-breakdown { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+  .score-item {
+    flex: 1; min-width: 150px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 18px;
+  }
+  .score-item .si-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .score-item .si-pct { font-size: 26px; font-weight: 800; }
+  .score-item .si-desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .si-speed { color: var(--cyan); }
+  .si-correct { color: var(--green); }
+  .si-sentiment { color: var(--purple); }
+  .si-final { color: var(--amber); }
+
+  /* ── DB Schema ── */
+  .schema-table { width: 100%; border-collapse: collapse; margin: 10px 0 20px; font-size: 13px; }
+  .schema-table thead th { text-align: left; padding: 8px 12px; background: var(--bg3); color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--border); }
+  .schema-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .schema-table tr:last-child td { border-bottom: none; }
+  .col-name { font-family: var(--mono); color: var(--cyan); }
+  .col-type { font-family: var(--mono); color: var(--amber); font-size: 12px; }
+  .col-note { color: var(--muted); font-size: 12px; }
+
+  /* ── Env Table ── */
+  .env-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  .env-table th { text-align: left; padding: 8px 12px; background: var(--bg3); color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--border); }
+  .env-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .env-table tr:last-child td { border-bottom: none; }
+  .env-key { font-family: var(--mono); color: var(--green); }
+  .req { color: var(--red); font-size: 11px; font-weight: 700; }
+  .opt { color: var(--amber); font-size: 11px; font-weight: 700; }
+
+  /* ── Steps ── */
+  .steps { counter-reset: step; margin: 16px 0; }
+  .step {
+    display: flex; gap: 18px; margin-bottom: 20px;
+    padding-bottom: 20px; border-bottom: 1px solid var(--border);
+  }
+  .step:last-child { border-bottom: none; margin-bottom: 0; }
+  .step-num {
+    counter-increment: step;
+    width: 36px; height: 36px; flex-shrink: 0;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; font-weight: 800; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-body h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .step-body p { margin-bottom: 6px; }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: rgba(59,130,246,0.07);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .callout.warn { border-color: var(--amber); background: rgba(245,158,11,0.07); }
+  .callout.danger{ border-color: var(--red); background: rgba(239,68,68,0.07); }
+  .callout strong { color: var(--text); }
+
+  /* ── Todo list ── */
+  .todo-list { list-style: none; padding: 0; margin: 12px 0; }
+  .todo-list li { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .todo-list li:last-child { border-bottom: none; }
+  .todo-list .icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Print ── */
+  @media print {
+    nav.sidebar { display: none; }
+    main.content { max-width: 100%; padding: 24px; }
+    .hero { break-inside: avoid; }
+  }
+
+  @media (max-width: 768px) {
+    nav.sidebar { display: none; }
+    main.content { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ════════════════════════════════ SIDEBAR ════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="brand">QCAdmin</div>
+    <div class="sub">LINE OA Quality Control</div>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <a href="#overview">ภาพรวมโปรเจค</a>
+  <a href="#architecture">สถาปัตยกรรมระบบ</a>
+  <a href="#tech">Tech Stack</a>
+
+  <div class="nav-section">Features</div>
+  <a href="#features-done">สิ่งที่ทำแล้ว</a>
+  <a href="#features-todo">สิ่งที่ยังไม่มี</a>
+
+  <div class="nav-section">ส่วนประกอบ</div>
+  <a href="#pages">หน้าจอ UI</a>
+  <a href="#scraper">Playwright Scraper</a>
+  <a href="#qc-engine">QC Engine</a>
+  <a href="#api">API Reference</a>
+
+  <div class="nav-section">Database</div>
+  <a href="#schema">DB Schema</a>
+
+  <div class="nav-section">Setup</div>
+  <a href="#env">Environment Variables</a>
+  <a href="#setup">ขั้นตอนติดตั้ง</a>
+</nav>
+
+<!-- ════════════════════════════════ CONTENT ════════════════════════════════ -->
+<main class="content">
+
+  <!-- ── Hero ── -->
+  <div class="hero" id="top">
+    <div class="tags">
+      <span class="badge badge-green">✅ Production Ready (Core)</span>
+      <span class="badge badge-blue">Next.js 14</span>
+      <span class="badge badge-cyan">Neon PostgreSQL</span>
+      <span class="badge badge-purple">Playwright</span>
+      <span class="badge badge-amber">LINE Messaging API</span>
+    </div>
+    <h1>QC Admin LINE OA</h1>
+    <p class="subtitle">ระบบตรวจคุณภาพการตอบแชท LINE OA แบบ near real-time<br>วัดความเร็ว · ความถูกต้อง · น้ำเสียง และสร้าง ranking admin อัตโนมัติ</p>
+    <div class="meta">
+      <div class="meta-item"><strong>Stack:</strong> Next.js 14 App Router + Neon Postgres + Playwright</div>
+      <div class="meta-item"><strong>Deploy:</strong> Vercel + Neon</div>
+      <div class="meta-item"><strong>Scraper:</strong> Node.js standalone (local/VPS)</div>
+      <div class="meta-item"><strong>Notify:</strong> Telegram Bot</div>
+    </div>
+  </div>
+
+  <!-- ════════════ OVERVIEW ════════════ -->
+  <section id="overview">
+    <h2>ภาพรวมโปรเจค</h2>
+    <p>
+      LINE OA Manager ไม่ส่ง webhook เมื่อ admin ตอบลูกค้า ทำให้ไม่มีทางวัด QC โดยตรง
+      ระบบนี้แก้ปัญหานั้นด้วย <strong>2 วิธีพร้อมกัน</strong>:
+    </p>
+    <div class="card-grid">
+      <div class="mini-card">
+        <div class="mc-title">🤖 Playwright Scraper</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;">Login session ของ admin เข้า chat.line.biz แล้วดึง message history ทุก XX นาที ส่งให้ API บันทึกและให้คะแนน</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">📥 LINE Webhook</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;">รับข้อความลูกค้าเข้า DB แบบ real-time เพื่อให้มีบริบทสำหรับคำนวณ response time และ customer question</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">📊 Dashboard</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px;">แสดง KPI, Admin Ranking, ประวัติการตอบพร้อม QC score ทุก 30 วินาที กรองตามช่วงเวลาได้</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ ARCHITECTURE ════════════ -->
+  <section id="architecture">
+    <h2>สถาปัตยกรรมระบบ</h2>
+
+    <h3>Data Flow — Scraper Path (หลัก)</h3>
+    <div class="flow">
+      <div class="flow-box">
+        <span class="fb-icon">💬</span>
+        <div class="fb-label">LINE OA</div>
+        <div class="fb-sub">chat.line.biz</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">
+        <span class="fb-icon">🤖</span>
+        <div class="fb-label">Playwright</div>
+        <div class="fb-sub">scraper.js</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">🔌</span>
+        <div class="fb-label">API</div>
+        <div class="fb-sub">/api/admin/log-reply</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">⚙️</span>
+        <div class="fb-label">QC Engine</div>
+        <div class="fb-sub">score + events</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">🗃️</span>
+        <div class="fb-label">Neon DB</div>
+        <div class="fb-sub">PostgreSQL</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">📊</span>
+        <div class="fb-label">Dashboard</div>
+        <div class="fb-sub">/api/dashboard</div>
+      </div>
+    </div>
+
+    <h3>Data Flow — Webhook Path (Real-time Customer)</h3>
+    <div class="flow">
+      <div class="flow-box">
+        <span class="fb-icon">👤</span>
+        <div class="fb-label">ลูกค้า</div>
+        <div class="fb-sub">ส่งข้อความ</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">
+        <span class="fb-icon">📡</span>
+        <div class="fb-label">LINE Server</div>
+        <div class="fb-sub">webhook event</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">🔌</span>
+        <div class="fb-label">API</div>
+        <div class="fb-sub">/api/webhook</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">🗃️</span>
+        <div class="fb-label">line_customers</div>
+        <div class="fb-sub">+ conversations</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">📋</span>
+        <div class="fb-label">Open Cases</div>
+        <div class="fb-sub">Dashboard</div>
+      </div>
+    </div>
+
+    <h3>Scraper Job Queue</h3>
+    <div class="flow">
+      <div class="flow-box">
+        <span class="fb-icon">🕐</span>
+        <div class="fb-label">Auto-schedule</div>
+        <div class="fb-sub">localStorage</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">📝</span>
+        <div class="fb-label">POST /api/scraper/job</div>
+        <div class="fb-sub">สร้าง pending job</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">
+        <span class="fb-icon">🔄</span>
+        <div class="fb-label">Scraper polls</div>
+        <div class="fb-sub">PATCH status</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <span class="fb-icon">✅</span>
+        <div class="fb-label">done / error</div>
+        <div class="fb-sub">logged_count</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ TECH STACK ════════════ -->
+  <section id="tech">
+    <h2>Tech Stack</h2>
+    <div class="card-grid">
+      <div class="mini-card">
+        <div class="mc-title">Frontend + API</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">⚛️ <strong>Next.js 14</strong> App Router</div>
+          <div style="color:var(--muted);font-size:12px;">Server Components + Route Handlers + Client Components</div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">Database</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">🐘 <strong>Neon PostgreSQL</strong></div>
+          <div style="color:var(--muted);font-size:12px;">Serverless, tagged template literal queries, no ORM</div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">Scraper</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">🎭 <strong>Playwright (Chromium)</strong></div>
+          <div style="color:var(--muted);font-size:12px;">Node.js standalone, storageState auth, headless/headed</div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">Notifications</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">📨 <strong>Telegram Bot API</strong></div>
+          <div style="color:var(--muted);font-size:12px;">Alert เมื่อ QC score &lt; 70 หรือมี fail reasons</div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">LINE Integration</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">💚 <strong>LINE Messaging API</strong></div>
+          <div style="color:var(--muted);font-size:12px;">Webhook receive + Push Message API + signature verify</div>
+        </div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-title">Deploy</div>
+        <div class="mc-val" style="font-size:15px;margin-top:8px;">
+          <div style="margin-bottom:4px;">▲ <strong>Vercel</strong> + Neon add-on</div>
+          <div style="color:var(--muted);font-size:12px;">Scraper รันแยกบน local PC หรือ VPS</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ FEATURES DONE ════════════ -->
+  <section id="features-done">
+    <h2>สิ่งที่ทำได้แล้ว ✅</h2>
+
+    <h3>Core Pipeline</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>LINE Webhook รับข้อความลูกค้า</td><td>Upsert customer profile + สร้าง conversation อัตโนมัติ, verify HMAC signature</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Playwright Scraper ดึง message pairs</td><td>Admin + customer message พร้อม timestamp จริงจาก LINE, scroll ย้อนหลังตามวันที่</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>ข้ามแชทที่ยังไม่ตอบ</td><td>ตรวจว่า message ล่าสุดเป็น admin reply ก่อนเข้า — ข้ามถ้ายังเป็นสีเขียว</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>QC Scoring Engine</td><td>Speed + Correctness + Sentiment + Bot penalty — สูตร weighted average</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Duplicate prevention</td><td>7-day window check ป้องกัน message เดิมถูก insert ซ้ำจากการ scrape ซ้ำ</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Timestamp preservation</td><td>Timestamp จริงของ LINE messages บันทึกลง <code>created_at</code> ทั้ง customer และ admin msg</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Auto-detect สมัคร</td><td>ตรวจเบอร์โทร <code>0[689]\d{8}</code> หรือเลขบัญชี 10–12 หลัก จาก 5 customer messages ล่าสุด</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Auto-detect ยอดเติม</td><td>Regex จับ pattern <em>โอน/ฝาก/เติม + ตัวเลข</em> หรือ <em>ตัวเลข + บาท/฿</em> ใน customer message</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Telegram alert QC ต่ำ</td><td>ส่ง alert เมื่อ <code>final_score &lt; 70</code> หรือมี fail_reasons</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Admin auto-create จาก scraper</td><td>สร้าง qc_admins ใหม่อัตโนมัติถ้าชื่อจาก scraper ไม่ตรงกับ DB</td><td class="status-done">✅ พร้อม</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Dashboard (/)</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>KPI Cards</td><td>ลูกค้าแอดไลน์, สมัครผ่าน, KYC ผ่าน, ยอดเติม (บาท), ตอบเฉลี่ย, คะแนนเฉลี่ย</td><td class="status-done">✅</td></tr>
+        <tr><td>Date Filter</td><td>Preset วันนี้ / 7 / 30 / 90 วัน หรือ custom date range — refresh ทั้งหน้า</td><td class="status-done">✅</td></tr>
+        <tr><td>Admin Ranking</td><td>Top 10 + toggle all · Cases, Score, ตอบเฉลี่ย, สมัคร, ยอดเติม · Expand แสดง good/warn/bad</td><td class="status-done">✅</td></tr>
+        <tr><td>Daily Summary</td><td>28 วันล่าสุด — Cases/Score/ตอบเฉลี่ย/ดี/ต่ำ/Admin active ต่อวัน</td><td class="status-done">✅</td></tr>
+        <tr><td>Reply Log</td><td>100 รายการล่าสุด — Admin, ลูกค้า, <strong>คำถาม</strong>, คำตอบ, เวลาตอบ, Score, ผล</td><td class="status-done">✅</td></tr>
+        <tr><td>Open Cases</td><td>Conversation ที่ยังไม่ถูกปิด 30 รายการล่าสุด</td><td class="status-done">✅</td></tr>
+        <tr><td>Promotion Performance</td><td>ยอด + จำนวนลูกค้า แยก promotion_code</td><td class="status-done">✅</td></tr>
+        <tr><td>System Status</td><td>Online/Offline indicator + เวลา server + last activity timestamps</td><td class="status-done">✅</td></tr>
+        <tr><td>Auto-refresh</td><td>Reload ข้อมูลทุก 30 วินาที โดยไม่กระพริบหน้าจอ</td><td class="status-done">✅</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Admin Console (/admin)</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>Import Admin</td><td>Copy-paste ชื่อ Member จาก LINE OA Manage Permissions (กรอง prefix PK)</td><td class="status-done">✅</td></tr>
+        <tr><td>ส่ง Reply ผ่านระบบ</td><td>Push LINE Message จริง + บันทึก QC ทันที</td><td class="status-done">✅</td></tr>
+        <tr><td>บันทึกย้อนหลัง</td><td>Admin ตอบใน OA ไปแล้ว มาบันทึก QC เพิ่มทีหลัง</td><td class="status-done">✅</td></tr>
+        <tr><td>Health Check</td><td>ตรวจ DB connection, LINE token, ENV variables, และ 5 messages ล่าสุด</td><td class="status-done">✅</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Scraper Control (/scraper)</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
+      <tbody>
+        <tr><td>Manual Scrape</td><td>กด Run ทันที พร้อมเลือก date range ที่ต้องการ</td><td class="status-done">✅</td></tr>
+        <tr><td>Auto-schedule</td><td>ตั้งซ้ำทุก XX นาที — ใช้ localStorage ข้ามหน้าได้ไม่หาย</td><td class="status-done">✅</td></tr>
+        <tr><td>Global Floating Badge</td><td>แสดงสถานะ scraper (running/pending/scheduled) ทุกหน้า คลิกไปหน้า /scraper ได้</td><td class="status-done">✅</td></tr>
+        <tr><td>Progress Tracking</td><td>% ความคืบหน้า + ชื่อแชทปัจจุบัน + จำนวน logged</td><td class="status-done">✅</td></tr>
+        <tr><td>Countdown Timer</td><td>นับถอยหลังถึง auto-run ครั้งถัดไป</td><td class="status-done">✅</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════ FEATURES TODO ════════════ -->
+  <section id="features-todo">
+    <h2>สิ่งที่ยังไม่มี / ยังเป็นปัญหา ⚠️</h2>
+
+    <h3>ฟีเจอร์ที่ขาด (สำคัญ)</h3>
+    <ul class="todo-list">
+      <li>
+        <span class="icon">🔴</span>
+        <div>
+          <strong>Knowledge Rules UI</strong> — API <code>GET/POST /api/config/rules</code> พร้อมแล้วแต่ไม่มีหน้าจัดการ
+          ตอนนี้ต้องเรียก API ตรง หรือแก้ใน <code>sql/schema.sql</code> ทำให้ <em>correctness score ใช้ heuristic เป็นหลัก</em>
+          ซึ่งไม่แม่นยำเท่า rules จริง
+        </div>
+      </li>
+      <li>
+        <span class="icon">🔴</span>
+        <div>
+          <strong>Conversation Close / Reopen UI</strong> — DB มี <code>conversations.status</code> แต่ไม่มีปุ่ม toggle ใน frontend
+          Open Cases จึงสะสมไม่มีวันลด
+        </div>
+      </li>
+      <li>
+        <span class="icon">🟠</span>
+        <div>
+          <strong>Customer Profile Page</strong> — ไม่มีหน้าดูประวัติลูกค้าทั้งหมด (บทสนทนาทั้งหมด, events, total deposits)
+        </div>
+      </li>
+      <li>
+        <span class="icon">🟠</span>
+        <div>
+          <strong>Export / Report</strong> — ไม่มี export CSV หรือ print-friendly PDF สำหรับ ranking/reply log
+        </div>
+      </li>
+    </ul>
+
+    <h3>ข้อจำกัดทางเทคนิค</h3>
+    <ul class="todo-list">
+      <li>
+        <span class="icon">🟡</span>
+        <div>
+          <strong>KYC Auto-detect</strong> — ระบบ detect register (phone/bank) และ deposit อัตโนมัติ
+          แต่ KYC ต้องยิง POST <code>/api/customer-event</code> จากระบบหลังบ้านเอง
+        </div>
+      </li>
+      <li>
+        <span class="icon">🟡</span>
+        <div>
+          <strong>LINE Webhook รับแค่ text</strong> — Sticker, รูปภาพ, ไฟล์, Location, Flex Message ไม่ถูกบันทึก
+          ทำให้ conversation context ขาดช่องว่างสำหรับ message ที่ไม่ใช่ text
+        </div>
+      </li>
+      <li>
+        <span class="icon">🟡</span>
+        <div>
+          <strong>Data เก่าก่อน timestamp fix</strong> — Row ที่ insert ก่อนระบบ timestamp จะมี <code>customer_message_id = NULL</code>
+          ทำให้คอลัมน์ <em>คำถาม</em> ใน reply log แสดง "—" สำหรับข้อมูลเก่า (ข้อมูลใหม่ทุกอย่างถูกต้อง)
+        </div>
+      </li>
+      <li>
+        <span class="icon">🟡</span>
+        <div>
+          <strong>Auth แบบ simple</strong> — ป้องกันด้วย <code>x-api-key</code> header เท่านั้น
+          ไม่มีระบบ login/logout/session management จริงสำหรับหลายผู้ใช้
+        </div>
+      </li>
+      <li>
+        <span class="icon">⚪</span>
+        <div>
+          <strong>Single LINE Account</strong> — Scraper ผูกกับ <code>auth.json</code> ไฟล์เดียว รองรับ 1 LINE OA account
+          ถ้ามีหลาย OA ต้องรัน scraper instance แยก
+        </div>
+      </li>
+      <li>
+        <span class="icon">⚪</span>
+        <div>
+          <strong>No Real-time Push</strong> — Dashboard refresh ทุก 30 วินาที ยังไม่มี WebSocket หรือ SSE
+          เมื่อลูกค้าส่งข้อความเข้ามา ต้องรอรอบถัดไปถึงจะเห็น
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ════════════ PAGES ════════════ -->
+  <section id="pages">
+    <h2>หน้าจอ UI</h2>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/ — Dashboard</strong>
+        <span class="badge badge-green">หลัก</span>
+      </div>
+      <p>หน้าแรก ดูภาพรวมทั้งหมด · กรองวันที่ · ดู admin ranking · reply log · open cases</p>
+      <div style="font-size:13px;color:var(--muted);">Sections: KPI → Daily Summary → Ranking → Promo → Reply Log → Open Cases</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/admin — Admin Console</strong>
+        <span class="badge badge-blue">Management</span>
+      </div>
+      <p>Import admin · ส่ง/บันทึก reply · health check</p>
+      <div style="font-size:13px;color:var(--muted);">ใช้ x-api-key ในการ authenticate ทุก action</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/scraper — Scraper Control</strong>
+        <span class="badge badge-purple">Automation</span>
+      </div>
+      <p>ควบคุม Playwright scraper · ตั้ง auto-schedule · ดู progress · status badge ปรากฏทุกหน้า</p>
+      <div style="font-size:13px;color:var(--muted);">Schedule state เก็บใน localStorage — ไม่หายเมื่อเปลี่ยนหน้า</div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <strong style="font-size:16px;">/docs — Setup Documentation</strong>
+        <span class="badge badge-cyan">Docs</span>
+      </div>
+      <p>คู่มือติดตั้ง: LINE Messaging API, Import Admin, Deploy Vercel+Neon, วิธีใช้งาน, Customer Events API</p>
+    </div>
+  </section>
+
+  <!-- ════════════ SCRAPER ════════════ -->
+  <section id="scraper">
+    <h2>Playwright Scraper</h2>
+
+    <div class="callout">
+      <strong>ที่ตั้ง:</strong> <code>qc-scraper/scraper.js</code> และ <code>qc-scraper/login.js</code><br>
+      รัน <strong>แยกจาก Next.js</strong> — ต้องรันบน machine ที่มี Chrome และ session LINE OA ที่ login แล้ว
+    </div>
+
+    <h3>Command Line Arguments</h3>
+    <pre><span class="comment"># Login และบันทึก session ก่อน (ทำครั้งแรก หรือเมื่อ session หมดอายุ)</span>
+node login.js
+
+<span class="comment"># Scrape ครั้งเดียว (ไม่ loop)</span>
+node scraper.js
+
+<span class="comment"># Watch mode — poll ทุก 10 วินาทีตลอด</span>
+node scraper.js --watch
+
+<span class="comment"># Auto-create job ทุก 30 นาที + watch</span>
+node scraper.js --schedule=30
+
+<span class="comment"># แสดง browser window (debug)</span>
+node scraper.js --headed --watch
+
+<span class="comment"># หรือตั้งผ่าน .env</span>
+<span class="key">SCHEDULE_MINUTES</span>=<span class="val">60</span></pre>
+
+    <h3>Environment Variables (qc-scraper/.env)</h3>
+    <pre><span class="key">QC_API_URL</span>=<span class="val">https://your-domain.vercel.app</span>
+<span class="key">QC_API_KEY</span>=<span class="val">your-admin-api-key</span>
+<span class="key">SCHEDULE_MINUTES</span>=<span class="val">30</span>  <span class="comment"># optional</span></pre>
+
+    <h3>Logic สำคัญ</h3>
+    <table class="feature-table">
+      <thead><tr><th>ฟังก์ชัน</th><th>ทำอะไร</th></tr></thead>
+      <tbody>
+        <tr><td><code>loadChatHistory(page, dateFrom)</code></td><td>Scroll up สูงสุด 40 ครั้ง ทุก 1 วินาที จนกว่า date separator จะแสดงวันที่ &lt;= dateFrom</td></tr>
+        <tr><td><code>extractAdminMessages(page, from, to)</code></td><td>ดึง DOM ทั้งหมด — track <code>lastCustomerText</code> ไปเรื่อยๆ จับคู่กับ admin reply ถัดไป พร้อม timestamp จริง</td></tr>
+        <tr><td><code>postReply(...)</code></td><td>POST ไปยัง <code>/api/admin/log-reply</code> พร้อม line_user_id, text, adminName, customerText, admin_ts, customer_ts</td></tr>
+        <tr><td><code>createAutoJob()</code></td><td>สร้าง job วันนี้ → วันนี้ อัตโนมัติ (ใช้กับ --schedule)</td></tr>
+        <tr><td><code>lastMsgIsAdmin</code> check</td><td>ข้ามแชทที่ยังรอ admin ตอบ (message ล่าสุดไม่ใช่ <code>.chat-reverse</code>)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>LINE OA Chat DOM Selectors</h3>
+    <pre><span class="comment"># Chat container</span>
+<span class="key">.list-group-item-chat</span>    <span class="comment"># sidebar chat list items</span>
+<span class="key">.chat</span>                    <span class="comment"># customer message</span>
+<span class="key">.chat.chat-reverse</span>       <span class="comment"># admin message</span>
+<span class="key">.chatsys-date</span>            <span class="comment"># date separator (e.g. "May 9, 2025")</span>
+<span class="key">.chat-item-text.user-select-text</span>  <span class="comment"># message text content</span>
+<span class="key">.chat-content</span>            <span class="comment"># admin name source</span>
+<span class="key">time, [class*="chat-time"]</span>        <span class="comment"># timestamp element</span></pre>
+  </section>
+
+  <!-- ════════════ QC ENGINE ════════════ -->
+  <section id="qc-engine">
+    <h2>QC Scoring Engine</h2>
+    <p>ที่ตั้ง: <code>lib/qc-engine.js</code> — เรียกใช้ใน <code>/api/admin/log-reply</code> และ <code>/api/admin/reply</code></p>
+
+    <h3>สูตรคะแนน</h3>
+    <div class="score-breakdown">
+      <div class="score-item">
+        <div class="si-label">Speed Score</div>
+        <div class="si-pct si-speed">30%</div>
+        <div class="si-desc">100 ถ้าตอบภายใน SLA<br>ลด 5 คะแนนทุก 30 วินาที</div>
+      </div>
+      <div class="score-item">
+        <div class="si-label">Correctness Score</div>
+        <div class="si-pct si-correct">40%</div>
+        <div class="si-desc">Rule-based (knowledge_rules)<br>หรือ heuristic topic match</div>
+      </div>
+      <div class="score-item">
+        <div class="si-label">Sentiment Score</div>
+        <div class="si-pct si-sentiment">30%</div>
+        <div class="si-desc">Polite words +7<br>Empathy words +8<br>Rude words −30</div>
+      </div>
+      <div class="score-item">
+        <div class="si-label">Final Score</div>
+        <div class="si-pct si-final">= Σ</div>
+        <div class="si-desc">Bot penalty −15 ถ้า<br>มี 2+ bot phrases</div>
+      </div>
+    </div>
+
+    <h3>เกณฑ์ผ่าน/ไม่ผ่าน</h3>
+    <table class="feature-table">
+      <thead><tr><th>ระดับ</th><th>Score</th><th>สี</th><th>ป้าย</th></tr></thead>
+      <tbody>
+        <tr><td>ดี</td><td>≥ 85</td><td class="status-done">●</td><td>✅ ดี</td></tr>
+        <tr><td>พอใช้</td><td>70–84</td><td class="status-partial">●</td><td>⚠️ พอใช้</td></tr>
+        <tr><td>ต่ำ</td><td>&lt; 70</td><td class="status-todo">●</td><td>❌ ต่ำ + Telegram alert</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Fail Reasons</h3>
+    <pre><span class="str">"ตอบช้ากว่า SLA"</span>           <span class="comment">→ speed_score &lt; 80</span>
+<span class="str">"คำตอบอาจไม่ตรงประเด็น..."</span>  <span class="comment">→ correctness_score &lt; 70</span>
+<span class="str">"น้ำเสียงหรือ service mind ต่ำ"</span> <span class="comment">→ sentiment_score &lt; 70</span>
+<span class="str">"มี pattern ตอบเหมือนบอท"</span>  <span class="comment">→ bot_penalty &gt; 0</span></pre>
+
+    <h3>Heuristic Topic Map (fallback เมื่อไม่มี rule)</h3>
+    <table class="feature-table">
+      <thead><tr><th>หัวข้อลูกค้า</th><th>คีย์เวิร์ดคำถาม</th><th>คีย์เวิร์ดคำตอบที่ควรมี</th></tr></thead>
+      <tbody>
+        <tr><td>สมัคร</td><td>สมัคร, register, ลงทะเบียน</td><td>สมัคร, ลิงก์, เอกสาร, เบอร์, ยืนยัน</td></tr>
+        <tr><td>KYC</td><td>kyc, ยืนยันตัวตน</td><td>kyc, บัตร, ยืนยัน, ตรวจสอบ, อนุมัติ</td></tr>
+        <tr><td>เติมเงิน</td><td>เติมเงิน, ฝากเงิน, โอน</td><td>เติม, ยอด, สลิป, บัญชี, ตรวจสอบ</td></tr>
+        <tr><td>โปรโมชั่น</td><td>โปร, โปรโมชั่น, bonus, โบนัส</td><td>โปร, เงื่อนไข, ยอด, โบนัส, ระยะเวลา</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════ API REFERENCE ════════════ -->
+  <section id="api">
+    <h2>API Reference</h2>
+
+    <div class="callout">
+      <strong>Authentication:</strong> ส่ง header <code>x-api-key: YOUR_ADMIN_API_KEY</code> กับทุก endpoint ที่ต้องการสิทธิ์
+    </div>
+
+    <h3>Dashboard</h3>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/dashboard</code></td>
+          <td>ดึงข้อมูลทั้งหมด · params: <code>?from=YYYY-MM-DD&to=YYYY-MM-DD</code><br>Response: <code>{ kpi, ranking, weeklySummary, promos, openCases, replyLog, lastActivity }</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Admin</h3>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/admin/log-reply</code></td>
+          <td>รับข้อมูลจาก Scraper · body: <code>{ line_user_id, text, admin_name, customer_text?, admin_ts?, customer_ts? }</code><br>Response: <code>{ ok, qc: { finalScore, speedScore, ... } }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/admin/reply</code></td>
+          <td>ส่ง reply ผ่านระบบ (push LINE + บันทึก QC) · body: <code>{ conversation_id, admin_id, text, send_line? }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/admin/import</code></td>
+          <td>Import admin จาก LINE OA Manager · body: <code>{ text: "PK Admin1\nPK Admin2" }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/admin/list</code></td>
+          <td>รายชื่อ admin ทั้งหมดที่ <code>is_active = true</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Scraper Job Queue</h3>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/scraper/job</code></td>
+          <td>สร้าง job ใหม่ · body: <code>{ date_from, date_to }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/scraper/job</code></td>
+          <td>ดูสถานะ job ปัจจุบัน (running/pending)</td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/scraper/poll</code></td>
+          <td>Scraper ดึง job ที่ pending อยู่ (1 job)</td>
+        </tr>
+        <tr>
+          <td><span class="method patch">PATCH</span></td>
+          <td><code>/api/scraper/poll</code></td>
+          <td>Scraper อัพเดทสถานะ · body: <code>{ id, status?, logged_count?, current_chat?, error_text? }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/scraper/init</code></td>
+          <td>สร้างตาราง <code>scraper_jobs</code> (รัน 1 ครั้งแรก)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Webhook & Events</h3>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/webhook</code></td>
+          <td>LINE webhook endpoint · verify HMAC-SHA256 signature · บันทึก customer message</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/customer-event</code></td>
+          <td>บันทึก event จากระบบหลัง · body: <code>{ line_user_id, event_type, status?, amount?, promotion_code? }</code><br>event_type: <code>register | kyc | deposit | promotion</code></td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/config/rules</code></td>
+          <td>ดู Knowledge Rules ทั้งหมด</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td><code>/api/config/rules</code></td>
+          <td>เพิ่ม/แก้ rule · body: <code>{ rule_code, rule_name, category, question_keywords[], answer_keywords[], weight }</code></td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/health</code></td>
+          <td>ตรวจสถานะ DB + LINE token + ENV + 5 messages ล่าสุด (ไม่ต้องใช้ key)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Customer Event — ตัวอย่าง</h3>
+    <pre>curl -X POST https://YOUR_DOMAIN/api/customer-event \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -H <span class="str">"x-api-key: YOUR_KEY"</span> \
+  -d '<span class="val">{
+    "line_user_id": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "event_type": "deposit",
+    "status": "success",
+    "amount": 500,
+    "promotion_code": "WELCOME100"
+  }</span>'</pre>
+  </section>
+
+  <!-- ════════════ SCHEMA ════════════ -->
+  <section id="schema">
+    <h2>Database Schema</h2>
+
+    <h3>line_customers</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">line_user_id</td><td class="col-type">TEXT PK</td><td class="col-note">LINE user ID เช่น <code>Uxxxxxxxxx</code></td></tr>
+        <tr><td class="col-name">display_name</td><td class="col-type">TEXT</td><td class="col-note">ชื่อที่แสดงใน LINE</td></tr>
+        <tr><td class="col-name">picture_url</td><td class="col-type">TEXT</td><td class="col-note">รูปโปรไฟล์</td></tr>
+        <tr><td class="col-name">deposit_amount</td><td class="col-type">NUMERIC</td><td class="col-note">ยอดเติมสะสม (update จาก /api/customer-event)</td></tr>
+        <tr><td class="col-name">promotion_code</td><td class="col-type">TEXT</td><td class="col-note">โปรโมชั่นล่าสุด</td></tr>
+        <tr><td class="col-name">first_seen_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note">วันแรกที่ add LINE</td></tr>
+        <tr><td class="col-name">last_seen_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note">update ทุกครั้งที่ส่งข้อความ</td></tr>
+      </tbody>
+    </table>
+
+    <h3>conversations</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">UUID PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">line_user_id</td><td class="col-type">TEXT FK</td><td class="col-note">→ line_customers</td></tr>
+        <tr><td class="col-name">status</td><td class="col-type">TEXT</td><td class="col-note"><code>open</code> | <code>closed</code></td></tr>
+        <tr><td class="col-name">assigned_admin_id</td><td class="col-type">INT FK</td><td class="col-note">→ qc_admins (admin ที่ตอบล่าสุด)</td></tr>
+        <tr><td class="col-name">opened_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note">เวลาเปิด conversation</td></tr>
+      </tbody>
+    </table>
+
+    <h3>messages</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">UUID PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">conversation_id</td><td class="col-type">UUID FK</td><td class="col-note">→ conversations</td></tr>
+        <tr><td class="col-name">line_user_id</td><td class="col-type">TEXT FK</td><td class="col-note">→ line_customers</td></tr>
+        <tr><td class="col-name">admin_id</td><td class="col-type">INT FK</td><td class="col-note">→ qc_admins (NULL ถ้าเป็น customer msg)</td></tr>
+        <tr><td class="col-name">direction</td><td class="col-type">TEXT</td><td class="col-note"><code>customer</code> | <code>admin</code></td></tr>
+        <tr><td class="col-name">message_text</td><td class="col-type">TEXT</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note">⭐ timestamp จริงจาก LINE (ไม่ใช่เวลา insert)</td></tr>
+        <tr><td class="col-name">line_message_id</td><td class="col-type">TEXT</td><td class="col-note">LINE message ID (จาก webhook เท่านั้น)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>qc_admins</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">SERIAL PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">member_name</td><td class="col-type">TEXT</td><td class="col-note">ชื่อแสดง เช่น "PK May"</td></tr>
+        <tr><td class="col-name">normalized_name</td><td class="col-type">TEXT UNIQUE</td><td class="col-note">lowercase + timestamp (ป้องกัน dup)</td></tr>
+        <tr><td class="col-name">is_active</td><td class="col-type">BOOLEAN</td><td class="col-note">false = ซ่อนจาก ranking</td></tr>
+        <tr><td class="col-name">source</td><td class="col-type">TEXT</td><td class="col-note"><code>manual</code> | <code>scraper</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>qc_scores</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">UUID PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">conversation_id</td><td class="col-type">UUID FK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">customer_message_id</td><td class="col-type">UUID FK</td><td class="col-note">⭐ message ที่ใช้ JOIN หาคำถามใน dashboard</td></tr>
+        <tr><td class="col-name">admin_message_id</td><td class="col-type">UUID FK</td><td class="col-note">→ messages (admin reply)</td></tr>
+        <tr><td class="col-name">admin_id</td><td class="col-type">INT FK</td><td class="col-note">→ qc_admins</td></tr>
+        <tr><td class="col-name">response_seconds</td><td class="col-type">INT</td><td class="col-note">วินาทีตั้งแต่ลูกค้าส่งถึง admin ตอบ</td></tr>
+        <tr><td class="col-name">speed_score</td><td class="col-type">INT</td><td class="col-note">0–100</td></tr>
+        <tr><td class="col-name">correctness_score</td><td class="col-type">INT</td><td class="col-note">0–100</td></tr>
+        <tr><td class="col-name">sentiment_score</td><td class="col-type">INT</td><td class="col-note">0–100</td></tr>
+        <tr><td class="col-name">final_score</td><td class="col-type">INT</td><td class="col-note">0–100 (weighted sum)</td></tr>
+        <tr><td class="col-name">fail_reasons</td><td class="col-type">JSONB</td><td class="col-note">array ของสาเหตุที่ไม่ผ่าน</td></tr>
+        <tr><td class="col-name">matched_rules</td><td class="col-type">JSONB</td><td class="col-note">array ของ rule ที่ match</td></tr>
+        <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note">⭐ = admin_message.created_at (ใช้ filter วันที่)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>customer_events</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">UUID PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">line_user_id</td><td class="col-type">TEXT FK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">event_type</td><td class="col-type">TEXT</td><td class="col-note"><code>register</code> | <code>kyc</code> | <code>deposit</code> | <code>promotion</code></td></tr>
+        <tr><td class="col-name">status</td><td class="col-type">TEXT</td><td class="col-note"><code>pass</code> | <code>fail</code> | NULL</td></tr>
+        <tr><td class="col-name">amount</td><td class="col-type">NUMERIC</td><td class="col-note">ยอดเงิน (deposit เท่านั้น)</td></tr>
+        <tr><td class="col-name">promotion_code</td><td class="col-type">TEXT</td><td class="col-note">รหัสโปรโมชั่น</td></tr>
+        <tr><td class="col-name">metadata</td><td class="col-type">JSONB</td><td class="col-note"><code>{ admin_id, admin_name, detected }</code></td></tr>
+        <tr><td class="col-name">created_at</td><td class="col-type">TIMESTAMPTZ</td><td class="col-note"></td></tr>
+      </tbody>
+    </table>
+
+    <h3>knowledge_rules</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">rule_code</td><td class="col-type">TEXT PK</td><td class="col-note">unique identifier เช่น <code>REG001</code></td></tr>
+        <tr><td class="col-name">rule_name</td><td class="col-type">TEXT</td><td class="col-note">ชื่อ rule</td></tr>
+        <tr><td class="col-name">category</td><td class="col-type">TEXT</td><td class="col-note">หมวดหมู่ เช่น register, deposit</td></tr>
+        <tr><td class="col-name">question_keywords</td><td class="col-type">JSONB</td><td class="col-note">array คำ match กับข้อความลูกค้า</td></tr>
+        <tr><td class="col-name">answer_keywords</td><td class="col-type">JSONB</td><td class="col-note">array คำที่ admin ควรตอบมี</td></tr>
+        <tr><td class="col-name">weight</td><td class="col-type">INT</td><td class="col-note">น้ำหนัก rule (default 1)</td></tr>
+        <tr><td class="col-name">is_active</td><td class="col-type">BOOLEAN</td><td class="col-note">ปิด/เปิด rule</td></tr>
+      </tbody>
+    </table>
+
+    <h3>scraper_jobs</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">id</td><td class="col-type">UUID PK</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">date_from / date_to</td><td class="col-type">DATE</td><td class="col-note">ช่วงวันที่ต้องการ scrape</td></tr>
+        <tr><td class="col-name">status</td><td class="col-type">TEXT</td><td class="col-note"><code>pending</code> → <code>running</code> → <code>done</code> | <code>error</code></td></tr>
+        <tr><td class="col-name">total_chats</td><td class="col-type">INT</td><td class="col-note">จำนวน chat ทั้งหมดในรายการ</td></tr>
+        <tr><td class="col-name">logged_count</td><td class="col-type">INT</td><td class="col-note">จำนวน message ที่บันทึกสำเร็จ</td></tr>
+        <tr><td class="col-name">current_chat</td><td class="col-type">TEXT</td><td class="col-note">ชื่อแชทที่กำลัง process อยู่</td></tr>
+        <tr><td class="col-name">error_text</td><td class="col-type">TEXT</td><td class="col-note">error message ถ้าล้มเหลว</td></tr>
+      </tbody>
+    </table>
+
+    <h3>app_settings</h3>
+    <table class="schema-table">
+      <thead><tr><th>Column</th><th>Type</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">key</td><td class="col-type">TEXT PK</td><td class="col-note"><code>response_limit_minutes</code> = SLA (นาที) default 5</td></tr>
+        <tr><td class="col-name">value</td><td class="col-type">TEXT</td><td class="col-note">ค่าการตั้งค่า</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════ ENV VARS ════════════ -->
+  <section id="env">
+    <h2>Environment Variables</h2>
+
+    <h3>Next.js App (Vercel)</h3>
+    <table class="env-table">
+      <thead><tr><th>Variable</th><th>ตัวอย่าง</th><th>จำเป็น</th><th>ที่มา</th></tr></thead>
+      <tbody>
+        <tr><td class="env-key">DATABASE_URL</td><td>postgresql://user:pass@host/db?sslmode=require</td><td><span class="req">REQUIRED</span></td><td>Neon Dashboard</td></tr>
+        <tr><td class="env-key">LINE_CHANNEL_SECRET</td><td>abc123...</td><td><span class="req">REQUIRED</span></td><td>LINE Developers Console</td></tr>
+        <tr><td class="env-key">LINE_CHANNEL_ACCESS_TOKEN</td><td>Bearer xyz...</td><td><span class="req">REQUIRED</span></td><td>LINE Developers Console</td></tr>
+        <tr><td class="env-key">ADMIN_API_KEY</td><td>my-secret-key-123</td><td><span class="req">REQUIRED</span></td><td>กำหนดเอง</td></tr>
+        <tr><td class="env-key">TELEGRAM_BOT_TOKEN</td><td>1234567890:ABC...</td><td><span class="opt">OPTIONAL</span></td><td>@BotFather</td></tr>
+        <tr><td class="env-key">TELEGRAM_CHAT_ID</td><td>-100123456789</td><td><span class="opt">OPTIONAL</span></td><td>Telegram group/channel ID</td></tr>
+        <tr><td class="env-key">QC_RESPONSE_LIMIT_MINUTES</td><td>5</td><td><span class="opt">OPTIONAL</span></td><td>default 5 (fallback จาก app_settings)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Scraper (qc-scraper/.env)</h3>
+    <table class="env-table">
+      <thead><tr><th>Variable</th><th>ตัวอย่าง</th><th>จำเป็น</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="env-key">QC_API_URL</td><td>https://yourapp.vercel.app</td><td><span class="req">REQUIRED</span></td><td>URL ของ Next.js app</td></tr>
+        <tr><td class="env-key">QC_API_KEY</td><td>my-secret-key-123</td><td><span class="req">REQUIRED</span></td><td>ต้องตรงกับ ADMIN_API_KEY บน Vercel</td></tr>
+        <tr><td class="env-key">SCHEDULE_MINUTES</td><td>30</td><td><span class="opt">OPTIONAL</span></td><td>สร้าง job อัตโนมัติ (หรือใช้ --schedule= arg)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ════════════ SETUP ════════════ -->
+  <section id="setup">
+    <h2>ขั้นตอนติดตั้ง (First Time)</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>สร้าง Neon PostgreSQL</h4>
+          <p>เข้า <a href="https://neon.tech" style="color:var(--accent);">neon.tech</a> สร้าง project ใหม่ คัดลอก <code>DATABASE_URL</code> ไว้</p>
+          <p>รัน SQL schema: เปิด Neon SQL Editor แล้ว paste เนื้อหาจาก <code>sql/schema.sql</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>ตั้งค่า LINE Messaging API</h4>
+          <p>เข้า <a href="https://developers.line.biz" style="color:var(--accent);">LINE Developers Console</a> → เลือก Channel → Messaging API</p>
+          <p>คัดลอก <strong>Channel secret</strong> และ <strong>Channel access token (long-lived)</strong></p>
+          <p>ตั้ง Webhook URL: <code>https://YOUR_DOMAIN/api/webhook</code> → กด Verify</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Deploy บน Vercel</h4>
+          <p>Push โฟลเดอร์ <code>qc-admin-lineoa/</code> ขึ้น GitHub แล้ว import ใน Vercel</p>
+          <p>ตั้ง Environment Variables ทั้งหมดในตาราง "Next.js App" ด้านบน</p>
+          <p>หลัง deploy สำเร็จ เรียก <code>POST /api/scraper/init</code> เพื่อสร้างตาราง scraper_jobs</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Import Admin</h4>
+          <p>เปิดหน้า <code>/admin</code> → กรอก API Key → เข้า LINE OA Manager → Settings → Manage permissions</p>
+          <p>คัดลอกชื่อ Member ที่มี prefix <code>PK</code> มาวางในช่อง Import</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h4>Setup Playwright Scraper</h4>
+          <pre style="margin:8px 0;font-size:12px;">cd qc-scraper
+npm install
+<span class="comment"># สร้าง .env ตามตัวอย่างด้านบน</span>
+node login.js       <span class="comment"># login ด้วย browser window จริง</span>
+node scraper.js --watch --schedule=30  <span class="comment"># เริ่ม scrape</span></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h4>(Optional) ตั้งค่า Telegram Alert</h4>
+          <p>สร้าง bot ผ่าน <code>@BotFather</code> → รับ token → เพิ่ม bot เข้า group/channel → รับ chat_id</p>
+          <p>ตั้ง <code>TELEGRAM_BOT_TOKEN</code> และ <code>TELEGRAM_CHAT_ID</code> ใน Vercel ENV</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn" style="margin-top:24px;">
+      <strong>⚠️ Session หมดอายุ:</strong> LINE OA login session ใน <code>auth.json</code> จะหมดอายุเป็นระยะ
+      เมื่อ scraper แจ้ง error "Session หมดอายุ" ให้รัน <code>node login.js</code> อีกครั้ง
+    </div>
+
+    <div class="callout" style="margin-top:12px;">
+      <strong>💡 เช็คสถานะระบบ:</strong> เปิด <code>/admin</code> แล้วกด "เช็คระบบ" เพื่อตรวจสอบ
+      DB connection, LINE token, และ recent messages ทั้งหมดในที่เดียว
+    </div>
+  </section>
+
+  <div style="height:80px;"></div>
+  <div style="text-align:center;color:var(--muted);font-size:12px;padding-bottom:40px;">
+    QC Admin LINE OA · Built with Next.js 14 + Neon PostgreSQL + Playwright<br>
+    Documentation generated 2026-05-11
+  </div>
+
+</main>
+</div>
+</body>
+</html>
