@@ -16,13 +16,26 @@ const SCHEDULE_MIN   = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parse
 const MIN_IDLE_MIN   = parseInt(process.env.MIN_IDLE_MINUTES || '30');
 
 const toISO = d => d.toISOString().slice(0, 10);
+
+// --date=YYYY-MM-DD → ใช้วันที่นั้น, --yesterday → เมื่อวาน, default → วันนี้
+function getJobDate() {
+  const dateArg = process.argv.find(a => a.startsWith('--date='));
+  if (dateArg) return dateArg.split('=')[1];
+  if (process.argv.includes('--yesterday')) {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return toISO(d);
+  }
+  return toISO(new Date());
+}
+
 async function createAutoJob() {
-  const today = toISO(new Date());
+  const date = getJobDate();
   const r = await apiFetch('/api/scraper/job', {
     method: 'POST',
-    body: JSON.stringify({ date_from: today, date_to: today }),
+    body: JSON.stringify({ date_from: date, date_to: date }),
   });
-  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน ${today} → ${today}`);
+  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน ${date} → ${date}`);
   else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
 }
 
