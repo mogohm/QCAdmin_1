@@ -6,10 +6,14 @@
       "PowerShell(Get-Command node, npm -ErrorAction SilentlyContinue)",
       "PowerShell(winget list nodejs 2>$null)",
       "PowerShell(winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements 2>&1)",
-      "Bash(Copy-Item \"h:\\\\QCAdminPJ\\\\PROJECT_DOCS.html\" \"h:\\\\QCAdminPJ\\\\qc-admin-lineoa\\\\public\\\\PROJECT_DOCS.html\" -Force)"
+      "Bash(Copy-Item \"h:\\\\QCAdminPJ\\\\PROJECT_DOCS.html\" \"h:\\\\QCAdminPJ\\\\qc-admin-lineoa\\\\public\\\\PROJECT_DOCS.html\" -Force)",
+      "Bash(mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/api/chat\" && mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/api/chat/[line_user_id]\" && echo \"done\")",
+      "Bash(mkdir -p \"h:/QCAdminPJ/qc-admin-lineoa/app/chat/[line_user_id]\" && echo \"done\")"
     ],
     "additionalDirectories": [
-      "h:\\QCAdminPJ"
+      "h:\\QCAdminPJ",
+      "h:\\QCAdminPJ\\qc-admin-lineoa\\app\\api\\chat",
+      "h:\\QCAdminPJ\\qc-admin-lineoa\\app\\chat"
     ]
   }
 }

@@ -228,7 +228,7 @@ export default function Dashboard() {
                           </div>
                           <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                             {(d?.replyLog || []).filter(x => x.admin_name === r.member_name).slice(0, 8).map((x, j) => (
-                              <div key={j} style={{ padding: '4px 0', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: '100px 1fr 50px', gap: 8 }}>
+                              <div key={j} style={{ padding: '4px 0', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: '100px 1fr 50px 28px', gap: 8 }}>
                                 <span style={{ color: '#888', fontSize: 11 }}>{timeAgo(x.created_at)}</span>
                                 <div>
                                   <div style={{ color: '#666', fontSize: 11 }}>👤 {x.customer_name || x.line_user_id}: {x.customer_text?.slice(0, 40) || '—'}</div>
@@ -240,6 +240,11 @@ export default function Dashboard() {
                                 <span className={'score ' + scoreClass(x.final_score || 0)} style={{ textAlign: 'center', alignSelf: 'center' }}>
                                   {x.final_score ?? '—'}
                                 </span>
+                                {x.line_user_id && (
+                                  <a href={`/chat/${x.line_user_id}`} target="_blank"
+                                    style={{ fontSize: 16, textDecoration: 'none', alignSelf: 'center', opacity: 0.7 }}
+                                    title="ดูแชท">💬</a>
+                                )}
                               </div>
                             ))}
                             {!(d?.replyLog || []).some(x => x.admin_name === r.member_name) && (
@@ -286,7 +291,7 @@ export default function Dashboard() {
               <div style={{ overflowX: 'auto' }}>
                 <table className="table">
                   <thead>
-                    <tr><th>เวลา</th><th>Admin</th><th>ลูกค้า</th><th>คำถาม</th><th>คำตอบ</th><th>เวลาตอบ</th><th>Score</th><th>ผล</th></tr>
+                    <tr><th>เวลา</th><th>Admin</th><th>ลูกค้า</th><th>คำถาม</th><th>คำตอบ</th><th>เวลาตอบ</th><th>Score</th><th>ผล</th><th></th></tr>
                   </thead>
                   <tbody>
                     {(d.replyLog || []).map((r, i) => (
@@ -303,6 +308,13 @@ export default function Dashboard() {
                             : r.final_score >= 70
                               ? <span style={{ color: '#22c55e' }}>✅ ผ่าน</span>
                               : <span style={{ color: '#ef4444' }}>❌ {tryParse(r.fail_reasons)[0] || 'ไม่ผ่าน'}</span>}
+                        </td>
+                        <td>
+                          {r.line_user_id && (
+                            <a href={`/chat/${r.line_user_id}`} target="_blank"
+                              style={{ fontSize: 18, textDecoration: 'none', opacity: 0.7 }}
+                              title="ดูแชทเหมือน LINE">💬</a>
+                          )}
                         </td>
                       </tr>
                     ))}

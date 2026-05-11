@@ -101,38 +101,53 @@ export async function POST(req) {
 
   const convId = conv[0].id;
 
-  // บันทึกข้อความลูกค้าที่ scraper ส่งมา พร้อม timestamp จริงจาก LINE
+  // บันทึกข้อความลูกค้าที่ scraper ส่งมา — จับ id ไว้ตรงนี้เลย
+  // (ไม่ query ใหม่ทีหลัง เพราะ ORDER BY created_at อาจคืน message อื่นในกลุ่มเดียวกัน)
+  let customerMsgId = null;
+  let customerMsgText = null;
+  let customerMsgCreatedAt = null;
+
   if (customer_text) {
     const existCust = await query`
-      SELECT id FROM messages
+      SELECT id, created_at FROM messages
       WHERE conversation_id = ${convId} AND direction = 'customer' AND message_text = ${customer_text}
       LIMIT 1
     `;
     if (!existCust[0]) {
       const custAt = customer_ts || null;
-      if (custAt) {
-        await query`
-          INSERT INTO messages (conversation_id, line_user_id, direction, message_text, created_at)
-          VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text}, ${custAt}::timestamptz)
-        `;
-      } else {
-        await query`
-          INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
-          VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text})
-        `;
+      const custRow = custAt ? await query`
+        INSERT INTO messages (conversation_id, line_user_id, direction, message_text, created_at)
+        VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text}, ${custAt}::timestamptz)
+        RETURNING id, created_at
+      ` : await query`
+        INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
+        VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text})
+        RETURNING id, created_at
+      `;
+      customerMsgId = custRow[0].id;
+      customerMsgCreatedAt = custRow[0].created_at;
+    } else {
+      customerMsgId = existCust[0].id;
+      customerMsgCreatedAt = existCust[0].created_at;
+      if (customer_ts) {
+        await query`UPDATE messages SET created_at = ${customer_ts}::timestamptz WHERE id = ${existCust[0].id}`;
+        customerMsgCreatedAt = customer_ts;
       }
-    } else if (customer_ts) {
-      // แก้ timestamp ที่อาจเคย insert ด้วย now() — ให้ LATERAL join หาเจอ
-      await query`UPDATE messages SET created_at = ${customer_ts}::timestamptz WHERE id = ${existCust[0].id}`;
+    }
+    customerMsgText = customer_text;
+  } else {
+    // ไม่มี customer_text จาก scraper — fallback หาจาก conversation
+    const fallback = await query`
+      SELECT id, created_at, message_text FROM messages
+      WHERE conversation_id = ${convId} AND direction = 'customer'
+      ORDER BY created_at DESC LIMIT 1
+    `;
+    if (fallback[0]) {
+      customerMsgId = fallback[0].id;
+      customerMsgCreatedAt = fallback[0].created_at;
+      customerMsgText = fallback[0].message_text;
     }
   }
-
-  // ดึงข้อความลูกค้าล่าสุด (สำหรับคำนวณ response time)
-  const lastCustomer = await query`
-    SELECT * FROM messages
-    WHERE conversation_id = ${convId} AND direction = 'customer'
-    ORDER BY created_at DESC LIMIT 1
-  `;
 
   // บันทึก admin message พร้อม timestamp จริงจาก LINE
   const adminAt = admin_ts || null;
@@ -155,17 +170,15 @@ export async function POST(req) {
   const rules = await query`SELECT rule_code, rule_name, category, question_keywords, answer_keywords FROM knowledge_rules WHERE is_active = true`;
 
   let responseSeconds = null;
-  let customerMsgId = null;
-  if (lastCustomer[0]) {
+  if (customerMsgCreatedAt) {
     const diff = await query`
-      SELECT EXTRACT(EPOCH FROM (${adminMsg[0].created_at}::timestamptz - ${lastCustomer[0].created_at}::timestamptz))::int AS sec
+      SELECT EXTRACT(EPOCH FROM (${adminMsg[0].created_at}::timestamptz - ${customerMsgCreatedAt}::timestamptz))::int AS sec
     `;
     responseSeconds = diff[0].sec;
-    customerMsgId = lastCustomer[0].id;
   }
 
   const qc = scoreReply({
-    customerText: lastCustomer[0]?.message_text || '',
+    customerText: customerMsgText || '',
     adminText: text,
     responseSeconds: responseSeconds ?? 0,
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
