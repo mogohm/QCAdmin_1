@@ -168,9 +168,19 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        console.log(`\n  [${i+1}/${total}] ${nameText || lineUserId.slice(0,12)} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
+        // ดึงชื่อลูกค้าจาก auto-response welcome message (แม่นที่สุด)
+        // format: "ยินดีต้อนรับ คุณ [NAME] เข้าสู่..." หรือ "สวัสดีค่ะ คุณ [NAME] ยินดี..."
+        let displayName = nameText;
+        if (!displayName) {
+          for (const msg of msgs.slice(0, 5)) {
+            const m = msg.text.match(/คุณ\s+(.+?)\s+(?:เข้าสู่|ยินดีต้อน)/);
+            if (m && m[1].trim().length > 0) { displayName = m[1].trim(); break; }
+          }
+        }
+
+        console.log(`\n  [${i+1}/${total}] ${displayName || lineUserId.slice(0,12)} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
-          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, nameText);
+          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
           if (r?.ok) {
             console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"${msg.customerText ? ` | คำถาม: "${msg.customerText.slice(0,40)}"` : ' | คำถาม: -'}`);
             logged++;
