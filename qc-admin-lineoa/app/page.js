@@ -87,6 +87,7 @@ export default function Dashboard() {
           <a className="active" href="/">Dashboard</a>
           <a href="/admin">Admin Console</a>
           <a href="/scraper">Scraper</a>
+          <a href="/rules">⚙️ QC Rules</a>
           <a href="/docs">Setup Docs</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
@@ -234,7 +235,7 @@ export default function Dashboard() {
                               <div key={j} style={{ padding: '4px 0', borderBottom: '1px solid #e5e7eb', display: 'grid', gridTemplateColumns: '100px 1fr 50px 28px', gap: 8 }}>
                                 <span style={{ color: '#888', fontSize: 11 }}>{timeAgo(x.created_at)}</span>
                                 <div>
-                                  <div style={{ color: '#666', fontSize: 11 }}>👤 {x.customer_name || x.line_user_id}: {x.customer_text?.slice(0, 40) || '—'}</div>
+                                  <div style={{ color: '#666', fontSize: 11 }}>👤 {x.line_user_id ? <a href={`/customer/${x.line_user_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{x.customer_name || x.line_user_id.slice(0, 8)}</a> : (x.customer_name || '—')}: {x.customer_text?.slice(0, 40) || '—'}</div>
                                   <div style={{ fontSize: 12 }}>💬 {x.reply_text?.slice(0, 50)}</div>
                                   {x.fail_reasons && tryParse(x.fail_reasons).length > 0 && (
                                     <div style={{ color: '#ef4444', fontSize: 11 }}>⚠️ {tryParse(x.fail_reasons).join(', ')}</div>
@@ -302,7 +303,11 @@ export default function Dashboard() {
                       <tr key={i}>
                         <td style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>{timeAgo(r.created_at)}</td>
                         <td><b>{r.admin_name}</b></td>
-                        <td style={{ fontSize: 12 }}>{r.customer_name || r.line_user_id?.slice(0, 8)}</td>
+                        <td style={{ fontSize: 12 }}>
+                          {r.line_user_id
+                            ? <a href={`/customer/${r.line_user_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{r.customer_name || r.line_user_id?.slice(0, 8)}</a>
+                            : (r.customer_name || '—')}
+                        </td>
                         <td style={{ fontSize: 12, color: '#666', maxWidth: 140 }}>{r.customer_text?.slice(0, 35) || '—'}</td>
                         <td style={{ fontSize: 12, maxWidth: 160 }}>{r.reply_text?.slice(0, 40)}</td>
                         <td style={{ whiteSpace: 'nowrap' }}>{r.response_seconds != null ? fmtSec(r.response_seconds) : '—'}</td>
