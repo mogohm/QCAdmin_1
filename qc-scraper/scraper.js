@@ -290,12 +290,30 @@ async function loop() {
 }
 
 (async () => {
-  if (!API_URL)                  { console.error('❌ ตั้งค่า QC_API_URL ใน .env'); process.exit(1); }
-  if (!fs.existsSync(AUTH_FILE)) { console.error('❌ ไม่พบ auth.json — รัน: node login.js'); process.exit(1); }
+  console.log('='.repeat(50));
+  console.log('  QC Scraper');
+  console.log('='.repeat(50));
 
-  console.log(`🤖 QC Scraper | ${API_URL} | ${HEADLESS ? 'headless' : 'headed'}${SCHEDULE_MIN ? ` | auto-job ทุก ${SCHEDULE_MIN} นาที` : ''}`);
+  if (!API_URL) {
+    console.error('❌ ตั้งค่า QC_API_URL ใน .env');
+    process.exit(1);
+  }
+  if (!fs.existsSync(AUTH_FILE)) {
+    console.error('❌ ไม่พบ auth.json — รัน: node login.js ก่อน');
+    process.exit(1);
+  }
 
-  // ถ้าตั้ง schedule ให้สร้าง job ทันทีตอนเริ่ม และซ้ำทุก XX นาที
+  console.log(`🌐 API  : ${API_URL}`);
+  console.log(`🔑 Key  : ${API_KEY ? API_KEY.slice(0,6) + '...' : '(ไม่ได้ตั้ง)'}`);
+  console.log(`🖥️  Mode : ${HEADLESS ? 'headless' : 'headed (มีหน้าต่าง browser)'}`);
+  if (SCHEDULE_MIN > 0) {
+    console.log(`⏰ Auto : ทุก ${SCHEDULE_MIN} นาที (เริ่มทำงานทันที)`);
+  } else {
+    console.log(`⏰ Mode : รอรับ job จากหน้าเว็บ (SCHEDULE_MINUTES=0)`);
+  }
+  console.log('='.repeat(50));
+  console.log();
+
   if (SCHEDULE_MIN > 0) {
     await createAutoJob();
     setInterval(createAutoJob, SCHEDULE_MIN * 60 * 1000);
