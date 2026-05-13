@@ -30,6 +30,15 @@ function getJobDate() {
 }
 
 async function createAutoJob() {
+  // ถ้ามี job pending/running อยู่แล้ว ข้ามรอบนี้
+  const existing = await apiFetch('/api/scraper/job');
+  if (Array.isArray(existing)) {
+    const active = existing.find(j => j.status === 'pending' || j.status === 'running');
+    if (active) {
+      console.log(`\n⏭️ [auto-job] ข้าม — มี job ${active.status} อยู่แล้ว (id=${active.id})`);
+      return;
+    }
+  }
   const date = getJobDate();
   const r = await apiFetch('/api/scraper/job', {
     method: 'POST',

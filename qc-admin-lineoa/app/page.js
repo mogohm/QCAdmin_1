@@ -135,7 +135,64 @@ export default function Dashboard() {
 
   return (
     <>
-    <div className="shell">
+    {/* ===== LOADING SCREEN ===== */}
+    {!d && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'linear-gradient(160deg, #0f172a 0%, #1a3354 55%, #0c1a2e 100%)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 36,
+      }}>
+        {/* dot-grid background */}
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.07,
+          backgroundImage: 'radial-gradient(circle, #93c5fd 1px, transparent 1px)',
+          backgroundSize: '30px 30px',
+        }} />
+
+        {/* Logo */}
+        <div style={{ position: 'relative', textAlign: 'center', zIndex: 1 }}>
+          <div style={{
+            fontSize: 60, fontWeight: 900, letterSpacing: -2, lineHeight: 1,
+            color: '#f1f5f9', animation: 'ld-glow 2.4s ease-in-out infinite alternate',
+          }}>
+            QC<span style={{ color: '#60a5fa' }}>Admin</span>
+          </div>
+          <div style={{ color: '#475569', fontSize: 12, marginTop: 10, letterSpacing: 4, textTransform: 'uppercase' }}>
+            Quality Control Dashboard
+          </div>
+        </div>
+
+        {/* Equalizer bars */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: 52, zIndex: 1 }}>
+          {[0,1,2,3,4,5,6,7,8,9].map(i => (
+            <div key={i} style={{
+              width: 7, minHeight: 5,
+              background: 'linear-gradient(180deg, #93c5fd 0%, #2563eb 100%)',
+              borderRadius: 4,
+              boxShadow: '0 0 10px #3b82f660',
+              animation: 'ld-bar 1.1s ease-in-out infinite',
+              animationDelay: `${i * 0.11}s`,
+            }} />
+          ))}
+        </div>
+
+        <div style={{ color: '#334155', fontSize: 13, letterSpacing: 1, zIndex: 1 }}>กำลังโหลดข้อมูล...</div>
+
+        <style>{`
+          @keyframes ld-bar {
+            0%, 100% { height: 6px;  opacity: 0.45; }
+            50%       { height: 52px; opacity: 1;    }
+          }
+          @keyframes ld-glow {
+            from { text-shadow: 0 0 16px #3b82f620; }
+            to   { text-shadow: 0 0 36px #60a5fa70, 0 0 70px #3b82f630; }
+          }
+        `}</style>
+      </div>
+    )}
+
+    <div className="shell" style={d ? { animation: 'fade-in .35s ease-out' } : { visibility: 'hidden' }}>
       <aside className="side">
         <div className="brand">QC<span>Admin</span></div>
         <nav className="nav">
@@ -492,7 +549,10 @@ export default function Dashboard() {
         </section>
       </main>
 
-      <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
+      <style>{`
+        @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes fade-in  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+      `}</style>
     </div>
 
     <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
