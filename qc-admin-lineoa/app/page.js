@@ -42,6 +42,16 @@ export default function Dashboard() {
   const tickRef = useRef(null);
   const filterRef = useRef({ from: weekAgo(), to: todayStr() });
 
+  const [rpPage, setRpPage] = useState(1);
+  const [rpItems, setRpItems] = useState([]);
+  const [rpTotal, setRpTotal] = useState(0);
+  const [rpPages, setRpPages] = useState(0);
+  const [rpLoading, setRpLoading] = useState(false);
+  const [rpCust, setRpCust] = useState('');
+  const [rpAdmin, setRpAdmin] = useState('');
+  const [rpSort, setRpSort] = useState('date');
+  const [rpOrder, setRpOrder] = useState('desc');
+
   const load = (from, to) => {
     const f = from || filterRef.current.from;
     const t = to   || filterRef.current.to;
@@ -51,8 +61,25 @@ export default function Dashboard() {
       .catch(() => setFetchOk(false));
   };
 
+  function loadReplies(page = 1, cust = rpCust, admin = rpAdmin, sort = rpSort, order = rpOrder) {
+    setRpLoading(true);
+    const f = filterRef.current.from;
+    const t = filterRef.current.to;
+    fetch(`/api/replies?from=${f}&to=${t}&page=${page}&limit=20&customer=${encodeURIComponent(cust)}&admin=${encodeURIComponent(admin)}&sort=${sort}&order=${order}`)
+      .then(r => r.json())
+      .then(data => {
+        setRpItems(data.items || []);
+        setRpTotal(data.total || 0);
+        setRpPages(data.pages || 0);
+        setRpPage(data.page || 1);
+      })
+      .catch(() => {})
+      .finally(() => setRpLoading(false));
+  }
+
   useEffect(() => {
     load();
+    loadReplies(1, '', '', 'date', 'desc');
     const api = setInterval(() => load(), 30000);
     tickRef.current = setInterval(() => setNow(new Date()), 1000);
     return () => { clearInterval(api); clearInterval(tickRef.current); };
@@ -62,6 +89,7 @@ export default function Dashboard() {
     filterRef.current = { from: dateFrom, to: dateTo };
     setFilterApplied({ from: dateFrom, to: dateTo });
     load(dateFrom, dateTo);
+    loadReplies(1);
   }
   function setPreset(days) {
     const f = toISO(new Date(Date.now() - days * 86400000));
@@ -70,6 +98,7 @@ export default function Dashboard() {
     filterRef.current = { from: f, to: t };
     setFilterApplied({ from: f, to: t });
     load(f, t);
+    loadReplies(1);
   }
 
   const k  = d?.kpi || {};
@@ -287,19 +316,49 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Reply log */}
+        {/* Reply log — paginated */}
         <section className="card" style={{ marginTop: 16 }}>
-          <h2>ประวัติการตอบ ({(d?.replyLog || []).length} รายการ)</h2>
-          {(d?.replyLog || []).length === 0
-            ? <div style={{ color: '#999' }}>ไม่มีข้อมูลในช่วงเวลานี้</div>
-            : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>ประวัติการตอบ</h2>
+            {rpTotal > 0 && <span style={{ fontSize: 12, color: '#888' }}>ทั้งหมด {rpTotal} รายการ</span>}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+            <input placeholder="ค้นหาลูกค้า..." value={rpCust} onChange={e => setRpCust(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loadReplies(1)}
+              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 140 }} />
+            <input placeholder="ค้นหา Admin..." value={rpAdmin} onChange={e => setRpAdmin(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loadReplies(1)}
+              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 130 }} />
+            <select value={rpSort} onChange={e => { setRpSort(e.target.value); loadReplies(1, rpCust, rpAdmin, e.target.value, rpOrder); }}
+              style={{ padding: '5px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6 }}>
+              <option value="date">เรียงตามวันที่</option>
+              <option value="score">เรียงตาม Score</option>
+              <option value="customer">เรียงตามลูกค้า</option>
+              <option value="admin">เรียงตาม Admin</option>
+            </select>
+            <button onClick={() => { const o = rpOrder === 'desc' ? 'asc' : 'desc'; setRpOrder(o); loadReplies(1, rpCust, rpAdmin, rpSort, o); }}
+              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#fff' }}>
+              {rpOrder === 'desc' ? '↓ ใหม่สุด' : '↑ เก่าสุด'}
+            </button>
+            <button onClick={() => loadReplies(1)}
+              style={{ padding: '5px 14px', fontSize: 12, background: '#2196f3', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+              ค้นหา
+            </button>
+          </div>
+
+          {rpLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#888' }}>กำลังโหลด...</div>
+          ) : rpItems.length === 0 ? (
+            <div style={{ color: '#999' }}>ไม่มีข้อมูลในช่วงเวลานี้</div>
+          ) : (
+            <>
               <div style={{ overflowX: 'auto' }}>
                 <table className="table">
                   <thead>
                     <tr><th>เวลา</th><th>Admin</th><th>ลูกค้า</th><th>คำถาม</th><th>คำตอบ</th><th>เวลาตอบ</th><th>Score</th><th>ผล</th><th></th></tr>
                   </thead>
                   <tbody>
-                    {(d.replyLog || []).map((r, i) => (
+                    {rpItems.map((r, i) => (
                       <tr key={i}>
                         <td style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>{timeAgo(r.created_at)}</td>
                         <td><b>{r.admin_name}</b></td>
@@ -331,19 +390,58 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
-            )}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+                <button disabled={rpPage <= 1} onClick={() => loadReplies(rpPage - 1)}
+                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpPage <= 1 ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpPage <= 1 ? 0.5 : 1 }}>
+                  ◀ ก่อนหน้า
+                </button>
+                {Array.from({ length: Math.min(5, rpPages) }, (_, i) => {
+                  const p = Math.max(1, rpPage - 2) + i;
+                  if (p > rpPages) return null;
+                  return (
+                    <button key={p} onClick={() => loadReplies(p)}
+                      style={{ padding: '4px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: p === rpPage ? '#2196f3' : '#fff', color: p === rpPage ? '#fff' : '#333' }}>
+                      {p}
+                    </button>
+                  );
+                })}
+                <button disabled={rpPage >= rpPages} onClick={() => loadReplies(rpPage + 1)}
+                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpPage >= rpPages ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpPage >= rpPages ? 0.5 : 1 }}>
+                  ถัดไป ▶
+                </button>
+                <span style={{ fontSize: 12, color: '#888' }}>หน้า {rpPage}/{rpPages} (ทั้งหมด {rpTotal} รายการ)</span>
+              </div>
+            </>
+          )}
         </section>
 
-        {/* Open cases */}
+        {/* Pending Reply */}
         <section className="card" style={{ marginTop: 16 }}>
-          <h2>Open Cases ({(d?.openCases || []).length})</h2>
-          {(d?.openCases || []).map(c => (
-            <div className="case" key={c.id}>
-              <b>{c.display_name || c.line_user_id}</b>
-              <div className="muted" style={{ fontSize: 11 }}>{c.id}</div>
-              <p>{c.message_text}</p>
-            </div>
-          ))}
+          <h2>⏳ รอตอบ ({(d?.pendingReply || []).length})</h2>
+          {(d?.pendingReply || []).length === 0
+            ? <div style={{ color: '#999', fontSize: 13 }}>ไม่มีการสนทนาที่รอตอบ ✅</div>
+            : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                {(d.pendingReply || []).map(c => {
+                  const mins = Math.round(Number(c.waiting_minutes || 0));
+                  const urgentColor = mins > 60 ? '#ef4444' : mins > 30 ? '#f59e0b' : '#6b7280';
+                  const urgentBg    = mins > 60 ? '#fef2f2' : mins > 30 ? '#fffbeb' : '#f8fafc';
+                  const borderColor = mins > 60 ? '#fca5a5' : mins > 30 ? '#fcd34d' : '#e5e7eb';
+                  return (
+                    <div key={c.id} style={{ border: `1px solid ${borderColor}`, borderRadius: 8, padding: '10px 14px', background: urgentBg }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        {c.line_user_id
+                          ? <a href={`/customer/${c.line_user_id}`} style={{ fontWeight: 600, color: '#1d4ed8', textDecoration: 'none', fontSize: 14 }}>{c.display_name || c.line_user_id?.slice(0, 12)}</a>
+                          : <b style={{ fontSize: 14 }}>{c.display_name || '—'}</b>}
+                        <span style={{ fontSize: 12, fontWeight: 700, color: urgentColor }}>รอ {mins} นาที</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#555', marginBottom: 2 }}>💬 {(c.last_customer_msg || '—').slice(0, 40)}</div>
+                      {c.assigned_admin && <div style={{ fontSize: 11, color: '#888' }}>แอดมิน: {c.assigned_admin}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
         </section>
       </main>
 

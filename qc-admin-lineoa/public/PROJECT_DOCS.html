@@ -565,12 +565,16 @@
       <tbody>
         <tr><td>LINE Webhook รับข้อความลูกค้า</td><td>Upsert customer profile + สร้าง conversation อัตโนมัติ, verify HMAC signature</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Playwright Scraper ดึง message pairs</td><td>Admin + customer message พร้อม timestamp จริงจาก LINE, scroll ย้อนหลังตามวันที่</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Scroll chat list ครบทุก item</td><td>Virtual-scroll chat list จนโหลดครบก่อน loop — ไม่พลาด chat ที่อยู่ต่ำกว่า viewport</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>Thai Buddhist date parser</td><td>แปลง "14 พ.ค. 2569" เป็น JS Date ได้ถูกต้อง (ลบ 543 จาก พ.ศ.) — timestamp ใน DB ถูกต้อง</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>ชื่อลูกค้าจาก chat header</td><td>อ่านชื่อจาก chat header element (ข้าง Follow Up button) ก่อน document.title และ list item</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>relogin.bat</td><td>รัน scraper แล้ว re-login อัตโนมัติเมื่อ session หมด (exit code 2) แล้ว restart</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>ข้ามแชทที่ยังไม่ตอบ</td><td>ตรวจว่า message ล่าสุดเป็น admin reply ก่อนเข้า — ข้ามถ้ายังเป็นสีเขียว</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>MIN_IDLE_MINUTES</td><td>ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า N นาที (ป้องกัน interrupt admin ที่กำลังทำงาน)</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Auto-job จาก .env</td><td>SCHEDULE_MINUTES=30 สร้าง job อัตโนมัติทุกรอบโดยไม่ต้องกด /scraper</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>start.bat</td><td>ดับเบิ้ลคลิกเดียวเพื่อรัน scraper บน Windows — ตรวจ auth.json ก่อน, restart ด้วย R</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>--yesterday / --date=</td><td>ระบุวันที่สำหรับ scrape โดยไม่ต้องแก้ code เช่น <code>node scraper.js --yesterday</code></td><td class="status-done">✅ พร้อม</td></tr>
-        <tr><td>ดึงชื่อลูกค้าจาก LINE</td><td>ดึงชื่อ LINE display name จาก auto-response welcome message และ list item ก่อน click</td><td class="status-done">✅ พร้อม</td></tr>
+        <tr><td>ดึงชื่อลูกค้าจาก LINE API</td><td>fire-and-forget call ไปยัง LINE Profile API หลัง log-reply — อัปเดต display_name ถ้ายังเป็น null</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>QC Scoring Engine</td><td>Speed + Correctness + Sentiment + Bot penalty — สูตร weighted average</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Duplicate prevention</td><td>7-day window check ป้องกัน message เดิมถูก insert ซ้ำจากการ scrape ซ้ำ</td><td class="status-done">✅ พร้อม</td></tr>
         <tr><td>Timestamp preservation</td><td>Timestamp จริงของ LINE messages บันทึกลง <code>created_at</code> ทั้ง customer และ admin msg</td><td class="status-done">✅ พร้อม</td></tr>
@@ -585,12 +589,12 @@
     <table class="feature-table">
       <thead><tr><th>ฟีเจอร์</th><th>รายละเอียด</th><th>สถานะ</th></tr></thead>
       <tbody>
-        <tr><td>KPI Cards</td><td>ลูกค้าแอดไลน์, สมัครผ่าน, KYC ผ่าน, ยอดเติม (บาท), ตอบเฉลี่ย, คะแนนเฉลี่ย</td><td class="status-done">✅</td></tr>
-        <tr><td>Date Filter</td><td>Preset วันนี้ / 7 / 30 / 90 วัน หรือ custom date range — refresh ทั้งหน้า</td><td class="status-done">✅</td></tr>
+        <tr><td>KPI Cards (date-filtered)</td><td>ลูกค้า active, สมัครผ่าน, KYC ผ่าน, ยอดเติม, ตอบเฉลี่ย, คะแนนเฉลี่ย — กรองตาม date range ที่เลือก</td><td class="status-done">✅</td></tr>
+        <tr><td>Date Filter</td><td>Preset วันนี้ / 7 / 30 / 90 วัน หรือ custom date range — refresh ทั้งหน้ารวม KPI</td><td class="status-done">✅</td></tr>
         <tr><td>Admin Ranking</td><td>Top 10 + toggle all · Cases, Score, ตอบเฉลี่ย, สมัคร, ยอดเติม · Expand แสดง good/warn/bad</td><td class="status-done">✅</td></tr>
         <tr><td>Daily Summary</td><td>28 วันล่าสุด — Cases/Score/ตอบเฉลี่ย/ดี/ต่ำ/Admin active ต่อวัน</td><td class="status-done">✅</td></tr>
-        <tr><td>Reply Log</td><td>100 รายการล่าสุด — Admin, ลูกค้า, <strong>คำถาม</strong>, คำตอบ, เวลาตอบ, Score, ผล</td><td class="status-done">✅</td></tr>
-        <tr><td>Open Cases</td><td>Conversation ที่ยังไม่ถูกปิด 30 รายการล่าสุด</td><td class="status-done">✅</td></tr>
+        <tr><td>Reply Log (paginated)</td><td>หน้าละ 20 รายการ · ค้นหาลูกค้า/Admin · เรียงตามวันที่/Score/ลูกค้า/Admin · asc/desc · pagination controls</td><td class="status-done">✅</td></tr>
+        <tr><td>Pending Reply widget</td><td>แสดง conversation ที่ last message เป็นลูกค้า (admin ยังไม่ตอบ) เรียงจากรอนานสุด · สีแดง/เหลือง/เทา ตามความเร่งด่วน</td><td class="status-done">✅</td></tr>
         <tr><td>Promotion Performance</td><td>ยอด + จำนวนลูกค้า แยก promotion_code</td><td class="status-done">✅</td></tr>
         <tr><td>System Status</td><td>Online/Offline indicator + เวลา server + last activity timestamps</td><td class="status-done">✅</td></tr>
         <tr><td>Auto-refresh</td><td>Reload ข้อมูลทุก 30 วินาที โดยไม่กระพริบหน้าจอ</td><td class="status-done">✅</td></tr>
@@ -909,7 +913,12 @@ node scraper.js --headed --watch
         <tr>
           <td><span class="method get">GET</span></td>
           <td><code>/api/dashboard</code></td>
-          <td>ดึงข้อมูลทั้งหมด · params: <code>?from=YYYY-MM-DD&to=YYYY-MM-DD</code><br>Response: <code>{ kpi, ranking, weeklySummary, promos, openCases, replyLog, lastActivity }</code></td>
+          <td>ดึงข้อมูลทั้งหมด · params: <code>?from=YYYY-MM-DD&to=YYYY-MM-DD</code><br>Response: <code>{ kpi, ranking, weeklySummary, promos, pendingReply, replyLog, lastActivity }</code><br>KPI ทุกตัว filter ตาม date range · pendingReply = conv ที่ last msg เป็นลูกค้า เรียงจากรอนานสุด</td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td><code>/api/replies</code></td>
+          <td>Paginated reply log · params: <code>?from=&to=&page=1&limit=20&customer=&admin=&sort=date&order=desc</code><br>sort: <code>date | score | customer | admin</code><br>Response: <code>{ items, total, pages, page, limit }</code></td>
         </tr>
       </tbody>
     </table>

@@ -10,16 +10,25 @@ export async function GET(req) {
   const dateTo   = searchParams.get('to')   || '2099-12-31';
 
   try {
-    const [kpiRows, rankingAll, weeklySummary, promos, openCases, replyLog, lastActivity] = await Promise.all([
+    const [kpiRows, rankingAll, weeklySummary, promos, pendingReply, replyLog, lastActivity] = await Promise.all([
 
-      // KPI — กรองตามวันที่ถ้ามี
+      // KPI — กรองตามวันที่
       safe(() => query`SELECT
-        (SELECT count(*) FROM line_customers)::int AS customers,
-        (SELECT count(*) FROM customer_events WHERE event_type='register' AND status='pass')::int AS registered_pass,
-        (SELECT count(*) FROM customer_events WHERE event_type='kyc' AND status='pass')::int AS kyc_pass,
-        (SELECT coalesce(sum(amount),0) FROM customer_events WHERE event_type='deposit')::numeric AS deposit_total,
-        (SELECT coalesce(avg(response_seconds) FILTER (WHERE response_seconds > 0),0)::int FROM qc_scores) AS avg_response_sec,
-        (SELECT coalesce(avg(final_score),0)::int FROM qc_scores) AS avg_score`, [{}]),
+        (SELECT count(DISTINCT m.line_user_id) FROM messages m
+         WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS customers,
+        (SELECT count(*) FROM customer_events
+         WHERE event_type='register' AND status='pass'
+           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS registered_pass,
+        (SELECT count(*) FROM customer_events
+         WHERE event_type='kyc' AND status='pass'
+           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS kyc_pass,
+        (SELECT coalesce(sum(amount),0) FROM customer_events
+         WHERE event_type='deposit'
+           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::numeric AS deposit_total,
+        (SELECT coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int
+         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_response_sec,
+        (SELECT coalesce(avg(q.final_score),0)::int
+         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_score`, [{}]),
 
       // Ranking ทั้งหมด (frontend แสดง 10 + toggle)
       safe(() => query`
@@ -74,15 +83,22 @@ export async function GET(req) {
         FROM customer_events WHERE promotion_code IS NOT NULL
         GROUP BY promotion_code ORDER BY total_amount DESC LIMIT 20`, []),
 
+      // Pending Reply — conversations ที่ last message เป็นลูกค้า (admin ยังไม่ตอบ)
       safe(() => query`
-        SELECT c.id, c.opened_at, lc.display_name, lc.line_user_id, m.message_text
+        SELECT c.id, lc.display_name, lc.line_user_id,
+          m.message_text AS last_customer_msg,
+          m.created_at AS waiting_since,
+          EXTRACT(EPOCH FROM (now() - m.created_at))/60 AS waiting_minutes,
+          qa.member_name AS assigned_admin
         FROM conversations c
         JOIN line_customers lc ON lc.line_user_id = c.line_user_id
-        LEFT JOIN LATERAL (
-          SELECT message_text FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1
-        ) m ON true
-        WHERE c.status = 'open'
-        ORDER BY c.opened_at DESC LIMIT 30`, []),
+        JOIN LATERAL (
+          SELECT message_text, created_at, direction
+          FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1
+        ) m ON m.direction = 'customer'
+        LEFT JOIN qc_admins qa ON qa.id = c.assigned_admin_id
+        ORDER BY m.created_at ASC
+        LIMIT 20`, []),
 
       safe(() => query`
         SELECT
@@ -118,7 +134,7 @@ export async function GET(req) {
       ranking: rankingAll,
       weeklySummary,
       promos,
-      openCases,
+      pendingReply,
       replyLog,
       lastActivity: lastActivity[0] || {},
     });

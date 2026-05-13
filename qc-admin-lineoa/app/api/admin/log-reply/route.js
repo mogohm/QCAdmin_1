@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { scoreReply } from '@/lib/qc-engine';
 import { sendTelegram } from '@/lib/telegram';
+import { getLineProfile } from '@/lib/line';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -55,6 +56,18 @@ export async function POST(req) {
     DO UPDATE SET
       display_name = COALESCE(EXCLUDED.display_name, line_customers.display_name)
   `;
+  // ดึงชื่อจาก LINE API (fire-and-forget) — override เฉพาะถ้า display_name ยังเป็น null
+  getLineProfile(line_user_id).then(profile => {
+    if (profile?.displayName) {
+      return query`
+        UPDATE line_customers
+        SET display_name = ${profile.displayName},
+            picture_url  = COALESCE(${profile.pictureUrl || null}, picture_url)
+        WHERE line_user_id = ${line_user_id}
+          AND display_name IS NULL
+      `;
+    }
+  }).catch(() => {});
 
   // ป้องกัน duplicate — ข้อความเดียวกัน admin คนเดียว ภายใน 7 วัน
   const dup = await query`

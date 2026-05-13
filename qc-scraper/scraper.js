@@ -59,6 +59,39 @@ const postReply = (uid, text, adminName, customerText, adminTs, customerTs, cust
   }) });
 
 // ---- Job runner ----
+// Scroll chat list container ลงจนสุดเพื่อโหลด virtual scroll items ทั้งหมด แล้ว scroll กลับบน
+async function loadAllChatListItems(page) {
+  let prev = 0;
+  for (let t = 0; t < 80; t++) {
+    const scrolled = await page.evaluate(() => {
+      const c = document.querySelector(
+        '.list-group-chat, [class*="chat-list"], [class*="ChatList"], ' +
+        '.list-group, [class*="conversation-list"], [class*="ConversationList"]'
+      );
+      if (!c) return false;
+      const before = c.scrollTop;
+      c.scrollTop = c.scrollHeight;
+      return c.scrollTop !== before;
+    });
+    await page.waitForTimeout(300);
+    const n = await page.locator('.list-group-item-chat').count();
+    if (n === prev && !scrolled) break;
+    prev = n;
+  }
+  // scroll กลับบนสุดเพื่อเริ่ม iterate จากบน
+  await page.evaluate(() => {
+    const c = document.querySelector(
+      '.list-group-chat, [class*="chat-list"], [class*="ChatList"], ' +
+      '.list-group, [class*="conversation-list"], [class*="ConversationList"]'
+    );
+    if (c) c.scrollTop = 0;
+  });
+  await page.waitForTimeout(500);
+  const total = await page.locator('.list-group-item-chat').count();
+  console.log(`  📋 โหลด chat list ครบ: ${total} chats`);
+  return total;
+}
+
 async function runJob(job) {
   console.log(`\n📋 รับงาน: ${job.date_from} → ${job.date_to}`);
   await updateJob(job.id, { status: 'running' });
@@ -81,10 +114,9 @@ async function runJob(job) {
       process.exit(2);
     }
 
-    // รอ chat list
+    // รอ chat list แล้ว scroll โหลด virtual items ทั้งหมด
     await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
-    const total = await page.locator('.list-group-item-chat').count();
-    console.log(`พบ ${total} chats`);
+    const total = await loadAllChatListItems(page);
     await updateJob(job.id, { total_chats: total });
 
     let logged = 0;
@@ -187,6 +219,22 @@ async function runJob(job) {
         // ดึงชื่อลูกค้าจาก chat ที่เปิดอยู่ขณะนี้ — น่าเชื่อถือกว่า auto-response search
         // ลำดับความสำคัญ: document.title → active list item → nameText ก่อนคลิก
         const activeName = await page.evaluate(() => {
+          // 0. Chat header title — element ข้าง Follow Up / Resolve button (ชื่อที่แน่นอนที่สุด)
+          const headerSels = [
+            '[class*="channel-title"]', '[class*="ChannelTitle"]',
+            '[class*="chat-header"] [class*="name"]:not([class*="admin"])',
+            '[class*="ChatHeader"] [class*="name"]:not([class*="admin"])',
+            '[class*="toolbar"] h1', '[class*="toolbar"] [class*="title"]',
+            '[class*="room-title"]', '[class*="RoomTitle"]',
+            '[class*="chatroom-header"] [class*="title"]',
+          ];
+          for (const sel of headerSels) {
+            try {
+              const t = document.querySelector(sel)?.innerText?.trim();
+              if (t && t.length > 0 && t.length < 80 && !/follow up|resolve|search/i.test(t)) return t;
+            } catch {}
+          }
+
           // 1. document.title — LINE OA มักตั้งเป็น "ชื่อลูกค้า | LINE Official Account Manager"
           const titleRaw = (document.title || '').replace(/\s*[|–—\-]\s*LINE.*/i, '').trim();
           if (titleRaw.length > 0 && titleRaw.length < 80 && !/line official/i.test(titleRaw)) {
@@ -255,14 +303,26 @@ async function loadChatHistory(page, dateFrom) {
   const MAX_SCROLL = 40;
 
   for (let i = 0; i < MAX_SCROLL; i++) {
-    // ตรวจ date separator อันแรกสุดที่เห็นใน DOM
+    // ตรวจ date separator อันแรกสุดที่เห็นใน DOM (รองรับวันที่ไทย เช่น "14 พ.ค. 2569")
     const oldestMs = await page.evaluate(() => {
+      function parseLineDate(raw) {
+        if (!raw) return null;
+        const TH = {'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,
+                    'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
+        const m = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
+        if (m && TH[m[2]] !== undefined) {
+          const yr = parseInt(m[3]) > 2500 ? parseInt(m[3]) - 543 : parseInt(m[3]);
+          return new Date(yr, TH[m[2]], parseInt(m[1]));
+        }
+        const d = new Date(raw);
+        return isNaN(d) ? null : d;
+      }
       const separators = Array.from(document.querySelectorAll('.chatsys-date'));
       if (!separators.length) return null;
       const txt = separators[0].innerText?.trim();
       if (!txt) return null;
-      const d = new Date(txt);
-      return isNaN(d) ? null : d.getTime();
+      const d = parseLineDate(txt);
+      return d ? d.getTime() : null;
     });
 
     if (oldestMs !== null && oldestMs <= targetMs) {
@@ -309,6 +369,20 @@ async function loadChatHistory(page, dateFrom) {
 // ดึง admin messages + customer message ก่อนหน้า ในช่วงวันที่
 async function extractAdminMessages(page, dateFrom, dateTo) {
   return page.evaluate(({ fromMs, toMs }) => {
+    // parse วันที่ไทย ("14 พ.ค. 2569") และ standard formats
+    function parseLineDate(raw) {
+      if (!raw) return null;
+      const TH = {'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,
+                  'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
+      const m = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
+      if (m && TH[m[2]] !== undefined) {
+        const yr = parseInt(m[3]) > 2500 ? parseInt(m[3]) - 543 : parseInt(m[3]);
+        return new Date(yr, TH[m[2]], parseInt(m[1]));
+      }
+      const d = new Date(raw);
+      return isNaN(d) ? null : d;
+    }
+
     const results = [];
     let currentDate      = null;
     let lastCustomerText = null;
@@ -332,12 +406,12 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
     const allNodes = Array.from(document.querySelectorAll('.chatsys-date, .chat'));
 
     for (const node of allNodes) {
-      // date separator
+      // date separator — ใช้ parseLineDate รองรับวันที่ไทย
       if (node.classList.contains('chatsys-date')) {
         const raw = node.innerText?.trim();
         if (raw) {
-          const parsed = new Date(raw);
-          if (!isNaN(parsed)) currentDate = parsed;
+          const parsed = parseLineDate(raw);
+          if (parsed) currentDate = parsed;
         }
         continue;
       }
