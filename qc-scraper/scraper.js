@@ -134,6 +134,7 @@ async function runJob(job) {
     await updateJob(job.id, { total_chats: total });
 
     let logged = 0;
+    let wasCancelled = false;
     for (let i = 0; i < total; i++) {
       try {
         // ดึงชื่อลูกค้าจาก list item ก่อน click
@@ -221,7 +222,12 @@ async function runJob(job) {
 
         if (!idleEnough) { process.stdout.write('⏳'); continue; }
 
-        await updateJob(job.id, { current_chat: nameText || lineUserId, logged_count: logged });
+        const upd = await updateJob(job.id, { current_chat: nameText || lineUserId, logged_count: logged });
+        if (upd?.cancelled) {
+          console.log('\n🚫 Job ถูกยกเลิกจากเว็บ — หยุด scrape');
+          wasCancelled = true;
+          break;
+        }
 
         // Scroll ขึ้นเพื่อโหลด chat history ให้ครบตามวันที่
         await loadChatHistory(page, dateFrom);
@@ -285,8 +291,12 @@ async function runJob(job) {
       }
     }
 
-    await updateJob(job.id, { status:'done', logged_count: logged, current_chat: null });
-    console.log(`\n✅ เสร็จ — บันทึก QC ${logged} ข้อความ`);
+    if (wasCancelled) {
+      console.log(`\n🚫 ยกเลิกแล้ว — บันทึก QC ได้ ${logged} ข้อความ`);
+    } else {
+      await updateJob(job.id, { status:'done', logged_count: logged, current_chat: null });
+      console.log(`\n✅ เสร็จ — บันทึก QC ${logged} ข้อความ`);
+    }
 
   } catch (err) {
     await updateJob(job.id, { status:'error', error_text: err.message });

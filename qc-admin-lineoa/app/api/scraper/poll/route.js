@@ -20,29 +20,30 @@ export async function GET(req) {
   return Response.json(rows[0] || null, { headers: CORS });
 }
 
-// Scraper อัพเดตสถานะ job
+// Scraper อัพเดตสถานะ job — return { ok, cancelled } เพื่อให้ scraper รู้ว่าถูกยกเลิก
 export async function PATCH(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
   const { id, status, total_chats, logged_count, current_chat, error_text } = await req.json();
 
-  const updates = { status };
-  if (total_chats != null) updates.total_chats = total_chats;
-  if (logged_count != null) updates.logged_count = logged_count;
-  if (current_chat != null) updates.current_chat = current_chat;
-  if (error_text != null) updates.error_text = error_text;
-  if (status === 'running') updates.started_at = new Date().toISOString();
-  if (status === 'done' || status === 'error') updates.finished_at = new Date().toISOString();
+  const started_at  = status === 'running' ? new Date().toISOString() : null;
+  const finished_at = (status === 'done' || status === 'error' || status === 'cancelled') ? new Date().toISOString() : null;
 
-  await query`
+  // COALESCE ป้องกัน NULL overwrite status — 'cancelled' ถูก overwrite ได้เฉพาะ 'error'
+  const result = await query`
     UPDATE scraper_jobs SET
-      status       = ${updates.status},
-      total_chats  = COALESCE(${updates.total_chats ?? null}, total_chats),
-      logged_count = COALESCE(${updates.logged_count ?? null}, logged_count),
-      current_chat = COALESCE(${updates.current_chat ?? null}, current_chat),
-      error_text   = COALESCE(${updates.error_text ?? null}, error_text),
-      started_at   = COALESCE(${updates.started_at ?? null}, started_at),
-      finished_at  = COALESCE(${updates.finished_at ?? null}, finished_at)
+      status       = CASE
+                       WHEN status = 'cancelled' AND ${status ?? null} != 'error' THEN status
+                       ELSE COALESCE(${status ?? null}, status)
+                     END,
+      total_chats  = COALESCE(${total_chats ?? null}, total_chats),
+      logged_count = COALESCE(${logged_count ?? null}, logged_count),
+      current_chat = COALESCE(${current_chat ?? null}, current_chat),
+      error_text   = COALESCE(${error_text ?? null}, error_text),
+      started_at   = COALESCE(${started_at}, started_at),
+      finished_at  = COALESCE(${finished_at}, finished_at)
     WHERE id = ${id}
+    RETURNING status
   `;
-  return Response.json({ ok: true }, { headers: CORS });
+  const currentStatus = result[0]?.status;
+  return Response.json({ ok: true, cancelled: currentStatus === 'cancelled' }, { headers: CORS });
 }

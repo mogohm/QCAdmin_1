@@ -116,6 +116,20 @@ export default function ScraperPage() {
   const scheduleOn = cfg?.on === true;
   const activeJob  = jobs.find(j => j.status === 'running' || j.status === 'pending');
 
+  async function cancelJob() {
+    if (!key) { setMsg('ใส่ ADMIN_API_KEY ก่อน'); return; }
+    if (!confirm('ยืนยันยกเลิก Scrape?')) return;
+    try {
+      const r = await fetch('/api/scraper/job', {
+        method: 'DELETE',
+        headers: { 'x-api-key': key },
+      });
+      const d = await r.json();
+      if (d.ok) { setMsg(`🚫 ยกเลิกแล้ว (${d.cancelled} job)`); loadJobs(); }
+      else setMsg('❌ ' + d.error);
+    } catch (e) { setMsg('❌ ' + e.message); }
+  }
+
   return (
     <div className="shell">
       <aside className="side">
@@ -169,7 +183,16 @@ export default function ScraperPage() {
               <div style={{ fontSize: 16, fontWeight: 700, color: statusColor(activeJob.status) }}>
                 {statusLabel(activeJob.status)}
               </div>
-              <span style={{ fontSize: 12, color: '#666' }}>{activeJob.date_from} — {activeJob.date_to}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, color: '#666' }}>{activeJob.date_from} — {activeJob.date_to}</span>
+                <button onClick={cancelJob} style={{
+                  padding: '4px 12px', fontSize: 12, fontWeight: 600,
+                  background: '#fef2f2', color: '#dc2626',
+                  border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer',
+                }}>
+                  🚫 ยกเลิก
+                </button>
+              </div>
             </div>
             {activeJob.total_chats > 0 && (
               <>

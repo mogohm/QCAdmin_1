@@ -25,3 +25,15 @@ export async function GET() {
   `;
   return Response.json(rows);
 }
+
+// ยกเลิก job ที่กำลังทำงาน/รออยู่
+export async function DELETE(req) {
+  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  const result = await query`
+    UPDATE scraper_jobs
+    SET status = 'cancelled', finished_at = now()
+    WHERE status IN ('pending', 'running')
+    RETURNING id
+  `;
+  return Response.json({ ok: true, cancelled: result.length });
+}
