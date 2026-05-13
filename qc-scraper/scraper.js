@@ -184,25 +184,46 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        // ดึงชื่อลูกค้าจาก auto-response welcome message — อยู่ใน .chat-reverse (ไม่ใช่ .chatsys)
-        // format: "ยินดีต้อนรับ คุณ [NAME] เข้าสู่..." หรือ "สวัสดีค่ะ คุณ [NAME] ยินดี..."
-        const autoResponseName = await page.evaluate(() => {
-          const nodes = Array.from(document.querySelectorAll('.chat-reverse, .chatsys'));
-          for (const node of nodes) {
-            const text = node.innerText?.trim() || '';
-            const m = text.match(/คุณ\s+(.+?)\s+(?:เข้าสู่|ยินดีต้อน)/);
-            if (m) {
-              const name = m[1].trim();
-              if (name.length > 0 && name.length < 60) return name;
+        // ดึงชื่อลูกค้าจาก chat ที่เปิดอยู่ขณะนี้ — น่าเชื่อถือกว่า auto-response search
+        // ลำดับความสำคัญ: document.title → active list item → nameText ก่อนคลิก
+        const activeName = await page.evaluate(() => {
+          // 1. document.title — LINE OA มักตั้งเป็น "ชื่อลูกค้า | LINE Official Account Manager"
+          const titleRaw = (document.title || '').replace(/\s*[|–—\-]\s*LINE.*/i, '').trim();
+          if (titleRaw.length > 0 && titleRaw.length < 80 && !/line official/i.test(titleRaw)) {
+            return titleRaw;
+          }
+
+          // 2. active/selected item ใน chat list (item ที่เพิ่งคลิก)
+          const activeItem = document.querySelector(
+            '.list-group-item-chat.active, .list-group-item-chat.is-active, ' +
+            '.list-group-item-chat[class*="-active"], .list-group-item-chat[aria-selected="true"]'
+          );
+          if (activeItem) {
+            const imgs = Array.from(activeItem.querySelectorAll('img'));
+            for (const img of imgs) {
+              const alt = img.alt?.trim();
+              if (alt && alt.length > 0 && alt.length < 80) return alt;
+            }
+            const link = activeItem.querySelector('a[href="#"]');
+            const ta = link?.title?.trim() || link?.getAttribute('aria-label')?.trim();
+            if (ta && ta.length > 0 && ta.length < 80) return ta;
+            const lines = link?.innerText?.split('\n').map(l => l.trim()).filter(l => l);
+            if (lines) {
+              for (const line of lines) {
+                if (/^\d{1,2}:\d{2}/.test(line)) continue;
+                if (line.length > 40) continue;
+                if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
+                return line;
+              }
             }
           }
           return null;
         }).catch(() => null);
 
-        // fallback: ชื่อที่ดึงจาก list item ก่อนคลิก
-        const displayName = autoResponseName || nameText || null;
+        // fallback สุดท้าย: nameText ที่ดึงก่อนคลิก (ยังใช้ได้ถ้า active item ไม่มี class active)
+        const displayName = activeName || nameText || null;
 
-        console.log(`\n  [${i+1}/${total}] ${displayName || lineUserId.slice(0,12)} (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
+        console.log(`\n  [${i+1}/${total}] "${displayName || lineUserId.slice(0,12)}" [src:${activeName ? 'active' : nameText ? 'list' : '?'}] (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
           const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
           if (r?.ok) {
