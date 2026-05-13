@@ -12,7 +12,19 @@
       "Bash(node login.js)",
       "PowerShell(Get-Command node -ErrorAction SilentlyContinue; where.exe node 2>$null; ls \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" -ErrorAction SilentlyContinue; ls \"$env:APPDATA\\\\nvm\" -ErrorAction SilentlyContinue | Select-Object -First 5)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "WebFetch(domain:qc-admin-1.vercel.app)",
+      "Bash(node scraper.js --headed)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" scraper.js --headed)",
+      "Bash(Get-Content \"C:\\\\Users\\\\Mogohm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--QCAdminPJ\\\\0a056835-6a3d-4aac-bf29-5263d6bf5b64\\\\tasks\\\\buc500q31.output\" -Wait)",
+      "Bash(Start-Sleep -Seconds 45)",
+      "Bash(Get-Content \"C:\\\\Users\\\\Mogohm\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--QCAdminPJ\\\\0a056835-6a3d-4aac-bf29-5263d6bf5b64\\\\tasks\\\\b5pubwjkt.output\")",
+      "Bash(Select-Object -First 60)",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\node.exe\" \"h:\\\\QCAdminPJ\\\\qc-scraper\\\\scraper.js\" --headed)",
+      "PowerShell(Set-Location \"h:\\\\QCAdminPJ\\\\qc-scraper\"; & \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" scraper.js --yesterday 2>&1 | Where-Object { $_ -match '^\\\\s+\\\\[' -or $_ -match 'เสร็จ' })",
+      "Bash(dir \"h:\\\\QCAdminPJ\\\\qc-admin-lineoa\\\\app\" /s /b)",
+      "Bash(findstr /E \"\\\\.js$ \\\\.jsx$ \\\\.tsx$\")",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill\\(\\) }; Write-Host \"killed all node processes\")"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
