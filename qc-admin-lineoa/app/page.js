@@ -43,12 +43,10 @@ export default function Dashboard() {
   const filterRef = useRef({ from: weekAgo(), to: todayStr() });
 
   const [rpPage, setRpPage] = useState(1);
-  const [rpItems, setRpItems] = useState([]);
-  const [rpTotal, setRpTotal] = useState(0);
-  const [rpPages, setRpPages] = useState(0);
-  const [rpLoading, setRpLoading] = useState(false);
   const [rpCust, setRpCust] = useState('');
   const [rpAdmin, setRpAdmin] = useState('');
+  const [rpCustFilter, setRpCustFilter] = useState('');
+  const [rpAdminFilter, setRpAdminFilter] = useState('');
   const [rpSort, setRpSort] = useState('date');
   const [rpOrder, setRpOrder] = useState('desc');
 
@@ -61,25 +59,8 @@ export default function Dashboard() {
       .catch(() => setFetchOk(false));
   };
 
-  function loadReplies(page = 1, cust = rpCust, admin = rpAdmin, sort = rpSort, order = rpOrder) {
-    setRpLoading(true);
-    const f = filterRef.current.from;
-    const t = filterRef.current.to;
-    fetch(`/api/replies?from=${f}&to=${t}&page=${page}&limit=20&customer=${encodeURIComponent(cust)}&admin=${encodeURIComponent(admin)}&sort=${sort}&order=${order}`)
-      .then(r => r.json())
-      .then(data => {
-        setRpItems(data.items || []);
-        setRpTotal(data.total || 0);
-        setRpPages(data.pages || 0);
-        setRpPage(data.page || 1);
-      })
-      .catch(() => {})
-      .finally(() => setRpLoading(false));
-  }
-
   useEffect(() => {
     load();
-    loadReplies(1, '', '', 'date', 'desc');
     const api = setInterval(() => load(), 30000);
     tickRef.current = setInterval(() => setNow(new Date()), 1000);
     return () => { clearInterval(api); clearInterval(tickRef.current); };
@@ -89,7 +70,7 @@ export default function Dashboard() {
     filterRef.current = { from: dateFrom, to: dateTo };
     setFilterApplied({ from: dateFrom, to: dateTo });
     load(dateFrom, dateTo);
-    loadReplies(1);
+    setRpPage(1);
   }
   function setPreset(days) {
     const f = toISO(new Date(Date.now() - days * 86400000));
@@ -98,7 +79,13 @@ export default function Dashboard() {
     filterRef.current = { from: f, to: t };
     setFilterApplied({ from: f, to: t });
     load(f, t);
-    loadReplies(1);
+    setRpPage(1);
+  }
+
+  function applyRpFilter() {
+    setRpCustFilter(rpCust);
+    setRpAdminFilter(rpAdmin);
+    setRpPage(1);
   }
 
   const k  = d?.kpi || {};
@@ -106,6 +93,24 @@ export default function Dashboard() {
   const systemAlive = fetchOk && lastFetch && (Date.now() - lastFetch) < 60000;
   const ranking = d?.ranking || [];
   const visibleRanking = showAllAdmins ? ranking : ranking.slice(0, 10);
+
+  // Reply log — client-side filter / sort / pagination of d.replyLog
+  const RP_PER_PAGE = 20;
+  const replyLogSrc = d?.replyLog || [];
+  const rpFiltered = [...replyLogSrc]
+    .filter(r => !rpCustFilter || (r.customer_name || r.line_user_id || '').toLowerCase().includes(rpCustFilter.toLowerCase()))
+    .filter(r => !rpAdminFilter || (r.admin_name || '').toLowerCase().includes(rpAdminFilter.toLowerCase()))
+    .sort((a, b) => {
+      const dir = rpOrder === 'desc' ? -1 : 1;
+      if (rpSort === 'score')    return dir * ((a.final_score || 0) - (b.final_score || 0));
+      if (rpSort === 'customer') return dir * (a.customer_name || a.line_user_id || '').localeCompare(b.customer_name || b.line_user_id || '');
+      if (rpSort === 'admin')    return dir * (a.admin_name || '').localeCompare(b.admin_name || '');
+      return dir * (new Date(a.created_at) - new Date(b.created_at));
+    });
+  const rpTotal  = rpFiltered.length;
+  const rpPages  = Math.max(1, Math.ceil(rpTotal / RP_PER_PAGE));
+  const rpSafePg = Math.min(rpPage, rpPages);
+  const rpItems  = rpFiltered.slice((rpSafePg - 1) * RP_PER_PAGE, rpSafePg * RP_PER_PAGE);
 
   return (
     <>
@@ -316,39 +321,37 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Reply log — paginated */}
+        {/* Reply log — client-side filter/sort/pagination */}
         <section className="card" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
             <h2 style={{ margin: 0 }}>ประวัติการตอบ</h2>
-            {rpTotal > 0 && <span style={{ fontSize: 12, color: '#888' }}>ทั้งหมด {rpTotal} รายการ</span>}
+            {rpTotal > 0 && <span style={{ fontSize: 12, color: '#888' }}>ทั้งหมด {rpTotal} รายการ{replyLogSrc.length >= 100 ? ' (แสดงสูงสุด 100)' : ''}</span>}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
             <input placeholder="ค้นหาลูกค้า..." value={rpCust} onChange={e => setRpCust(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && loadReplies(1)}
+              onKeyDown={e => e.key === 'Enter' && applyRpFilter()}
               style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 140 }} />
             <input placeholder="ค้นหา Admin..." value={rpAdmin} onChange={e => setRpAdmin(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && loadReplies(1)}
+              onKeyDown={e => e.key === 'Enter' && applyRpFilter()}
               style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 130 }} />
-            <select value={rpSort} onChange={e => { setRpSort(e.target.value); loadReplies(1, rpCust, rpAdmin, e.target.value, rpOrder); }}
+            <select value={rpSort} onChange={e => { setRpSort(e.target.value); setRpPage(1); }}
               style={{ padding: '5px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6 }}>
               <option value="date">เรียงตามวันที่</option>
               <option value="score">เรียงตาม Score</option>
               <option value="customer">เรียงตามลูกค้า</option>
               <option value="admin">เรียงตาม Admin</option>
             </select>
-            <button onClick={() => { const o = rpOrder === 'desc' ? 'asc' : 'desc'; setRpOrder(o); loadReplies(1, rpCust, rpAdmin, rpSort, o); }}
+            <button onClick={() => { setRpOrder(o => o === 'desc' ? 'asc' : 'desc'); setRpPage(1); }}
               style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#fff' }}>
               {rpOrder === 'desc' ? '↓ ใหม่สุด' : '↑ เก่าสุด'}
             </button>
-            <button onClick={() => loadReplies(1)}
+            <button onClick={applyRpFilter}
               style={{ padding: '5px 14px', fontSize: 12, background: '#2196f3', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
               ค้นหา
             </button>
           </div>
 
-          {rpLoading ? (
-            <div style={{ textAlign: 'center', padding: '20px 0', color: '#888' }}>กำลังโหลด...</div>
-          ) : rpItems.length === 0 ? (
+          {rpItems.length === 0 ? (
             <div style={{ color: '#999' }}>ไม่มีข้อมูลในช่วงเวลานี้</div>
           ) : (
             <>
@@ -391,25 +394,25 @@ export default function Dashboard() {
                 </table>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
-                <button disabled={rpPage <= 1} onClick={() => loadReplies(rpPage - 1)}
-                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpPage <= 1 ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpPage <= 1 ? 0.5 : 1 }}>
+                <button disabled={rpSafePg <= 1} onClick={() => setRpPage(rpSafePg - 1)}
+                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpSafePg <= 1 ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpSafePg <= 1 ? 0.5 : 1 }}>
                   ◀ ก่อนหน้า
                 </button>
                 {Array.from({ length: Math.min(5, rpPages) }, (_, i) => {
-                  const p = Math.max(1, rpPage - 2) + i;
+                  const p = Math.max(1, rpSafePg - 2) + i;
                   if (p > rpPages) return null;
                   return (
-                    <button key={p} onClick={() => loadReplies(p)}
-                      style={{ padding: '4px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: p === rpPage ? '#2196f3' : '#fff', color: p === rpPage ? '#fff' : '#333' }}>
+                    <button key={p} onClick={() => setRpPage(p)}
+                      style={{ padding: '4px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: p === rpSafePg ? '#2196f3' : '#fff', color: p === rpSafePg ? '#fff' : '#333' }}>
                       {p}
                     </button>
                   );
                 })}
-                <button disabled={rpPage >= rpPages} onClick={() => loadReplies(rpPage + 1)}
-                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpPage >= rpPages ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpPage >= rpPages ? 0.5 : 1 }}>
+                <button disabled={rpSafePg >= rpPages} onClick={() => setRpPage(rpSafePg + 1)}
+                  style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpSafePg >= rpPages ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpSafePg >= rpPages ? 0.5 : 1 }}>
                   ถัดไป ▶
                 </button>
-                <span style={{ fontSize: 12, color: '#888' }}>หน้า {rpPage}/{rpPages} (ทั้งหมด {rpTotal} รายการ)</span>
+                <span style={{ fontSize: 12, color: '#888' }}>หน้า {rpSafePg}/{rpPages} (ทั้งหมด {rpTotal} รายการ)</span>
               </div>
             </>
           )}

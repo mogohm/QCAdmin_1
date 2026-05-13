@@ -83,7 +83,7 @@ export async function GET(req) {
         FROM customer_events WHERE promotion_code IS NOT NULL
         GROUP BY promotion_code ORDER BY total_amount DESC LIMIT 20`, []),
 
-      // Pending Reply — conversations ที่ last message เป็นลูกค้า (admin ยังไม่ตอบ)
+      // Pending Reply — conversations ที่ last message เป็นลูกค้าภายใน 7 วัน (admin ยังไม่ตอบ)
       safe(() => query`
         SELECT c.id, lc.display_name, lc.line_user_id,
           m.message_text AS last_customer_msg,
@@ -97,6 +97,7 @@ export async function GET(req) {
           FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1
         ) m ON m.direction = 'customer'
         LEFT JOIN qc_admins qa ON qa.id = c.assigned_admin_id
+        WHERE m.created_at > now() - interval '7 days'
         ORDER BY m.created_at ASC
         LIMIT 20`, []),
 
