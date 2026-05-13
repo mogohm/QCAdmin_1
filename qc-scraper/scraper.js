@@ -59,36 +59,50 @@ const postReply = (uid, text, adminName, customerText, adminTs, customerTs, cust
   }) });
 
 // ---- Job runner ----
-// Scroll chat list container ลงจนสุดเพื่อโหลด virtual scroll items ทั้งหมด แล้ว scroll กลับบน
+// Scroll chat list ลงจนสุดเพื่อโหลด virtual scroll items ทั้งหมด แล้ว scroll กลับบน
 async function loadAllChatListItems(page) {
   let prev = 0;
   for (let t = 0; t < 80; t++) {
     const scrolled = await page.evaluate(() => {
-      const c = document.querySelector(
-        '.list-group-chat, [class*="chat-list"], [class*="ChatList"], ' +
-        '.list-group, [class*="conversation-list"], [class*="ConversationList"]'
-      );
-      if (!c) return false;
-      const before = c.scrollTop;
-      c.scrollTop = c.scrollHeight;
-      return c.scrollTop !== before;
+      /* eslint-disable no-undef */
+      const item = document.querySelector('.list-group-item-chat');
+      if (!item) return false;
+      let el = item.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+            el.scrollHeight > el.clientHeight + 50) {
+          const before = el.scrollTop;
+          el.scrollTop = el.scrollHeight;
+          return el.scrollTop !== before;
+        }
+        el = el.parentElement;
+      }
+      return false;
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     const n = await page.locator('.list-group-item-chat').count();
     if (n === prev && !scrolled) break;
     prev = n;
   }
   // scroll กลับบนสุดเพื่อเริ่ม iterate จากบน
   await page.evaluate(() => {
-    const c = document.querySelector(
-      '.list-group-chat, [class*="chat-list"], [class*="ChatList"], ' +
-      '.list-group, [class*="conversation-list"], [class*="ConversationList"]'
-    );
-    if (c) c.scrollTop = 0;
+    const item = document.querySelector('.list-group-item-chat');
+    if (!item) return;
+    let el = item.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+          el.scrollHeight > el.clientHeight + 50) {
+        el.scrollTop = 0;
+        return;
+      }
+      el = el.parentElement;
+    }
   });
   await page.waitForTimeout(500);
   const total = await page.locator('.list-group-item-chat').count();
-  console.log(`  📋 โหลด chat list ครบ: ${total} chats`);
+  console.log(`  📋 โหลด chat list: ${total} chats`);
   return total;
 }
 
@@ -216,28 +230,13 @@ async function runJob(job) {
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
         if (!msgs.length) { process.stdout.write('.'); continue; }
 
-        // ดึงชื่อลูกค้าจาก chat ที่เปิดอยู่ขณะนี้ — น่าเชื่อถือกว่า auto-response search
-        // ลำดับความสำคัญ: document.title → active list item → nameText ก่อนคลิก
+        // ดึงชื่อลูกค้าจาก chat ที่เปิดอยู่ขณะนี้
+        // ลำดับ: document.title (LINE OA set เป็น "ชื่อ | LINE OA Mgr") → active list item → nameText
         const activeName = await page.evaluate(() => {
-          // 0. Chat header title — element ข้าง Follow Up / Resolve button (ชื่อที่แน่นอนที่สุด)
-          const headerSels = [
-            '[class*="channel-title"]', '[class*="ChannelTitle"]',
-            '[class*="chat-header"] [class*="name"]:not([class*="admin"])',
-            '[class*="ChatHeader"] [class*="name"]:not([class*="admin"])',
-            '[class*="toolbar"] h1', '[class*="toolbar"] [class*="title"]',
-            '[class*="room-title"]', '[class*="RoomTitle"]',
-            '[class*="chatroom-header"] [class*="title"]',
-          ];
-          for (const sel of headerSels) {
-            try {
-              const t = document.querySelector(sel)?.innerText?.trim();
-              if (t && t.length > 0 && t.length < 80 && !/follow up|resolve|search/i.test(t)) return t;
-            } catch {}
-          }
-
-          // 1. document.title — LINE OA มักตั้งเป็น "ชื่อลูกค้า | LINE Official Account Manager"
-          const titleRaw = (document.title || '').replace(/\s*[|–—\-]\s*LINE.*/i, '').trim();
-          if (titleRaw.length > 0 && titleRaw.length < 80 && !/line official/i.test(titleRaw)) {
+          // 1. document.title — LINE OA ตั้งเป็น "ชื่อลูกค้า | LINE Official Account Manager"
+          const titleRaw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
+          if (titleRaw.length > 0 && titleRaw.length < 80 &&
+              !/^(LINE\s*(Chat|Official|OA)|หน้าหลัก|Home)$/i.test(titleRaw)) {
             return titleRaw;
           }
 
