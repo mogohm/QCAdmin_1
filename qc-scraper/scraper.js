@@ -199,26 +199,34 @@ async function runJob(job) {
           if (!adminMsgs.length) return true;
 
           const last = adminMsgs[adminMsgs.length - 1];
-          const timeEl = last.querySelector('time, [class*="time"]');
-          if (!timeEl) return true;
 
-          const raw = timeEl.getAttribute('datetime') || timeEl.innerText?.trim() || '';
-          if (!raw) return true;
-
-          const now = Date.now();
-          const fullTs = new Date(raw);
-          if (!isNaN(fullTs)) return (now - fullTs.getTime()) >= minIdleMs;
-
-          const parts = raw.match(/(\d{1,2}):(\d{2})/);
-          if (parts) {
-            const d = new Date();
-            d.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
-            let msgTs = d.getTime();
-            if (msgTs > now) msgTs -= 86400000;
-            return (now - msgTs) >= minIdleMs;
+          // 1. time[datetime] attribute — most reliable
+          const timeWithAttr = last.querySelector('time[datetime]');
+          if (timeWithAttr) {
+            const ts = new Date(timeWithAttr.getAttribute('datetime'));
+            if (!isNaN(ts)) return (Date.now() - ts.getTime()) >= minIdleMs;
           }
-          return true;
-        }, MIN_IDLE_MIN * 60 * 1000).catch(() => true);
+
+          // 2. Walk ALL leaf descendants looking for HH:MM text
+          const timePattern = /^(\d{1,2}):(\d{2})$/;
+          const walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT, null);
+          let node;
+          while ((node = walker.nextNode())) {
+            const txt = node.textContent.trim();
+            const m = txt.match(timePattern);
+            if (m) {
+              const now = Date.now();
+              const d = new Date();
+              d.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0);
+              let msgTs = d.getTime();
+              if (msgTs > now) msgTs -= 86400000;
+              return (now - msgTs) >= minIdleMs;
+            }
+          }
+
+          // Time could not be determined — skip conservatively
+          return false;
+        }, MIN_IDLE_MIN * 60 * 1000).catch(() => false);
 
         if (!idleEnough) { process.stdout.write('⏳'); continue; }
 
@@ -230,7 +238,16 @@ async function runJob(job) {
         }
 
         // Scroll ขึ้นเพื่อโหลด chat history ให้ครบตามวันที่
-        await loadChatHistory(page, dateFrom);
+        // ส่ง cancel-checker เพื่อให้หยุดได้ระหว่าง scroll
+        const abortedLoad = await loadChatHistory(page, dateFrom, async () => {
+          const r = await updateJob(job.id, {});
+          return r?.cancelled === true;
+        });
+        if (abortedLoad) {
+          console.log('\n🚫 Job ถูกยกเลิกระหว่าง loadChatHistory — หยุด scrape');
+          wasCancelled = true;
+          break;
+        }
 
         // ดึง admin + customer messages ในช่วงวันที่
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
@@ -278,6 +295,7 @@ async function runJob(job) {
 
         console.log(`\n  [${i+1}/${total}] "${displayName || lineUserId.slice(0,12)}" [src:${activeName ? 'active' : nameText ? 'list' : '?'}] (${lineUserId.slice(0,8)}): ${msgs.length} ข้อความ`);
         for (const msg of msgs) {
+          if (wasCancelled) break;
           const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
           if (r?.ok) {
             console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0,40)}"${msg.customerText ? ` | คำถาม: "${msg.customerText.slice(0,40)}"` : ' | คำถาม: -'}`);
@@ -285,6 +303,13 @@ async function runJob(job) {
           } else {
             console.log(`    ⚠️ [${r?.error}] admin="${msg.adminName}" "${msg.text.slice(0,40)}"`);
           }
+          // ตรวจ cancel หลังส่งแต่ละข้อความ
+          const chk = await updateJob(job.id, { logged_count: logged });
+          if (chk?.cancelled) { wasCancelled = true; break; }
+        }
+        if (wasCancelled) {
+          console.log('\n🚫 Job ถูกยกเลิกระหว่างส่งข้อมูล — หยุด scrape');
+          break;
         }
       } catch (e) {
         console.log(`\n  ⚠️ index ${i}: ${e.message}`);
@@ -307,7 +332,8 @@ async function runJob(job) {
 }
 
 // Scroll chat panel ขึ้นจนกว่าจะเห็นข้อมูลตั้งแต่วันที่ dateFrom
-async function loadChatHistory(page, dateFrom) {
+// shouldCancel: async () => boolean — ถ้า return true ให้หยุดทันที
+async function loadChatHistory(page, dateFrom, shouldCancel) {
   const targetMs  = dateFrom.getTime();
   const MAX_SCROLL = 40;
 
@@ -337,6 +363,11 @@ async function loadChatHistory(page, dateFrom) {
     if (oldestMs !== null && oldestMs <= targetMs) {
       process.stdout.write(`📅`);
       break; // โหลดพอแล้ว
+    }
+
+    // ตรวจ cancel ทุก 5 iteration
+    if (shouldCancel && i % 5 === 4) {
+      if (await shouldCancel()) return true;
     }
 
     // Scroll ขึ้น — หา scroll container จาก parent ของ .chat element
@@ -373,6 +404,7 @@ async function loadChatHistory(page, dateFrom) {
 
     await page.waitForTimeout(1000); // รอ LINE โหลด messages เพิ่ม
   }
+  return false; // not cancelled
 }
 
 // ดึง admin messages + customer message ก่อนหน้า ในช่วงวันที่

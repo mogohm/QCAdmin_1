@@ -196,17 +196,18 @@ export default function ScraperPage() {
             </div>
             {activeJob.total_chats > 0 && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                  <span>บันทึก {activeJob.logged_count} / {activeJob.total_chats} chats</span>
-                  <b>{Math.round((activeJob.logged_count / activeJob.total_chats) * 100)}%</b>
+                <div style={{ display: 'flex', gap: 24, fontSize: 13, marginBottom: 6 }}>
+                  <span>📂 ห้อง chat ทั้งหมด <b>{activeJob.total_chats}</b> ห้อง</span>
+                  <span>📝 บันทึกได้ <b>{activeJob.logged_count || 0}</b> ข้อความ</span>
                 </div>
-                <div style={{ background: '#dbeafe', borderRadius: 6, height: 10, overflow: 'hidden' }}>
-                  <div style={{
-                    background: '#2196f3', height: 10, borderRadius: 6,
-                    width: `${Math.round((activeJob.logged_count / activeJob.total_chats) * 100)}%`,
-                    transition: 'width 0.5s',
-                  }} />
-                </div>
+                {activeJob.status === 'running' && (
+                  <div style={{ background: '#dbeafe', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                    <div style={{
+                      background: '#2196f3', height: 8, borderRadius: 6,
+                      width: '100%', animation: 'progress-pulse 1.5s ease-in-out infinite',
+                    }} />
+                  </div>
+                )}
               </>
             )}
             {activeJob.current_chat && (
@@ -343,7 +344,7 @@ export default function ScraperPage() {
                 <thead>
                   <tr>
                     <th>เวลา</th><th>ช่วงวันที่</th><th>สถานะ</th>
-                    <th>Chat</th><th>บันทึก</th><th>ใช้เวลา</th><th>หมายเหตุ</th>
+                    <th>ห้อง chat</th><th>ข้อความ</th><th>ใช้เวลา</th><th>หมายเหตุ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -388,6 +389,7 @@ export default function ScraperPage() {
           </div>
         </div>
       </main>
+      <style>{`@keyframes progress-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }`}</style>
     </div>
   );
 }

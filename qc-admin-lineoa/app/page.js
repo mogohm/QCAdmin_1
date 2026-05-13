@@ -44,11 +44,10 @@ export default function Dashboard() {
 
   const [rpPage, setRpPage] = useState(1);
   const [rpCust, setRpCust] = useState('');
-  const [rpAdmin, setRpAdmin] = useState('');
   const [rpCustFilter, setRpCustFilter] = useState('');
-  const [rpAdminFilter, setRpAdminFilter] = useState('');
   const [rpSort, setRpSort] = useState('date');
   const [rpOrder, setRpOrder] = useState('desc');
+  const [rpExpanded, setRpExpanded] = useState(new Set());
 
   const load = (from, to) => {
     const f = from || filterRef.current.from;
@@ -84,8 +83,14 @@ export default function Dashboard() {
 
   function applyRpFilter() {
     setRpCustFilter(rpCust);
-    setRpAdminFilter(rpAdmin);
     setRpPage(1);
+  }
+  function toggleRpExpand(key) {
+    setRpExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   }
 
   const k  = d?.kpi || {};
@@ -94,18 +99,34 @@ export default function Dashboard() {
   const ranking = d?.ranking || [];
   const visibleRanking = showAllAdmins ? ranking : ranking.slice(0, 10);
 
-  // Reply log — client-side filter / sort / pagination of d.replyLog
+  // Reply log — group by customer, client-side filter / sort / pagination
   const RP_PER_PAGE = 20;
   const replyLogSrc = d?.replyLog || [];
-  const rpFiltered = [...replyLogSrc]
-    .filter(r => !rpCustFilter || (r.customer_name || r.line_user_id || '').toLowerCase().includes(rpCustFilter.toLowerCase()))
-    .filter(r => !rpAdminFilter || (r.admin_name || '').toLowerCase().includes(rpAdminFilter.toLowerCase()))
+  const rpGroupMap = {};
+  for (const r of replyLogSrc) {
+    const key = r.line_user_id || r.customer_name || '?';
+    if (!rpGroupMap[key]) {
+      rpGroupMap[key] = { line_user_id: r.line_user_id, customer_name: r.customer_name, msgs: [], scores: [], admins: [], last_at: null };
+    }
+    const g = rpGroupMap[key];
+    g.msgs.push(r);
+    if (r.final_score != null) g.scores.push(r.final_score);
+    if (r.admin_name && !g.admins.includes(r.admin_name)) g.admins.push(r.admin_name);
+    if (!g.last_at || new Date(r.created_at) > new Date(g.last_at)) g.last_at = r.created_at;
+  }
+  const rpAllGroups = Object.values(rpGroupMap).map(g => ({
+    ...g,
+    avg_score: g.scores.length ? Math.round(g.scores.reduce((a, b) => a + b, 0) / g.scores.length) : null,
+    count: g.msgs.length,
+  }));
+  const rpFiltered = rpAllGroups
+    .filter(g => !rpCustFilter || (g.customer_name || g.line_user_id || '').toLowerCase().includes(rpCustFilter.toLowerCase()))
     .sort((a, b) => {
       const dir = rpOrder === 'desc' ? -1 : 1;
-      if (rpSort === 'score')    return dir * ((a.final_score || 0) - (b.final_score || 0));
+      if (rpSort === 'score')    return dir * ((a.avg_score || 0) - (b.avg_score || 0));
       if (rpSort === 'customer') return dir * (a.customer_name || a.line_user_id || '').localeCompare(b.customer_name || b.line_user_id || '');
-      if (rpSort === 'admin')    return dir * (a.admin_name || '').localeCompare(b.admin_name || '');
-      return dir * (new Date(a.created_at) - new Date(b.created_at));
+      if (rpSort === 'admin')    return dir * (a.admins[0] || '').localeCompare(b.admins[0] || '');
+      return dir * (new Date(a.last_at) - new Date(b.last_at));
     });
   const rpTotal  = rpFiltered.length;
   const rpPages  = Math.max(1, Math.ceil(rpTotal / RP_PER_PAGE));
@@ -321,24 +342,25 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Reply log — client-side filter/sort/pagination */}
+        {/* Reply log — grouped by customer */}
         <section className="card" style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
             <h2 style={{ margin: 0 }}>ประวัติการตอบ</h2>
-            {rpTotal > 0 && <span style={{ fontSize: 12, color: '#888' }}>ทั้งหมด {rpTotal} รายการ{replyLogSrc.length >= 100 ? ' (แสดงสูงสุด 100)' : ''}</span>}
+            {rpTotal > 0 && (
+              <span style={{ fontSize: 12, color: '#888' }}>
+                {rpTotal} ลูกค้า · {replyLogSrc.length} ข้อความ{replyLogSrc.length >= 100 ? ' (แสดงสูงสุด 100)' : ''}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
             <input placeholder="ค้นหาลูกค้า..." value={rpCust} onChange={e => setRpCust(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && applyRpFilter()}
-              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 140 }} />
-            <input placeholder="ค้นหา Admin..." value={rpAdmin} onChange={e => setRpAdmin(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applyRpFilter()}
-              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 130 }} />
+              style={{ padding: '5px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, width: 150 }} />
             <select value={rpSort} onChange={e => { setRpSort(e.target.value); setRpPage(1); }}
               style={{ padding: '5px 8px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6 }}>
-              <option value="date">เรียงตามวันที่</option>
+              <option value="date">เรียงตามเวลาล่าสุด</option>
               <option value="score">เรียงตาม Score</option>
-              <option value="customer">เรียงตามลูกค้า</option>
+              <option value="customer">เรียงตามชื่อลูกค้า</option>
               <option value="admin">เรียงตาม Admin</option>
             </select>
             <button onClick={() => { setRpOrder(o => o === 'desc' ? 'asc' : 'desc'); setRpPage(1); }}
@@ -358,38 +380,60 @@ export default function Dashboard() {
               <div style={{ overflowX: 'auto' }}>
                 <table className="table">
                   <thead>
-                    <tr><th>เวลา</th><th>Admin</th><th>ลูกค้า</th><th>คำถาม</th><th>คำตอบ</th><th>เวลาตอบ</th><th>Score</th><th>ผล</th><th></th></tr>
+                    <tr><th>ลูกค้า</th><th>ข้อความ</th><th>Admin</th><th>Avg Score</th><th>ตอบล่าสุด</th><th style={{ width: 28 }}></th></tr>
                   </thead>
                   <tbody>
-                    {rpItems.map((r, i) => (
-                      <tr key={i}>
-                        <td style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>{timeAgo(r.created_at)}</td>
-                        <td><b>{r.admin_name}</b></td>
-                        <td style={{ fontSize: 12 }}>
-                          {r.line_user_id
-                            ? <a href={`/customer/${r.line_user_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{r.customer_name || r.line_user_id?.slice(0, 8)}</a>
-                            : (r.customer_name || '—')}
-                        </td>
-                        <td style={{ fontSize: 12, color: '#666', maxWidth: 140 }}>{r.customer_text?.slice(0, 35) || '—'}</td>
-                        <td style={{ fontSize: 12, maxWidth: 160 }}>{r.reply_text?.slice(0, 40)}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{r.response_seconds != null ? fmtSec(r.response_seconds) : '—'}</td>
-                        <td className={'score ' + scoreClass(r.final_score || 0)}>{r.final_score ?? '—'}</td>
-                        <td style={{ fontSize: 12 }}>
-                          {r.final_score == null ? '—'
-                            : r.final_score >= 70
-                              ? <span style={{ color: '#22c55e' }}>✅ ผ่าน</span>
-                              : <span style={{ color: '#ef4444' }}>❌ {tryParse(r.fail_reasons)[0] || 'ไม่ผ่าน'}</span>}
-                        </td>
-                        <td>
-                          {r.line_user_id && (
-                            <button
-                              onClick={() => setChatUser({ line_user_id: r.line_user_id, name: r.customer_name || r.line_user_id })}
-                              style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', opacity: 0.7, padding: 0 }}
-                              title="ดูแชทเหมือน LINE">💬</button>
+                    {rpItems.map(g => {
+                      const key = g.line_user_id || g.customer_name || '?';
+                      const isExp = rpExpanded.has(key);
+                      return (
+                        <>
+                          <tr key={key} style={{ cursor: 'pointer', background: isExp ? '#f0f9ff' : undefined }}
+                            onClick={() => toggleRpExpand(key)}>
+                            <td style={{ fontWeight: 600 }}>
+                              {g.line_user_id
+                                ? <a href={`/customer/${g.line_user_id}`} onClick={e => e.stopPropagation()}
+                                    style={{ color: '#2563eb', textDecoration: 'none' }}>
+                                    {g.customer_name || g.line_user_id?.slice(0, 12)}
+                                  </a>
+                                : (g.customer_name || '—')}
+                            </td>
+                            <td>{g.count} ข้อความ</td>
+                            <td style={{ fontSize: 12, color: '#555' }}>{g.admins.slice(0, 3).join(', ')}{g.admins.length > 3 ? ` +${g.admins.length - 3}` : ''}</td>
+                            <td className={'score ' + scoreClass(g.avg_score || 0)}>{g.avg_score ?? '—'}</td>
+                            <td style={{ fontSize: 11, color: '#888', whiteSpace: 'nowrap' }}>{timeAgo(g.last_at)}</td>
+                            <td style={{ textAlign: 'center', color: '#888' }}>{isExp ? '▲' : '▼'}</td>
+                          </tr>
+                          {isExp && (
+                            <tr key={key + '-exp'}>
+                              <td colSpan={6} style={{ background: '#f8fafc', padding: '6px 16px 10px' }}>
+                                {g.msgs.map((r, j) => (
+                                  <div key={j} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 50px 28px', gap: 8, padding: '5px 0', borderBottom: '1px solid #e5e7eb' }}>
+                                    <span style={{ fontSize: 11, color: '#888' }}>{timeAgo(r.created_at)}</span>
+                                    <div>
+                                      <div style={{ fontSize: 11, color: '#666' }}>👤 {r.customer_text?.slice(0, 45) || '—'}</div>
+                                      <div style={{ fontSize: 12 }}>💬 {r.reply_text?.slice(0, 55)}</div>
+                                      <div style={{ fontSize: 11, color: '#999' }}>{r.admin_name} · {r.response_seconds != null ? fmtSec(r.response_seconds) : '—'}</div>
+                                      {r.fail_reasons && tryParse(r.fail_reasons).length > 0 && (
+                                        <div style={{ color: '#ef4444', fontSize: 11 }}>⚠️ {tryParse(r.fail_reasons).join(', ')}</div>
+                                      )}
+                                    </div>
+                                    <span className={'score ' + scoreClass(r.final_score || 0)} style={{ textAlign: 'center', alignSelf: 'center' }}>
+                                      {r.final_score ?? '—'}
+                                    </span>
+                                    {r.line_user_id && (
+                                      <button onClick={() => setChatUser({ line_user_id: r.line_user_id, name: r.customer_name || r.line_user_id })}
+                                        style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', opacity: 0.7, padding: 0, alignSelf: 'center' }}
+                                        title="ดูแชท">💬</button>
+                                    )}
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                      </tr>
-                    ))}
+                        </>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -412,7 +456,7 @@ export default function Dashboard() {
                   style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #d1d5db', borderRadius: 6, cursor: rpSafePg >= rpPages ? 'not-allowed' : 'pointer', background: '#fff', opacity: rpSafePg >= rpPages ? 0.5 : 1 }}>
                   ถัดไป ▶
                 </button>
-                <span style={{ fontSize: 12, color: '#888' }}>หน้า {rpSafePg}/{rpPages} (ทั้งหมด {rpTotal} รายการ)</span>
+                <span style={{ fontSize: 12, color: '#888' }}>หน้า {rpSafePg}/{rpPages} ({rpTotal} ลูกค้า)</span>
               </div>
             </>
           )}
