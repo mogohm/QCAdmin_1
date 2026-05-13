@@ -76,7 +76,9 @@ async function runJob(job) {
 
     if (page.url().includes('signin') || page.url().includes('login')) {
       await updateJob(job.id, { status:'error', error_text:'Session หมดอายุ — รัน: node login.js' });
-      return;
+      await browser.close().catch(() => {});
+      console.error('\n🔐 Session หมดอายุ — ต้อง login ใหม่');
+      process.exit(2);
     }
 
     // รอ chat list

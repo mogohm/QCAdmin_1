@@ -109,10 +109,21 @@ export default function RulesPage() {
   const catColor = { register: '#3b82f6', kyc: '#8b5cf6', deposit: '#10b981', promotion: '#f59e0b', other: '#6b7280' };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: 24 }}>
+    <div className="shell">
+      <aside className="side">
+        <div className="brand">QC<span>Admin</span></div>
+        <nav className="nav">
+          <a href="/">Dashboard</a>
+          <a href="/admin">Admin Console</a>
+          <a href="/scraper">Scraper</a>
+          <a className="active" href="/rules">⚙️ QC Rules</a>
+          <a href="/docs">Setup Docs</a>
+          <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
+        </nav>
+      </aside>
+      <main className="main">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <a href="/" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 20 }}>←</a>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>⚙️ จัดการ QC Rules</h1>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: '#6b7280' }}>{rules.length} rules</span>
       </div>
@@ -188,7 +199,7 @@ export default function RulesPage() {
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                      <button onClick={() => openEdit(rule)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>แก้ไข</button>
+                      <button onClick={() => openEdit(rule)} style={{ background: '#dbeafe', color: '#1d4ed8', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>แก้ไข</button>
                       <button onClick={() => setDelConfirm(rule)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>ลบ</button>
                     </div>
                   </td>
@@ -283,6 +294,7 @@ export default function RulesPage() {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 }

@@ -56,7 +56,19 @@ export default function CustomerProfile() {
   const totalDep  = deposits.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+    <div className="shell">
+      <aside className="side">
+        <div className="brand">QC<span>Admin</span></div>
+        <nav className="nav">
+          <a href="/">Dashboard</a>
+          <a href="/admin">Admin Console</a>
+          <a href="/scraper">Scraper</a>
+          <a href="/rules">⚙️ QC Rules</a>
+          <a href="/docs">Setup Docs</a>
+          <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
+        </nav>
+      </aside>
+      <main className="main" style={{ maxWidth: 1100 }}>
 
       {/* Back + Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -172,6 +184,7 @@ export default function CustomerProfile() {
       </div>
 
       {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
+      </main>
     </div>
   );
 }

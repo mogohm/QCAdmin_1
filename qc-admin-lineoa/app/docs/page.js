@@ -16,6 +16,7 @@ export default function Docs() {
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
           <a className="active" href="/docs">Setup Docs</a>
+          <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
       </aside>
 
