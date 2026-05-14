@@ -48,14 +48,16 @@ export default function Dashboard() {
   const [rpSort, setRpSort] = useState('date');
   const [rpOrder, setRpOrder] = useState('desc');
   const [rpExpanded, setRpExpanded] = useState(new Set());
+  const [searching, setSearching] = useState(false);
 
-  const load = (from, to) => {
+  const load = (from, to, withOverlay = false) => {
     const f = from || filterRef.current.from;
     const t = to   || filterRef.current.to;
+    if (withOverlay) setSearching(true);
     fetch(`/api/dashboard?from=${f}&to=${t}`)
       .then(r => r.json())
-      .then(data => { setD(data); setLastFetch(new Date()); setFetchOk(!data.error); })
-      .catch(() => setFetchOk(false));
+      .then(data => { setD(data); setLastFetch(new Date()); setFetchOk(!data.error); if (withOverlay) setSearching(false); })
+      .catch(() => { setFetchOk(false); if (withOverlay) setSearching(false); });
   };
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function Dashboard() {
   function applyFilter() {
     filterRef.current = { from: dateFrom, to: dateTo };
     setFilterApplied({ from: dateFrom, to: dateTo });
-    load(dateFrom, dateTo);
+    load(dateFrom, dateTo, true);
     setRpPage(1);
   }
   function setPreset(days) {
@@ -77,7 +79,7 @@ export default function Dashboard() {
     setDateFrom(f); setDateTo(t);
     filterRef.current = { from: f, to: t };
     setFilterApplied({ from: f, to: t });
-    load(f, t);
+    load(f, t, true);
     setRpPage(1);
   }
 
@@ -188,6 +190,76 @@ export default function Dashboard() {
             from { text-shadow: 0 0 16px #3b82f620; }
             to   { text-shadow: 0 0 36px #60a5fa70, 0 0 70px #3b82f630; }
           }
+        `}</style>
+      </div>
+    )}
+
+    {/* ===== SEARCH LOADING OVERLAY ===== */}
+    {searching && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        background: 'rgba(15,23,42,0.65)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {/* full-page scan line */}
+        <div style={{
+          position: 'absolute', left: 0, right: 0, height: 2, pointerEvents: 'none',
+          background: 'linear-gradient(90deg,transparent 0%,#60a5fa 50%,transparent 100%)',
+          animation: 'srch-scan 1.8s linear infinite', opacity: 0.5,
+        }} />
+
+        {/* card */}
+        <div style={{
+          background: 'rgba(10,18,38,0.97)', border: '1px solid #1e3a5f',
+          borderRadius: 20, padding: '32px 44px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+          boxShadow: '0 0 80px #1d4ed818', position: 'relative', overflow: 'hidden',
+        }}>
+          {/* corner brackets */}
+          {[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v,h]) => (
+            <div key={v+h} style={{
+              position: 'absolute', [v]: 10, [h]: 10, width: 14, height: 14,
+              borderTop:    v==='top'    ? '2px solid #3b82f6' : 'none',
+              borderBottom: v==='bottom' ? '2px solid #3b82f6' : 'none',
+              borderLeft:   h==='left'   ? '2px solid #3b82f6' : 'none',
+              borderRight:  h==='right'  ? '2px solid #3b82f6' : 'none',
+            }} />
+          ))}
+          {/* inner shimmer */}
+          <div style={{
+            position: 'absolute', top: 0, left: '-100%', right: 0, height: 1,
+            background: 'linear-gradient(90deg,transparent,#60a5fa80,transparent)',
+            animation: 'srch-shimmer 2.4s linear infinite',
+          }} />
+
+          {/* pixel inspector character */}
+          <div style={{ animation: 'px-bob 2s ease-in-out infinite' }}>
+            <PixelInspector />
+          </div>
+
+          {/* small equalizer */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 20 }}>
+            {[0,1,2,3,4,5,6].map(i => (
+              <div key={i} style={{
+                width: 4, minHeight: 3, background: '#3b82f6', borderRadius: 2,
+                boxShadow: '0 0 5px #3b82f660',
+                animation: 'srch-eq 0.9s ease-in-out infinite',
+                animationDelay: `${i * 0.11}s`,
+              }} />
+            ))}
+          </div>
+
+          <div style={{ color: '#60a5fa', fontSize: 12, letterSpacing: 2, fontFamily: 'monospace' }}>
+            กำลังค้นหาข้อมูล...
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes srch-scan    { from{top:-2px} to{top:calc(100% + 2px)} }
+          @keyframes srch-shimmer { from{left:-100%} to{left:200%} }
+          @keyframes srch-eq      { 0%,100%{height:3px;opacity:.4} 50%{height:20px;opacity:1} }
+          @keyframes px-bob       { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
         `}</style>
       </div>
     )}
@@ -565,4 +637,38 @@ function K({ title, v }) {
 }
 function tryParse(v) {
   try { return Array.isArray(v) ? v : JSON.parse(v) || []; } catch { return []; }
+}
+
+// Pixel-art inspector character — 14 cols × 16 rows, 5 px per cell
+function PixelInspector() {
+  const H='#1e3a5f',K='#fde68a',E='#0f172a',B='#1d4ed8';
+  const P='#1e293b',W='#94a3b8',G='#bfdbfe',F='#3b82f6',T='#f8fafc',_=null;
+  const PX = 5;
+  const grid = [
+    [_,_,H,H,H,H,H,H,_,_,_,_,_,_],
+    [_,H,K,K,K,K,K,K,H,_,_,_,_,_],
+    [_,H,K,E,K,K,E,K,H,_,_,_,_,_],
+    [_,H,K,K,K,K,K,K,H,_,_,_,_,_],
+    [_,H,K,_,E,E,_,K,H,_,_,_,_,_],
+    [_,H,K,K,K,K,K,K,H,_,_,_,_,_],
+    [_,_,H,H,H,H,H,H,_,_,_,_,_,_],
+    [_,B,B,B,B,B,B,B,B,_,_,_,_,_],
+    [B,B,B,T,B,B,T,B,B,B,_,F,F,_],
+    [B,B,B,T,B,B,T,B,B,B,F,G,G,F],
+    [B,B,B,B,B,B,B,B,B,B,F,G,G,F],
+    [_,_,P,P,_,_,P,P,_,_,_,F,F,_],
+    [_,_,P,P,_,_,P,P,_,_,_,_,F,_],
+    [_,_,P,P,_,_,P,P,_,_,_,_,_,F],
+    [_,_,W,W,_,_,W,W,_,_,_,_,_,_],
+    [_,W,W,_,_,_,_,W,W,_,_,_,_,_],
+  ];
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:`repeat(14,${PX}px)`, gridAutoRows:`${PX}px` }}>
+      {grid.map((row, ri) =>
+        Array.from({ length: 14 }, (_, ci) => (
+          <div key={`${ri}-${ci}`} style={{ width: PX, height: PX, background: row[ci] || 'transparent' }} />
+        ))
+      )}
+    </div>
+  );
 }

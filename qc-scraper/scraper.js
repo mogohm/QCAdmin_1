@@ -443,14 +443,21 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
       const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
       const rawTime = timeEl?.getAttribute('datetime') || timeEl?.innerText?.trim() || '';
       if (!rawTime) return null;
-      const parts = rawTime.match(/(\d{1,2}):(\d{2})/);
+
+      // ลอง parse เป็น full datetime ก่อน (ISO / RFC2822) — ต้องยาวกว่า HH:MM
+      if (rawTime.length > 5) {
+        const fullDate = new Date(rawTime);
+        if (!isNaN(fullDate)) return fullDate.toISOString();
+      }
+
+      // fallback: HH:MM + currentDate (timezone ท้องถิ่น)
+      const parts = rawTime.match(/^(\d{1,2}):(\d{2})$/);
       if (parts && currentDate) {
         const d = new Date(currentDate);
         d.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
         return isNaN(d) ? null : d.toISOString();
       }
-      const d = new Date(rawTime);
-      return isNaN(d) ? null : d.toISOString();
+      return null;
     }
 
     const allNodes = Array.from(document.querySelectorAll('.chatsys-date, .chat'));
