@@ -595,6 +595,11 @@ async function runJob(job) {
     let notes_saved = 0;
     let wasCancelled = false;
 
+    // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
+    // → ปิด filter lastMsgIsAdmin และ idleEnough (ดูจาก state ปัจจุบัน ไม่ใช่ประวัติ)
+    const isHistorical = Date.now() - dateTo.getTime() > MIN_IDLE_MIN * 60 * 1000;
+    if (isHistorical) console.log(`  📅 Historical mode — ข้าม filter lastMsgIsAdmin & idleEnough`);
+
     for (let i = 0; i < total; i++) {
       try {
         // ---- กรอง 1: ตรวจ timestamp ของ chat item ก่อน click ----
@@ -602,13 +607,14 @@ async function runJob(job) {
         const chatDay = dayLabelToDate(label);
 
         if (chatDay) {
-          // chat เก่ากว่า dateFrom → หยุด (list เรียงใหม่ไป เก่า)
+          // chat เก่ากว่า dateFrom → หยุด (list เรียงจากใหม่ไปเก่า)
           if (chatDay.getTime() < dateFrom.getTime()) {
-            console.log(`\n📅 chat #${i + 1} วันที่ "${label}" < dateFrom — หยุด loop`);
+            console.log(`\n📅 chat #${i + 1} "${label}" เก่ากว่า dateFrom — หยุด loop`);
             break;
           }
-          // chat ใหม่กว่า dateTo → ข้าม
-          if (chatDay.getTime() > dateTo.getTime()) {
+          // chat ใหม่กว่า dateTo และไม่ใช่ historical mode → ข้าม
+          // (real-time mode: scrape เฉพาะ chat ที่ active ในช่วงเวลา)
+          if (!isHistorical && chatDay.getTime() > dateTo.getTime()) {
             process.stdout.write('⏭');
             continue;
           }
@@ -628,7 +634,7 @@ async function runJob(job) {
 
         const url = page.url();
 
-        // ถ้า URL ไม่เปลี่ยน → chat item นี้ไม่มี user page (group / system / นอก viewport)
+        // ถ้า URL ไม่เปลี่ยน → chat item นี้ไม่มี user page (group / system)
         if (url === urlBefore) {
           process.stdout.write('✗');
           continue;
@@ -638,47 +644,51 @@ async function runJob(job) {
         if (!m) { console.log(`  ข้ามแชท ${i + 1} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
 
-        // ---- กรอง 2: ต้องมี admin ตอบล่าสุดแล้ว ----
-        const lastMsgIsAdmin = await page.evaluate(() => {
-          const msgs = Array.from(document.querySelectorAll('.chat')).filter(
-            el => !el.className.includes('chatsys')
-          );
-          if (!msgs.length) return false;
-          return msgs[msgs.length - 1].classList.contains('chat-reverse');
-        });
-        if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
+        // ---- กรอง 2: lastMsgIsAdmin (เฉพาะ real-time mode) ----
+        if (!isHistorical) {
+          const lastMsgIsAdmin = await page.evaluate(() => {
+            const msgs = Array.from(document.querySelectorAll('.chat')).filter(
+              el => !el.className.includes('chatsys')
+            );
+            if (!msgs.length) return false;
+            return msgs[msgs.length - 1].classList.contains('chat-reverse');
+          });
+          if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
+        }
 
-        // ---- กรอง 3: ต้องผ่าน MIN_IDLE_MIN ----
-        const idleEnough = await page.evaluate((minIdleMs) => {
-          const adminMsgs = Array.from(document.querySelectorAll('.chat.chat-reverse'))
-            .filter(el => !el.className.includes('chatsys'));
-          if (!adminMsgs.length) return true;
+        // ---- กรอง 3: idleEnough (เฉพาะ real-time mode) ----
+        if (!isHistorical) {
+          const idleEnough = await page.evaluate((minIdleMs) => {
+            const adminMsgs = Array.from(document.querySelectorAll('.chat.chat-reverse'))
+              .filter(el => !el.className.includes('chatsys'));
+            if (!adminMsgs.length) return true;
 
-          const last = adminMsgs[adminMsgs.length - 1];
-          const timeWithAttr = last.querySelector('time[datetime]');
-          if (timeWithAttr) {
-            const ts = new Date(timeWithAttr.getAttribute('datetime'));
-            if (!isNaN(ts)) return (Date.now() - ts.getTime()) >= minIdleMs;
-          }
-
-          const timePattern = /^(\d{1,2}):(\d{2})$/;
-          const walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT, null);
-          let node;
-          while ((node = walker.nextNode())) {
-            const txt = node.textContent.trim();
-            const mp  = txt.match(timePattern);
-            if (mp) {
-              const d = new Date();
-              d.setHours(parseInt(mp[1]), parseInt(mp[2]), 0, 0);
-              let msgTs = d.getTime();
-              if (msgTs > Date.now()) msgTs -= 86400000;
-              return (Date.now() - msgTs) >= minIdleMs;
+            const last = adminMsgs[adminMsgs.length - 1];
+            const timeWithAttr = last.querySelector('time[datetime]');
+            if (timeWithAttr) {
+              const ts = new Date(timeWithAttr.getAttribute('datetime'));
+              if (!isNaN(ts)) return (Date.now() - ts.getTime()) >= minIdleMs;
             }
-          }
-          return false;
-        }, MIN_IDLE_MIN * 60 * 1000).catch(() => false);
 
-        if (!idleEnough) { process.stdout.write('⏳'); continue; }
+            const timePattern = /^(\d{1,2}):(\d{2})$/;
+            const walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT, null);
+            let node;
+            while ((node = walker.nextNode())) {
+              const txt = node.textContent.trim();
+              const mp  = txt.match(timePattern);
+              if (mp) {
+                const d = new Date();
+                d.setHours(parseInt(mp[1]), parseInt(mp[2]), 0, 0);
+                let msgTs = d.getTime();
+                if (msgTs > Date.now()) msgTs -= 86400000;
+                return (Date.now() - msgTs) >= minIdleMs;
+              }
+            }
+            return false;
+          }, MIN_IDLE_MIN * 60 * 1000).catch(() => false);
+
+          if (!idleEnough) { process.stdout.write('⏳'); continue; }
+        }
 
         // ---- ดึงชื่อลูกค้าจาก title / header (Box 2) ----
         const panelName   = await extractCustomerNameFromPanel(page);
