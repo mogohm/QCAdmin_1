@@ -24,7 +24,8 @@
       "PowerShell(Set-Location \"h:\\\\QCAdminPJ\\\\qc-scraper\"; & \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" scraper.js --yesterday 2>&1 | Where-Object { $_ -match '^\\\\s+\\\\[' -or $_ -match 'เสร็จ' })",
       "Bash(dir \"h:\\\\QCAdminPJ\\\\qc-admin-lineoa\\\\app\" /s /b)",
       "Bash(findstr /E \"\\\\.js$ \\\\.jsx$ \\\\.tsx$\")",
-      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill\\(\\) }; Write-Host \"killed all node processes\")"
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill\\(\\) }; Write-Host \"killed all node processes\")",
+      "Bash(curl -s -X POST \"https://qc-admin-1.vercel.app/api/scraper/init\" -H \"x-api-key: PKQC2026SUPERADMIN\" -H \"Content-Type: application/json\")"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
