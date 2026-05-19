@@ -208,21 +208,25 @@ async function loadChatListWithDates(page, dateFrom) {
   return { total, itemLabels };
 }
 
-// ---- ดึงชื่อลูกค้าจาก right panel (Box 2) ----
+// ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
+// LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager" เสมอ
 async function extractCustomerNameFromPanel(page) {
   return page.evaluate(() => {
-    // 1. Right panel: header ของ sidebar ขวา
-    //    LINE OA มักใช้ class ที่มี "profile", "contact", "customer"
-    const rightSelectors = [
-      '[class*="chat-profile"] [class*="name"]:not([class*="time"])',
-      '[class*="contact-info"] [class*="name"]',
-      '[class*="customer-profile"] h4',
-      '[class*="customer-profile"] strong',
-      '[class*="profile-name"]',
-      '[class*="contact-name"]',
-      '[class*="user-name"]',
+    // 1. document.title — แหล่งที่เชื่อถือได้ที่สุด LINE OA update title ทุกครั้งที่เปิด chat
+    const titleRaw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
+    if (titleRaw.length > 0 && titleRaw.length < 80 &&
+        !/^(LINE\s*(Chat|Official|OA)|หน้าหลัก|Home)$/i.test(titleRaw)) {
+      return titleRaw;
+    }
+
+    // 2. chat header (ชื่อที่แสดงเหนือกล่องข้อความ)
+    const headerSelectors = [
+      '[class*="chat-header"] [class*="name"]',
+      '[class*="chat-top"] [class*="name"]',
+      '[class*="room-header"] [class*="name"]',
+      '[class*="chat-title"]',
     ];
-    for (const sel of rightSelectors) {
+    for (const sel of headerSelectors) {
       try {
         const el = document.querySelector(sel);
         if (el) {
@@ -230,28 +234,6 @@ async function extractCustomerNameFromPanel(page) {
           if (t && t.length > 0 && t.length < 100 && !/^\d{1,2}:\d{2}$/.test(t)) return t;
         }
       } catch {}
-    }
-
-    // 2. หา element ที่อยู่ฝั่งขวา (>60% ของ screen width) — เป็น h4 หรือ strong
-    const candidates = Array.from(document.querySelectorAll('h4, [class*="title"], strong, b'));
-    const viewW = window.innerWidth;
-    for (const el of candidates) {
-      const rect = el.getBoundingClientRect();
-      if (rect.left > viewW * 0.6 && rect.width > 10) {
-        const t = el.innerText?.trim();
-        if (t && t.length > 0 && t.length < 100 &&
-            !/^\d{1,2}:\d{2}$/.test(t) &&
-            !/^(Notes|หมายเหตุ|Tags|Assign|Follow|Resolve|Basic)/i.test(t)) {
-          return t;
-        }
-      }
-    }
-
-    // 3. document.title fallback
-    const titleRaw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
-    if (titleRaw.length > 0 && titleRaw.length < 80 &&
-        !/^(LINE\s*(Chat|Official|OA)|หน้าหลัก|Home)$/i.test(titleRaw)) {
-      return titleRaw;
     }
 
     return null;
@@ -289,95 +271,65 @@ async function extractNameFromListItem(page, idx) {
 }
 
 // ---- ดึง Notes จาก right panel (Box 4) ----
+// กลยุทธ์: หาทุก element ในฝั่งขวาของหน้าจอที่มีรูปแบบวันที่ "M/D/YYYY, HH:MM AdminName"
+// เพราะ LINE OA ทุก note จะจบด้วย timestamp + ชื่อ admin เสมอ
 async function extractNotes(page) {
   return page.evaluate(() => {
     const results = [];
+    const DATE_RE = /^(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+)$/;
+    const UI_SKIP = /^(Add tags?|Assign(ed)?|Follow up|Resolve|Search|Notes\s+\d|Basic|\+|Edit|Delete|Save|Cancel|×|✏️|🗑️)$/i;
 
-    // หา container ของ notes — LINE OA ใช้ section ที่มีหัว "Notes N/1000"
-    // ลอง selector หลายแบบ
-    const containers = [
-      ...document.querySelectorAll('[class*="memo"], [class*="note-list"], [class*="notes"]'),
-    ].filter(el => {
-      // ต้องไม่ใช่ input หรือ button
-      return !['INPUT', 'BUTTON', 'TEXTAREA'].includes(el.tagName);
-    });
+    // ค้นหา element ที่อยู่ในฝั่งขวา (x > 55% ของหน้าจอ) และมี date pattern
+    const allEls = Array.from(document.querySelectorAll('*'));
+    const noteEls = [];
 
-    // ถ้าไม่พบ ลองหาจาก section ที่มีข้อความ "Notes" ใกล้ๆ
-    if (!containers.length) {
-      const allEls = Array.from(document.querySelectorAll('*'));
-      for (const el of allEls) {
-        if (['INPUT', 'BUTTON', 'TEXTAREA', 'SCRIPT', 'STYLE'].includes(el.tagName)) continue;
-        const text = el.innerText?.trim() || '';
-        if (/^Notes\s+\d+\/\d+/i.test(text) || /^หมายเหตุ/i.test(text)) {
-          // หา sibling หรือ parent ที่มี note items
-          const parent = el.parentElement || el;
-          containers.push(parent);
+    for (const el of allEls) {
+      if (['INPUT','TEXTAREA','BUTTON','SCRIPT','STYLE','SVG','IMG','CANVAS'].includes(el.tagName)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.left < window.innerWidth * 0.55) continue; // ต้องอยู่ฝั่งขวา
+      if (rect.width < 80 || rect.height < 30)  continue; // ต้องมีขนาดพอสมควร
+
+      const text = el.innerText?.trim() || '';
+      if (text.length < 10) continue;
+
+      // ต้องมี date pattern อยู่ในข้อความ
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const hasDate = lines.some(l => DATE_RE.test(l));
+      if (!hasDate) continue;
+
+      // ต้องไม่ใช่ container ที่ใหญ่เกินไป (มี note หลายอัน → ให้ลูกหลานจัดการ)
+      if (lines.length > 40) continue;
+
+      noteEls.push(el);
+    }
+
+    // เอาเฉพาะ element ที่เล็กที่สุด (ไม่มีลูกใน noteEls) = ตัว note จริงๆ
+    const leafNotes = noteEls.filter(el =>
+      !noteEls.some(other => other !== el && other.contains(el))
+    );
+
+    for (const el of leafNotes) {
+      const text  = el.innerText?.trim() || '';
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // หา line สุดท้ายที่เป็น date line
+      let notedAt = null, notedBy = null, dateIdx = -1;
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const m = lines[i].match(DATE_RE);
+        if (m) {
+          notedAt  = `${m[1]}, ${m[2]}`;
+          notedBy  = m[3].trim() || null;
+          dateIdx  = i;
           break;
         }
       }
-    }
 
-    for (const container of containers) {
-      // ลอง query note items
-      const noteItems = container.querySelectorAll(
-        '[class*="memo-item"], [class*="note-item"], [class*="memo-content"]'
-      );
+      // content = ทุก line ก่อน date line โดยกรอง UI text ทิ้ง
+      const contentLines = (dateIdx >= 0 ? lines.slice(0, dateIdx) : lines)
+        .filter(l => !UI_SKIP.test(l));
 
-      if (noteItems.length > 0) {
-        for (const item of noteItems) {
-          const rawText = item.innerText?.trim() || '';
-          if (!rawText) continue;
-
-          // แยก timestamp + admin name ออกจาก body
-          // pattern: ข้อความ\nDATE TIME ADMIN_NAME
-          const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-
-          let noteText = rawText;
-          let notedAt  = null;
-          let notedBy  = null;
-
-          // หา line สุดท้ายที่มี pattern วันที่ (M/D/YYYY, HH:MM)
-          const lastLine = lines[lines.length - 1] || '';
-          const dateMatch = lastLine.match(
-            /(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.*)/i
-          );
-          if (dateMatch) {
-            notedAt  = `${dateMatch[1]} ${dateMatch[2]}`;
-            notedBy  = dateMatch[3].trim() || null;
-            noteText = lines.slice(0, -1).join('\n').trim();
-          } else {
-            // ลองหา timestamp ใน time element
-            const timeEl = item.querySelector('time');
-            if (timeEl) {
-              notedAt  = timeEl.getAttribute('datetime') || timeEl.innerText?.trim() || null;
-              notedBy  = item.querySelector('[class*="author"], [class*="name"]')?.innerText?.trim() || null;
-            }
-          }
-
-          if (noteText) results.push({ note_text: noteText, noted_at: notedAt, noted_by: notedBy });
-        }
-      } else {
-        // ทั้ง container เป็น note เดียว
-        const rawText = container.innerText?.trim() || '';
-        if (!rawText || /^Notes\s+\d+\/\d+/i.test(rawText)) continue;
-
-        const lines   = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-        let noteText  = rawText;
-        let notedAt   = null;
-        let notedBy   = null;
-
-        const lastLine = lines[lines.length - 1] || '';
-        const dateMatch = lastLine.match(
-          /(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.*)/i
-        );
-        if (dateMatch) {
-          notedAt  = `${dateMatch[1]} ${dateMatch[2]}`;
-          notedBy  = dateMatch[3].trim() || null;
-          noteText = lines.slice(0, -1).join('\n').trim();
-        }
-
-        if (noteText) results.push({ note_text: noteText, noted_at: notedAt, noted_by: notedBy });
-      }
+      const noteText = contentLines.join('\n').trim();
+      if (noteText) results.push({ note_text: noteText, noted_at: notedAt, noted_by: notedBy });
     }
 
     return results;
@@ -665,15 +617,24 @@ async function runJob(job) {
         // ดึงชื่อ pre-click สำหรับ fallback
         const listName = await extractNameFromListItem(page, i);
 
-        // Click chat
+        // Click chat — บันทึก URL ก่อน click เพื่อตรวจว่าเปลี่ยนจริงไหม
+        const urlBefore = page.url();
         const item = page.locator('.list-group-item-chat').nth(i);
+        await item.scrollIntoViewIfNeeded().catch(() => {});
         await item.click();
 
         try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 8000 }); } catch {}
         await page.waitForTimeout(1500);
 
         const url = page.url();
-        const m   = url.match(/\/(U[a-f0-9]{32})/i);
+
+        // ถ้า URL ไม่เปลี่ยน → chat item นี้ไม่มี user page (group / system / นอก viewport)
+        if (url === urlBefore) {
+          process.stdout.write('✗');
+          continue;
+        }
+
+        const m = url.match(/\/(U[a-f0-9]{32})/i);
         if (!m) { console.log(`  ข้ามแชท ${i + 1} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
 
@@ -719,11 +680,12 @@ async function runJob(job) {
 
         if (!idleEnough) { process.stdout.write('⏳'); continue; }
 
-        // ---- ดึงชื่อลูกค้าจาก right panel (Box 2) ----
-        const panelName  = await extractCustomerNameFromPanel(page);
-        const displayName = panelName || listName || null;
+        // ---- ดึงชื่อลูกค้าจาก title / header (Box 2) ----
+        const panelName   = await extractCustomerNameFromPanel(page);
+        // ลำดับ: title → list item → LINE user ID
+        const displayName = panelName || listName || lineUserId.slice(0, 16);
 
-        const upd = await updateJob(job.id, { current_chat: displayName || lineUserId, logged_count: logged });
+        const upd = await updateJob(job.id, { current_chat: displayName, logged_count: logged });
         if (upd?.cancelled) {
           console.log('\n🚫 Job ถูกยกเลิกจากเว็บ — หยุด scrape');
           wasCancelled = true; break;
