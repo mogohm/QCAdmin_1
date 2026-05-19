@@ -613,8 +613,10 @@ async function runJob(job) {
   console.log(`\n📋 รับงาน: ${job.date_from} → ${job.date_to}`);
   await updateJob(job.id, { status: 'running' });
 
-  const dateFrom = new Date(job.date_from + 'T00:00:00');
-  const dateTo   = new Date(job.date_to   + 'T23:59:59');
+  // date_from อาจมาเป็น "2026-05-17" หรือ "2026-05-17T00:00:00.000Z" — ตัดให้เหลือแค่ YYYY-MM-DD
+  const datePart = s => String(s).slice(0, 10);
+  const dateFrom = new Date(datePart(job.date_from) + 'T00:00:00');
+  const dateTo   = new Date(datePart(job.date_to)   + 'T23:59:59');
 
   const browser = await chromium.launch({ headless: HEADLESS });
   const context = await browser.newContext({ storageState: AUTH_FILE });
