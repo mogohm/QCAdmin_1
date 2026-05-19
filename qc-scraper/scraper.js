@@ -209,33 +209,48 @@ async function loadChatListWithDates(page, dateFrom) {
 }
 
 // ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
-// LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager" เสมอ
+// LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager"
+// ใช้ waitForFunction เพื่อรอให้ title update หลัง right panel โหลดเสร็จ
 async function extractCustomerNameFromPanel(page) {
-  return page.evaluate(() => {
-    // 1. document.title — แหล่งที่เชื่อถือได้ที่สุด LINE OA update title ทุกครั้งที่เปิด chat
-    const titleRaw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
-    if (titleRaw.length > 0 && titleRaw.length < 80 &&
-        !/^(LINE\s*(Chat|Official|OA)|หน้าหลัก|Home)$/i.test(titleRaw)) {
-      return titleRaw;
-    }
+  // poll title ทุก 250ms นานสูงสุด 2s — เพื่อรอ LINE OA อัปเดต title
+  const fromTitle = await page.waitForFunction(
+    () => {
+      const raw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
+      if (!raw || raw.length >= 80) return false;
+      // กรอง generic LINE OA titles ออก
+      if (/^LINE\s*(Official|Chat|OA|Biz)/i.test(raw)) return false;
+      if (/Official\s*Account/i.test(raw)) return false;
+      if (/^(หน้าหลัก|Home|Manager|Account\s*Manager)$/i.test(raw)) return false;
+      // ต้องมีตัวอักษรจริง (Thai/EN/digit) ไม่ใช่แค่ emoji
+      if (!/[฀-๿a-zA-Z0-9]/.test(raw)) return false;
+      return raw;
+    },
+    null,
+    { timeout: 2000, polling: 250 }
+  ).then(h => h.jsonValue()).catch(() => null);
 
-    // 2. chat header (ชื่อที่แสดงเหนือกล่องข้อความ)
-    const headerSelectors = [
+  if (fromTitle && typeof fromTitle === 'string') return fromTitle;
+
+  // Fallback: DOM selectors ใน chat header / right panel
+  return page.evaluate(() => {
+    const selectors = [
       '[class*="chat-header"] [class*="name"]',
       '[class*="chat-top"] [class*="name"]',
       '[class*="room-header"] [class*="name"]',
+      '[class*="room-title"]',
       '[class*="chat-title"]',
     ];
-    for (const sel of headerSelectors) {
+    for (const sel of selectors) {
       try {
         const el = document.querySelector(sel);
         if (el) {
           const t = el.innerText?.trim();
-          if (t && t.length > 0 && t.length < 100 && !/^\d{1,2}:\d{2}$/.test(t)) return t;
+          if (t && t.length > 0 && t.length < 80 &&
+              !/^\d{1,2}:\d{2}$/.test(t) &&
+              !/^LINE\s*(Official|Chat|OA)/i.test(t)) return t;
         }
       } catch {}
     }
-
     return null;
   }).catch(() => null);
 }
@@ -261,8 +276,10 @@ async function extractNameFromListItem(page, idx) {
     const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (!lines || !lines.length) return null;
     for (const line of lines) {
-      if (/^\d{1,2}:\d{2}/.test(line))        continue;
-      if (line.length > 40)                   continue;
+      if (/^\d{1,2}:\d{2}/.test(line))        continue;  // timestamp
+      if (line.length > 40)                   continue;  // ยาวเกิน
+      // ต้องมี Thai/EN/digit — กรอง emoji-only เช่น "⚠️", "🐢", "📌"
+      if (!/[฀-๿a-zA-Z0-9]/.test(line)) continue;
       if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
       return line;
     }
