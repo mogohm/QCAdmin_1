@@ -714,6 +714,17 @@ async function runJob(job) {
         // ---- ดึง messages (Box 3) ----
         const msgs = await extractAdminMessages(page, dateFrom, dateTo);
 
+        // ถ้า LINE OA ไม่มี <time datetime> element scraper จะไม่ได้ timestamp
+        // ผล: created_at ใน DB จะเป็น now() (วันที่ scrape) แทนวันที่จริง → report ไม่เจอ
+        // Fix: ใช้ dateFrom+noon เป็น fallback timestamp เพื่อให้ created_at อยู่ในช่วงที่ถูกต้อง
+        for (const msg of msgs) {
+          if (!msg.timestamp) {
+            const d = new Date(dateFrom);
+            d.setHours(12, 0, 0, 0);
+            msg.timestamp = d.toISOString();
+          }
+        }
+
         // ---- ดึง Notes (Box 4) ----
         const notesList = await extractNotes(page);
 
