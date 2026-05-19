@@ -5,7 +5,7 @@ export async function GET(req, { params }) {
     const { line_user_id } = await params;
     if (!line_user_id) return Response.json({ error: 'line_user_id required' }, { status: 400 });
 
-    const [customer, events, conversations, stats] = await Promise.all([
+    const [customer, events, conversations, stats, notes] = await Promise.all([
       query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
 
       query`
@@ -36,6 +36,15 @@ export async function GET(req, { params }) {
       `,
 
       query`
+        SELECT cn.id, cn.note_text, cn.noted_at, cn.noted_by, cn.scraped_at,
+               a.member_name AS admin_name
+        FROM customer_notes cn
+        LEFT JOIN qc_admins a ON a.id = cn.admin_id
+        WHERE cn.line_user_id = ${line_user_id}
+        ORDER BY cn.noted_at DESC NULLS LAST, cn.scraped_at DESC
+      `,
+
+      query`
         SELECT
           COUNT(qs.id)::int                                                      AS total_scores,
           COALESCE(AVG(qs.final_score), 0)::int                                 AS avg_score,
@@ -55,6 +64,7 @@ export async function GET(req, { params }) {
       customer: customer[0] || null,
       events,
       conversations,
+      notes,
       stats: stats[0] || null,
     });
   } catch (err) {

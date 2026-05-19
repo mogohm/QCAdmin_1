@@ -64,6 +64,7 @@ export default function CustomerProfile() {
           <a href="/admin">Admin Console</a>
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
+          <a href="/scrape-report">📊 Scrape Report</a>
           <a href="/docs">Setup Docs</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>

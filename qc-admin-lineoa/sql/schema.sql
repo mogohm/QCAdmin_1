@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS scraper_jobs (
   finished_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS customer_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  line_user_id TEXT REFERENCES line_customers(line_user_id),
+  note_text TEXT NOT NULL,
+  noted_at TIMESTAMPTZ,
+  noted_by TEXT,
+  admin_id UUID REFERENCES qc_admins(id),
+  scraped_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(line_user_id, note_text, noted_at)
+);
+
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
