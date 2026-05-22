@@ -87,6 +87,20 @@ function dayLabelToDate(label) {
     }
   }
 
+  // "May 20" / "Apr 15" / "May 20, 2026" (อาจแสดงใน LINE OA บางภาษา)
+  const monDayRE = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i;
+  const mdMatch = s.match(monDayRE);
+  if (mdMatch) {
+    const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    const mo = MONTHS[mdMatch[1].toLowerCase().replace('.','')];
+    if (mo !== undefined) {
+      const yr = mdMatch[3] ? parseInt(mdMatch[3]) : today.getFullYear();
+      const d = new Date(yr, mo, parseInt(mdMatch[2]));
+      if (!mdMatch[3] && d.getTime() > today.getTime()) d.setFullYear(yr - 1);
+      return d;
+    }
+  }
+
   // M/D/YYYY หรือ D/M/YYYY หรือ M/D
   const numMatch = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
   if (numMatch) {
@@ -95,10 +109,9 @@ function dayLabelToDate(label) {
     const yr = numMatch[3]
       ? (parseInt(numMatch[3]) > 100 ? parseInt(numMatch[3]) : 2000 + parseInt(numMatch[3]))
       : today.getFullYear();
-    // LINE OA (screenshot) ใช้ M/D/YYYY
-    if (b > 12) return new Date(yr, a - 1, b); // b คือ day > 12 แน่นอน
-    if (a > 12) return new Date(yr, b - 1, a); // a คือ day > 12
-    return new Date(yr, a - 1, b);             // assume M/D
+    if (b > 12) return new Date(yr, a - 1, b);
+    if (a > 12) return new Date(yr, b - 1, a);
+    return new Date(yr, a - 1, b);
   }
 
   // Fallback: standard parse
@@ -619,25 +632,43 @@ async function runJob(job) {
         try {
           const item = page.locator('.list-group-item-chat').nth(i);
 
-          // ดึง label (date badge ใน chat list) + listName ด้วย innerText ทั้ง item
-          const { label, listName } = await item.evaluate(el => {
-            const DATE_PATS = [
-              /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i,           // HH:MM หรือ HH:MM AM/PM
+          // ดึง label (date badge ใน chat list) + listName + diagnostic
+          const { label, listName, _dbg } = await item.evaluate((el, isFirst) => {
+            const SINGLE_PATS = [
+              /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i,
               /^(yesterday|today)$/i,
               /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
               /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/,
               /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
             ];
+            const MONTH_DAY_PAT = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:,?\s*\d{4})?$/i;
 
-            // ดึง tokens จาก innerText ทั้ง item แล้วค้นหาจากท้าย
-            // (date badge อยู่ท้าย DOM ของ list item เสมอ)
-            const tokens = (el.innerText || '').split(/\s+/).map(t => t.trim()).filter(Boolean);
+            const raw = el.innerText || '';
+            const tokens = raw.split(/\s+/).map(t => t.trim()).filter(Boolean);
             let label = '';
+
+            // Pass 1: single token จากท้าย
             for (let i = tokens.length - 1; i >= 0; i--) {
-              if (DATE_PATS.some(p => p.test(tokens[i]))) { label = tokens[i]; break; }
+              if (SINGLE_PATS.some(p => p.test(tokens[i]))) { label = tokens[i]; break; }
+            }
+            // Pass 2: สอง token "May 20" หรือ "May 20, 2026" จากท้าย
+            if (!label && tokens.length >= 2) {
+              for (let i = tokens.length - 2; i >= 0; i--) {
+                const pair2 = tokens[i] + ' ' + tokens[i + 1];
+                const pair3 = i + 2 < tokens.length ? tokens[i] + ' ' + tokens[i+1] + ' ' + tokens[i+2] : '';
+                if (MONTH_DAY_PAT.test(pair3)) { label = pair3; break; }
+                if (MONTH_DAY_PAT.test(pair2)) { label = pair2; break; }
+              }
+            }
+            // Pass 3: ลอง attribute datetime / aria-label
+            if (!label) {
+              for (const child of el.querySelectorAll('[datetime],[aria-label],[title]')) {
+                const v = (child.getAttribute('datetime') || child.getAttribute('aria-label') || child.getAttribute('title') || '').trim();
+                if (v && (SINGLE_PATS.some(p => p.test(v)) || MONTH_DAY_PAT.test(v))) { label = v; break; }
+              }
             }
 
-            // ชื่อจาก img[alt] (avatar ของลูกค้า)
+            // ชื่อจาก img[alt]
             let listName = null;
             for (const img of el.querySelectorAll('img[alt]')) {
               const alt = img.alt?.trim();
@@ -648,12 +679,13 @@ async function runJob(job) {
               }
             }
 
-            return { label, listName };
-          }).catch(() => ({ label: null, listName: null }));
+            // Diagnostic สำหรับ item แรก
+            const _dbg = isFirst ? raw.slice(0, 120).replace(/\n/g, '↵') : null;
+            return { label, listName, _dbg };
+          }, i === 0 && totalSeen === 0).catch(() => ({ label: null, listName: null, _dbg: null }));
 
+          if (_dbg !== null) console.log(`\n=== ITEM#0 innerText: ${JSON.stringify(_dbg)} ===`);
           if (label === null) { process.stdout.write('✗'); continue; }
-          // label ว่าง = อ่าน DOM ไม่ออก → ถือว่าเป็น "Today" ใน historical mode → ข้าม
-          if (!label && isHistorical) { process.stdout.write('⏭'); continue; }
 
           const chatDay = dayLabelToDate(label);
           // หยุดเมื่อ item เก่ากว่า dateFrom (list เรียงใหม่→เก่า)
