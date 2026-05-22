@@ -619,36 +619,25 @@ async function runJob(job) {
         try {
           const item = page.locator('.list-group-item-chat').nth(i);
 
-          // ดึง label (เวลา/วันที่ใน chat list) และ listName (ชื่อลูกค้าจาก list item)
+          // ดึง label (date badge ใน chat list) + listName ด้วย innerText ทั้ง item
           const { label, listName } = await item.evaluate(el => {
-            // --- Label ---
+            const DATE_PATS = [
+              /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i,           // HH:MM หรือ HH:MM AM/PM
+              /^(yesterday|today)$/i,
+              /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
+              /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/,
+              /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
+            ];
+
+            // ดึง tokens จาก innerText ทั้ง item แล้วค้นหาจากท้าย
+            // (date badge อยู่ท้าย DOM ของ list item เสมอ)
+            const tokens = (el.innerText || '').split(/\s+/).map(t => t.trim()).filter(Boolean);
             let label = '';
-            const sels = ['[class*="time"]', 'time', '[class*="date"]',
-                          '[class*="Time"]', '[class*="Date"]',
-                          '[class*="timestamp"]', '[class*="stamp"]', '[class*="ago"]'];
-            for (const sel of sels) {
-              const t = el.querySelector(sel);
-              const txt = t?.innerText?.trim() || t?.getAttribute('datetime');
-              if (txt) { label = txt; break; }
-            }
-            // Fallback: ค้นหา text node ที่ match รูปแบบวัน/เวลา
-            if (!label) {
-              const DATE_PATS = [
-                /^\d{1,2}:\d{2}$/,
-                /^(yesterday|today)$/i,
-                /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i,
-                /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/,
-                /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
-              ];
-              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
-              let node;
-              while ((node = walker.nextNode())) {
-                const t = node.textContent.trim();
-                if (t && DATE_PATS.some(p => p.test(t))) { label = t; break; }
-              }
+            for (let i = tokens.length - 1; i >= 0; i--) {
+              if (DATE_PATS.some(p => p.test(tokens[i]))) { label = tokens[i]; break; }
             }
 
-            // --- Name (from list item avatar alt) ---
+            // ชื่อจาก img[alt] (avatar ของลูกค้า)
             let listName = null;
             for (const img of el.querySelectorAll('img[alt]')) {
               const alt = img.alt?.trim();
