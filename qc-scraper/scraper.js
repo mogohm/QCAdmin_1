@@ -627,8 +627,8 @@ async function runJob(job) {
             console.log(`\n📅 "${label}" เก่ากว่า dateFrom — หยุด`);
             outerDone = true; break;
           }
-          // ข้าม item ใหม่กว่า dateTo ใน real-time mode
-          if (!isHistorical && chatDay && chatDay.getTime() > dateTo.getTime()) {
+          // ข้าม item ใหม่กว่า dateTo (ทั้ง real-time และ historical mode)
+          if (chatDay && chatDay.getTime() > dateTo.getTime()) {
             process.stdout.write('⏭'); continue;
           }
 
