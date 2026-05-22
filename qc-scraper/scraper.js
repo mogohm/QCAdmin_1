@@ -270,19 +270,16 @@ async function extractCustomerNameFromPanel(page) {
 }
 
 // ---- ดึงชื่อลูกค้าจาก chat list item (fallback) ----
-async function extractNameFromListItem(page, idx) {
-  return page.evaluate((i) => {
-    const items = document.querySelectorAll('.list-group-item-chat');
-    const item  = items[i];
-    if (!item) return null;
-
-    const imgs = Array.from(item.querySelectorAll('img'));
+// รับ Playwright locator แทน index เพื่อหลีกเลี่ยง virtual-scroll DOM-index mismatch
+async function extractNameFromListItem(locator) {
+  return locator.evaluate((el) => {
+    const imgs = Array.from(el.querySelectorAll('img'));
     for (const img of imgs) {
       const alt = img.alt?.trim();
       if (alt && alt.length > 0 && alt.length < 80) return alt;
     }
 
-    const link = item.querySelector('a[href="#"]');
+    const link = el.querySelector('a[href="#"]');
     const titleName = link?.title?.trim() || link?.getAttribute('aria-label')?.trim();
     if (titleName && titleName.length > 0 && titleName.length < 80) return titleName;
 
@@ -290,15 +287,14 @@ async function extractNameFromListItem(page, idx) {
     const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     if (!lines || !lines.length) return null;
     for (const line of lines) {
-      if (/^\d{1,2}:\d{2}/.test(line))        continue;  // timestamp
-      if (line.length > 40)                   continue;  // ยาวเกิน
-      // ต้องมี Thai/EN/digit — กรอง emoji-only เช่น "⚠️", "🐢", "📌"
+      if (/^\d{1,2}:\d{2}/.test(line)) continue;
+      if (line.length > 40) continue;
       if (!/[฀-๿a-zA-Z0-9]/.test(line)) continue;
       if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
       return line;
     }
     return null;
-  }, idx).catch(() => null);
+  }).catch(() => null);
 }
 
 // ---- ดึง Notes จาก right panel (Box 4) ----
@@ -635,7 +631,8 @@ async function runJob(job) {
     let logged      = 0;
     let notes_saved = 0;
     let wasCancelled = false;
-    const visitedCustomers = new Set(); // track unique line_user_id เพื่อนับลูกค้า
+    const visitedCustomers = new Set(); // unique lineUserId — สำหรับนับและจำกัด CUSTOMER_LIMIT
+    const visitedUrls      = new Set(); // unique chat URL  — กัน scrape conversation ซ้ำ
 
     // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
     // → ปิด filter lastMsgIsAdmin และ idleEnough (ดูจาก state ปัจจุบัน ไม่ใช่ประวัติ)
@@ -645,19 +642,18 @@ async function runJob(job) {
     for (let i = 0; i < total; i++) {
       try {
         // ---- กรอง 1: scroll item เข้า view แล้วอ่าน label live ----
-        // (ป้องกัน virtual scroll unload — ไม่ใช้ pre-collected array)
+        // ใช้ item.evaluate(el => ...) แทน page.evaluate(idx) เพื่อหลีกเลี่ยง
+        // virtual-scroll DOM-index mismatch (Playwright relocate element อัตโนมัติ)
         const item = page.locator('.list-group-item-chat').nth(i);
         await item.scrollIntoViewIfNeeded().catch(() => {});
-        await page.waitForTimeout(150); // ให้ virtual scroll render item เข้า DOM
+        await page.waitForTimeout(400); // เพิ่มจาก 150ms ให้ virtual scroll render
 
-        const label = await page.evaluate((idx) => {
-          const items = document.querySelectorAll('.list-group-item-chat');
-          if (!items[idx]) return null; // item หลุดออกจาก DOM
-          const timeEl = items[idx].querySelector('[class*="time"], time, [class*="date"]');
+        const label = await item.evaluate((el) => {
+          const timeEl = el.querySelector('[class*="time"], time, [class*="date"]');
           return timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || '';
-        }, i);
+        }).catch(() => null); // null = element ไม่อยู่ใน DOM หรือ not attached
 
-        if (label === null) { process.stdout.write('✗'); continue; } // item ไม่อยู่ใน DOM
+        if (label === null) { process.stdout.write('✗'); continue; }
 
         const chatDay = dayLabelToDate(label);
 
@@ -674,8 +670,8 @@ async function runJob(job) {
           }
         }
 
-        // ดึงชื่อ pre-click สำหรับ fallback
-        const listName = await extractNameFromListItem(page, i);
+        // ดึงชื่อ pre-click สำหรับ fallback (ส่ง locator ไม่ใช่ index)
+        const listName = await extractNameFromListItem(item);
 
         // Click chat — บันทึก URL ก่อน click เพื่อตรวจว่าเปลี่ยนจริงไหม
         const urlBefore = page.url();
@@ -696,15 +692,16 @@ async function runJob(job) {
         if (!m) { console.log(`  ข้ามแชท ${i + 1} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
 
-        // ลูกค้าคนเดิมอาจมีหลาย item ใน chat list → ข้ามถ้าเจอแล้ว
-        if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+        // URL-based dedup: ข้าม conversation ที่เคยดูแล้ว (URL เดิม)
+        // LINE OA อาจแสดงลูกค้าเดิมหลาย conversation (URL ต่างกัน) → ต้องดูทุก conversation
+        if (visitedUrls.has(url)) { process.stdout.write('↩'); continue; }
+        visitedUrls.add(url);
 
-        // ถึงลิมิตลูกค้าแล้ว → หยุด loop ทันที
-        if (visitedCustomers.size >= CUSTOMER_LIMIT) {
+        // CUSTOMER_LIMIT: นับ unique ลูกค้า (1 ลูกค้า = 1 lineUserId แม้มีหลาย conversation)
+        if (!visitedCustomers.has(lineUserId) && visitedCustomers.size >= CUSTOMER_LIMIT) {
           console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
           break;
         }
-
         visitedCustomers.add(lineUserId);
 
         // ---- กรอง 2: lastMsgIsAdmin (เฉพาะ real-time mode) ----
@@ -791,7 +788,17 @@ async function runJob(job) {
         // ---- ดึง Notes (Box 4) ----
         const notesList = await extractNotes(page);
 
-        if (!msgs.length && !notesList.length) { process.stdout.write('.'); continue; }
+        if (!msgs.length && !notesList.length) {
+          // debug: แสดงสิ่งที่เห็นใน chat panel เพื่อช่วย diagnose
+          const dbg = await page.evaluate(() => {
+            const dates  = Array.from(document.querySelectorAll('.chatsys-date')).map(d => d.innerText?.trim()).filter(Boolean);
+            const admins = document.querySelectorAll('.chat.chat-reverse').length;
+            const all    = document.querySelectorAll('.chat').length;
+            return { dates: dates.slice(0, 3), admins, all };
+          }).catch(() => ({}));
+          process.stdout.write(`\n  . ${displayName.slice(0,20)} [d:${(dbg.dates||[]).join('|')},adm:${dbg.admins}/${dbg.all}]`);
+          continue;
+        }
 
         console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName || lineUserId.slice(0, 12)}" [src:${panelName ? 'panel' : listName ? 'list' : '?'}] (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
 
