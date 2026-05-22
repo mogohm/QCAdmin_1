@@ -26,7 +26,8 @@
       "Bash(findstr /E \"\\\\.js$ \\\\.jsx$ \\\\.tsx$\")",
       "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill\\(\\) }; Write-Host \"killed all node processes\")",
       "Bash(curl -s -X POST \"https://qc-admin-1.vercel.app/api/scraper/init\" -H \"x-api-key: PKQC2026SUPERADMIN\" -H \"Content-Type: application/json\")",
-      "Bash(node --check \"h:\\\\QCAdminPJ\\\\qc-scraper\\\\scraper.js\")"
+      "Bash(node --check \"h:\\\\QCAdminPJ\\\\qc-scraper\\\\scraper.js\")",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
