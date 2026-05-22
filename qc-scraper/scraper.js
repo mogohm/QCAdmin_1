@@ -697,7 +697,9 @@ async function runJob(job) {
             console.log(`\n📅 "${label}" เก่ากว่า dateFrom — หยุด`);
             outerDone = true; break;
           }
-          // ข้าม item ใหม่กว่า dateTo (ทั้ง real-time และ historical mode)
+          // ข้าม item ที่ label ใหม่กว่า dateTo (ทั้ง real-time และ historical)
+          // historical: label "วันนี้" = conversation ยังมีแอดมินทำงานอยู่ หรือลูกค้าส่งข้อความใหม่
+          // — ควรข้าม แล้วเลื่อนลงหา conversation ที่ label ตรง dateTo จริงๆ
           if (chatDay && chatDay.getTime() > dateTo.getTime()) {
             skipCount++;
             if (skipCount % 50 === 0) process.stdout.write(`[⏭${skipCount}]`);
@@ -870,8 +872,19 @@ async function runJob(job) {
       const scrollMult = isHistorical && consecutiveAllSkip >= 3 ? 4 : 1;
       if (scrollMult > 1) console.log(`\n  🚀 scroll ×${scrollMult} (${consecutiveAllSkip} รอบ all-⏭)`);
       const scrolled = await scrollChatListDown(page, scrollMult);
-      if (!scrolled) break;
-      await page.waitForTimeout(400);
+      if (!scrolled) {
+        if (isHistorical) {
+          // LINE OA ใช้ infinite scroll — พอถึงท้ายรายการ ระบบจะโหลด conversation เพิ่มจาก server
+          // รอ 2 วินาทีแล้ว retry ก่อนหยุดจริง
+          console.log(`\n  ⏳ ถึงท้าย chat list — รอ LINE OA โหลดเพิ่ม...`);
+          await page.waitForTimeout(2000);
+          const scrolled2 = await scrollChatListDown(page, 1);
+          if (!scrolled2) { console.log(`\n  🏁 โหลดครบแล้ว ไม่มี chat เพิ่ม — หยุด`); break; }
+        } else {
+          break;
+        }
+      }
+      await page.waitForTimeout(600);
     } // end outer while
 
     if (wasCancelled) {
