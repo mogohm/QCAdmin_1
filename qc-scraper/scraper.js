@@ -153,15 +153,72 @@ async function createAutoJob() {
   else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
 }
 
-// ---- Chat List: โหลดทุก item พร้อม timestamp label ----
-// หยุดเร็วเมื่อ item เก่ากว่า dateFrom เพื่อไม่โหลดเกิน
-async function loadChatListWithDates(page, dateFrom) {
-  const fromMs  = dateFrom.getTime();
-  let   prev    = 0;
-  let   tooOld  = false;
+// ---- รวบรวม chat URLs โดยเลื่อน chat list ลงทีละน้อย ----
+// virtual scroll-safe: เก็บ URL ของทุก item ที่เห็นขณะเลื่อน แทนการ iterate by index
+async function collectChatUrls(page, dateFrom) {
+  const entries  = [];
+  const seenUrls = new Set();
+  const fromMs   = dateFrom.getTime();
+  let   oldCount = 0;
 
-  for (let t = 0; t < 100 && !tooOld; t++) {
-    // Scroll chat list ลงเพื่อโหลด virtual scroll items เพิ่ม
+  // เริ่มจากบนสุด
+  await page.evaluate(() => {
+    const item = document.querySelector('.list-group-item-chat');
+    if (!item) return;
+    let el = item.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+          el.scrollHeight > el.clientHeight + 50) { el.scrollTop = 0; return; }
+      el = el.parentElement;
+    }
+  });
+  await page.waitForTimeout(600);
+
+  for (let round = 0; round < 300; round++) {
+    // เก็บทุก item ที่เห็นตอนนี้ (พร้อม label + listName)
+    const batch = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.list-group-item-chat')).map(el => {
+        const timeEl = el.querySelector('[class*="time"], time, [class*="date"]');
+        const label  = timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || '';
+        const a      = el.querySelector('a[href]');
+        const href   = a?.href || '';
+        // ชื่อจาก list item
+        let listName = '';
+        for (const img of el.querySelectorAll('img')) {
+          const alt = img.alt?.trim();
+          if (alt && alt.length > 0 && alt.length < 80) { listName = alt; break; }
+        }
+        if (!listName) {
+          const link = el.querySelector('a[href="#"]') || a;
+          const t2 = link?.title?.trim() || link?.getAttribute('aria-label')?.trim();
+          if (t2 && t2.length > 0 && t2.length < 80) { listName = t2; }
+          else if (link) {
+            const lines = (link.innerText || '').split('\n').map(l => l.trim()).filter(Boolean);
+            for (const line of lines) {
+              if (/^\d{1,2}:\d{2}/.test(line) || line.length > 40) continue;
+              if (!/[฀-๿a-zA-Z0-9]/.test(line)) continue;
+              if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|Waiting|Please wait)/i.test(line)) continue;
+              listName = line; break;
+            }
+          }
+        }
+        return { label, href, listName };
+      })
+    );
+
+    for (const { label, href, listName } of batch) {
+      if (!href || seenUrls.has(href)) continue;
+      seenUrls.add(href);
+      const chatDay = dayLabelToDate(label);
+      if (chatDay && chatDay.getTime() < fromMs) { oldCount++; continue; } // เก่าเกินไป
+      const m = href.match(/\/(U[a-f0-9]{32})/i);
+      if (!m) continue; // ไม่ใช่ user chat
+      entries.push({ url: href, lineUserId: m[1], label, chatDay, listName });
+    }
+
+    if (oldCount >= 5) break; // เจอ 5 items เก่าติดๆ → ผ่านช่วงที่ต้องการแล้ว
+
     const scrolled = await page.evaluate(() => {
       const item = document.querySelector('.list-group-item-chat');
       if (!item) return false;
@@ -171,52 +228,20 @@ async function loadChatListWithDates(page, dateFrom) {
         if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
             el.scrollHeight > el.clientHeight + 50) {
           const before = el.scrollTop;
-          el.scrollTop = el.scrollHeight;
+          el.scrollTop += Math.max(el.clientHeight * 0.75, 200); // เลื่อน ~75% viewport
           return el.scrollTop !== before;
         }
         el = el.parentElement;
       }
       return false;
     });
-    await page.waitForTimeout(400);
 
-    const n = await page.locator('.list-group-item-chat').count();
-    if (n === prev && !scrolled) break;
-    prev = n;
-
-    // ตรวจ label ของ item สุดท้ายที่โหลดมา
-    const lastLabel = await page.evaluate(() => {
-      const items = document.querySelectorAll('.list-group-item-chat');
-      if (!items.length) return null;
-      const last = items[items.length - 1];
-      const timeEl = last.querySelector('[class*="time"], time');
-      return timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || null;
-    });
-    if (lastLabel) {
-      const d = dayLabelToDate(lastLabel);
-      if (d && d.getTime() < fromMs) { tooOld = true; }
-    }
+    if (!scrolled) break;
+    await page.waitForTimeout(350);
   }
 
-  // Scroll กลับบนสุด
-  await page.evaluate(() => {
-    const item = document.querySelector('.list-group-item-chat');
-    if (!item) return;
-    let el = item.parentElement;
-    while (el && el !== document.body) {
-      const s = getComputedStyle(el);
-      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
-          el.scrollHeight > el.clientHeight + 50) {
-        el.scrollTop = 0; return;
-      }
-      el = el.parentElement;
-    }
-  });
-  await page.waitForTimeout(500);
-
-  const total = await page.locator('.list-group-item-chat').count();
-  console.log(`  📋 โหลด chat list: ${total} chats`);
-  return { total };
+  console.log(`  📋 รวบรวม ${entries.length} chats (ผ่านมา ${seenUrls.size} รายการ)`);
+  return entries;
 }
 
 // ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
@@ -269,33 +294,6 @@ async function extractCustomerNameFromPanel(page) {
   }).catch(() => null);
 }
 
-// ---- ดึงชื่อลูกค้าจาก chat list item (fallback) ----
-// รับ Playwright locator แทน index เพื่อหลีกเลี่ยง virtual-scroll DOM-index mismatch
-async function extractNameFromListItem(locator) {
-  return locator.evaluate((el) => {
-    const imgs = Array.from(el.querySelectorAll('img'));
-    for (const img of imgs) {
-      const alt = img.alt?.trim();
-      if (alt && alt.length > 0 && alt.length < 80) return alt;
-    }
-
-    const link = el.querySelector('a[href="#"]');
-    const titleName = link?.title?.trim() || link?.getAttribute('aria-label')?.trim();
-    if (titleName && titleName.length > 0 && titleName.length < 80) return titleName;
-
-    if (!link) return null;
-    const lines = link.innerText?.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (!lines || !lines.length) return null;
-    for (const line of lines) {
-      if (/^\d{1,2}:\d{2}/.test(line)) continue;
-      if (line.length > 40) continue;
-      if (!/[฀-๿a-zA-Z0-9]/.test(line)) continue;
-      if (/^(You sent|ส่ง|photo|sticker|image|file|โปรดรอ|สวัสดี|ยินดีต้อน|ทำรายการ|รบกวน|Waiting|Please wait|ยอดเงิน|แอดมิน|ลูกค้า)/i.test(line)) continue;
-      return line;
-    }
-    return null;
-  }).catch(() => null);
-}
 
 // ---- ดึง Notes จาก right panel (Box 4) ----
 // กลยุทธ์: หาทุก element ที่มีรูปแบบ "M/D/YYYY, HH:MM AdminName" และไม่อยู่ใน chat messages panel
@@ -390,13 +388,28 @@ async function loadChatHistory(page, dateFrom, shouldCancel) {
     const oldestMs = await page.evaluate(() => {
       function parseLineDate(raw) {
         if (!raw) return null;
+        // "DD ม.ค. YYYY" — Thai full date
         const TH = { 'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
                      'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11 };
-        const m = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
-        if (m && TH[m[2]] !== undefined) {
-          const yr = parseInt(m[3]) > 2500 ? parseInt(m[3]) - 543 : parseInt(m[3]);
-          return new Date(yr, TH[m[2]], parseInt(m[1]));
+        const mTH = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
+        if (mTH && TH[mTH[2]] !== undefined) {
+          const yr = parseInt(mTH[3]) > 2500 ? parseInt(mTH[3]) - 543 : parseInt(mTH[3]);
+          return new Date(yr, TH[mTH[2]], parseInt(mTH[1]));
         }
+        // "Mon, May 18" / "Tue May 19" — LINE OA chat separator format (no year)
+        const MO = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+        const mEn = raw.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[,.\s]+([A-Za-z]{3})\s+(\d{1,2})/i);
+        if (mEn && MO[mEn[1].toLowerCase()] !== undefined) {
+          const mo = MO[mEn[1].toLowerCase()], day = parseInt(mEn[2]);
+          const now = new Date(); now.setHours(0,0,0,0);
+          let d = new Date(now.getFullYear(), mo, day);
+          if (d.getTime() > now.getTime()) d = new Date(now.getFullYear() - 1, mo, day);
+          return d;
+        }
+        // Yesterday / Today / HH:MM
+        const t = new Date(); t.setHours(0,0,0,0);
+        if (/เมื่อวาน|yesterday/i.test(raw)) { const d=new Date(t); d.setDate(d.getDate()-1); return d; }
+        if (/^วันนี้$|^today$/i.test(raw.trim()) || /^\d{1,2}:\d{2}$/.test(raw.trim())) return new Date(t);
         const d = new Date(raw);
         return isNaN(d) ? null : d;
       }
@@ -456,13 +469,28 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
   return page.evaluate(({ fromMs, toMs }) => {
     function parseLineDate(raw) {
       if (!raw) return null;
+      // "DD ม.ค. YYYY" — Thai full date
       const TH = { 'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
                    'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11 };
-      const m = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
-      if (m && TH[m[2]] !== undefined) {
-        const yr = parseInt(m[3]) > 2500 ? parseInt(m[3]) - 543 : parseInt(m[3]);
-        return new Date(yr, TH[m[2]], parseInt(m[1]));
+      const mTH = raw.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{4})/);
+      if (mTH && TH[mTH[2]] !== undefined) {
+        const yr = parseInt(mTH[3]) > 2500 ? parseInt(mTH[3]) - 543 : parseInt(mTH[3]);
+        return new Date(yr, TH[mTH[2]], parseInt(mTH[1]));
       }
+      // "Mon, May 18" / "Tue May 19" — LINE OA chat separator format (no year)
+      const MO = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+      const mEn = raw.match(/(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[,.\s]+([A-Za-z]{3})\s+(\d{1,2})/i);
+      if (mEn && MO[mEn[1].toLowerCase()] !== undefined) {
+        const mo = MO[mEn[1].toLowerCase()], day = parseInt(mEn[2]);
+        const now = new Date(); now.setHours(0,0,0,0);
+        let d = new Date(now.getFullYear(), mo, day);
+        if (d.getTime() > now.getTime()) d = new Date(now.getFullYear() - 1, mo, day);
+        return d;
+      }
+      // Yesterday / Today / HH:MM
+      const t = new Date(); t.setHours(0,0,0,0);
+      if (/เมื่อวาน|yesterday/i.test(raw)) { const d=new Date(t); d.setDate(d.getDate()-1); return d; }
+      if (/^วันนี้$|^today$/i.test(raw.trim()) || /^\d{1,2}:\d{2}$/.test(raw.trim())) return new Date(t);
       const d = new Date(raw);
       return isNaN(d) ? null : d;
     }
@@ -624,85 +652,41 @@ async function runJob(job) {
 
     await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
 
-    // โหลด chat list จนถึงวันที่เป้าหมาย
-    const { total } = await loadChatListWithDates(page, dateFrom);
-    await updateJob(job.id, { total_chats: total });
+    // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
+    const isHistorical = Date.now() - dateTo.getTime() > MIN_IDLE_MIN * 60 * 1000;
+    if (isHistorical) console.log(`  📅 Historical mode — ข้าม filter lastMsgIsAdmin & idleEnough`);
+
+    // รวบรวม URLs โดยเลื่อน chat list ลงทีละน้อย (virtual-scroll safe)
+    const chatEntries = await collectChatUrls(page, dateFrom);
+    await updateJob(job.id, { total_chats: chatEntries.length });
 
     let logged      = 0;
     let notes_saved = 0;
     let wasCancelled = false;
-    const visitedCustomers = new Set(); // unique lineUserId — สำหรับนับและจำกัด CUSTOMER_LIMIT
-    const visitedUrls      = new Set(); // unique chat URL  — กัน scrape conversation ซ้ำ
+    const visitedCustomers = new Set(); // unique lineUserId สำหรับ CUSTOMER_LIMIT
 
-    // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
-    // → ปิด filter lastMsgIsAdmin และ idleEnough (ดูจาก state ปัจจุบัน ไม่ใช่ประวัติ)
-    const isHistorical = Date.now() - dateTo.getTime() > MIN_IDLE_MIN * 60 * 1000;
-    if (isHistorical) console.log(`  📅 Historical mode — ข้าม filter lastMsgIsAdmin & idleEnough`);
-
-    for (let i = 0; i < total; i++) {
+    for (const { url, lineUserId, label, chatDay, listName } of chatEntries) {
       try {
-        // ---- กรอง 1: scroll item เข้า view แล้วอ่าน label live ----
-        // ใช้ item.evaluate(el => ...) แทน page.evaluate(idx) เพื่อหลีกเลี่ยง
-        // virtual-scroll DOM-index mismatch (Playwright relocate element อัตโนมัติ)
-        const item = page.locator('.list-group-item-chat').nth(i);
-        await item.scrollIntoViewIfNeeded().catch(() => {});
-        await page.waitForTimeout(400); // เพิ่มจาก 150ms ให้ virtual scroll render
-
-        const label = await item.evaluate((el) => {
-          const timeEl = el.querySelector('[class*="time"], time, [class*="date"]');
-          return timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || '';
-        }).catch(() => null); // null = element ไม่อยู่ใน DOM หรือ not attached
-
-        if (label === null) { process.stdout.write('✗'); continue; }
-
-        const chatDay = dayLabelToDate(label);
-
-        if (chatDay) {
-          // chat เก่ากว่า dateFrom → หยุด (list เรียงจากใหม่ไปเก่า)
-          if (chatDay.getTime() < dateFrom.getTime()) {
-            console.log(`\n📅 chat #${i + 1} "${label}" เก่ากว่า dateFrom — หยุด loop`);
-            break;
-          }
-          // chat ใหม่กว่า dateTo และไม่ใช่ historical mode → ข้าม
-          if (!isHistorical && chatDay.getTime() > dateTo.getTime()) {
-            process.stdout.write('⏭');
-            continue;
-          }
+        // ข้าม chat ที่ใหม่กว่า dateTo (real-time mode เท่านั้น)
+        if (!isHistorical && chatDay && chatDay.getTime() > dateTo.getTime()) {
+          process.stdout.write('⏭'); continue;
         }
 
-        // ดึงชื่อ pre-click สำหรับ fallback (ส่ง locator ไม่ใช่ index)
-        const listName = await extractNameFromListItem(item);
-
-        // Click chat — บันทึก URL ก่อน click เพื่อตรวจว่าเปลี่ยนจริงไหม
-        const urlBefore = page.url();
-        await item.click(); // already scrolled into view above
-
-        try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 8000 }); } catch {}
-        await page.waitForTimeout(1500);
-
-        const url = page.url();
-
-        // ถ้า URL ไม่เปลี่ยน → chat item นี้ไม่มี user page (group / system)
-        if (url === urlBefore) {
-          process.stdout.write('✗');
-          continue;
-        }
-
-        const m = url.match(/\/(U[a-f0-9]{32})/i);
-        if (!m) { console.log(`  ข้ามแชท ${i + 1} — ไม่พบ user ID ใน URL`); continue; }
-        const lineUserId = m[1];
-
-        // URL-based dedup: ข้าม conversation ที่เคยดูแล้ว (URL เดิม)
-        // LINE OA อาจแสดงลูกค้าเดิมหลาย conversation (URL ต่างกัน) → ต้องดูทุก conversation
-        if (visitedUrls.has(url)) { process.stdout.write('↩'); continue; }
-        visitedUrls.add(url);
-
-        // CUSTOMER_LIMIT: นับ unique ลูกค้า (1 ลูกค้า = 1 lineUserId แม้มีหลาย conversation)
+        // CUSTOMER_LIMIT
         if (!visitedCustomers.has(lineUserId) && visitedCustomers.size >= CUSTOMER_LIMIT) {
           console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
           break;
         }
         visitedCustomers.add(lineUserId);
+
+        // นำทางไปยัง chat URL โดยตรง (ไม่ต้องหา item ใน DOM)
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.waitForTimeout(1500);
+
+        if (page.url().includes('signin') || page.url().includes('login')) {
+          await updateJob(job.id, { status: 'error', error_text: 'Session หมดอายุ — รัน: node login.js' });
+          wasCancelled = true; break;
+        }
 
         // ---- กรอง 2: lastMsgIsAdmin (เฉพาะ real-time mode) ----
         if (!isHistorical) {
@@ -830,7 +814,7 @@ async function runJob(job) {
           console.log('\n🚫 Job ถูกยกเลิกระหว่างส่งข้อมูล — หยุด scrape'); break;
         }
       } catch (e) {
-        console.log(`\n  ⚠️ index ${i}: ${e.message}`);
+        console.log(`\n  ⚠️ ${lineUserId}: ${e.message}`);
       }
     }
 

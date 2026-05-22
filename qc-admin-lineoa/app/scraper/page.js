@@ -29,6 +29,10 @@ function fmtTs(ts) {
   if (!ts) return '—';
   try { return new Date(ts).toLocaleString('th-TH'); } catch { return ts; }
 }
+function fmtDateTH(iso) {
+  if (!iso || iso.length < 10) return '';
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+}
 
 function ScrapeDiagram() {
   const box = (label, num, color, x, y, w, h, desc) => (
@@ -409,12 +413,14 @@ export default function ScraperPage() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>จาก</label>
+                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 2 }}>จาก</label>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, fontFamily: 'monospace' }}>{fmtDateTH(dateFrom)}</div>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                   style={{ width: '100%', padding: '7px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>ถึง</label>
+                <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 2 }}>ถึง</label>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, fontFamily: 'monospace' }}>{fmtDateTH(dateTo)}</div>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                   style={{ width: '100%', padding: '7px', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box' }} />
               </div>
@@ -488,12 +494,14 @@ export default function ScraperPage() {
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>จากวันที่</label>
+              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 2 }}>จากวันที่</label>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, fontFamily: 'monospace' }}>{fmtDateTH(dateFrom)}</div>
               <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                 style={{ padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6 }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 4 }}>ถึงวันที่</label>
+              <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 2 }}>ถึงวันที่</label>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4, fontFamily: 'monospace' }}>{fmtDateTH(dateTo)}</div>
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                 style={{ padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6 }} />
             </div>
