@@ -167,8 +167,8 @@ async function createAutoJob() {
 }
 
 // ---- scroll chat list ลง ----
-async function scrollChatListDown(page) {
-  return page.evaluate(() => {
+async function scrollChatListDown(page, multiplier = 1) {
+  return page.evaluate((mult) => {
     const item = document.querySelector('.list-group-item-chat');
     if (!item) return false;
     let el = item.parentElement;
@@ -177,13 +177,13 @@ async function scrollChatListDown(page) {
       if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
           el.scrollHeight > el.clientHeight + 50) {
         const before = el.scrollTop;
-        el.scrollTop += Math.max(el.clientHeight * 0.75, 200);
+        el.scrollTop += Math.max(el.clientHeight * 0.75, 200) * mult;
         return el.scrollTop !== before;
       }
       el = el.parentElement;
     }
     return false;
-  });
+  }, multiplier);
 }
 
 // ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
@@ -609,6 +609,9 @@ async function runJob(job) {
     const visitedCustomers = new Set(); // unique lineUserId สำหรับ CUSTOMER_LIMIT
     let totalSeen = 0;
     let outerDone = false;
+    let diagDone = false;
+    let skipCount = 0;
+    let consecutiveAllSkip = 0;
 
     // scroll กลับบนสุดก่อนเริ่ม
     await page.evaluate(() => {
@@ -627,6 +630,7 @@ async function runJob(job) {
     // วน scroll ลง เปิดทุก item ที่เห็นใน DOM ขณะนั้น
     while (!outerDone && !wasCancelled) {
       const n = await page.locator('.list-group-item-chat').count();
+      let roundClicked = 0;
 
       for (let i = 0; i < n && !outerDone && !wasCancelled; i++) {
         try {
@@ -682,9 +686,9 @@ async function runJob(job) {
             // Diagnostic สำหรับ item แรก
             const _dbg = isFirst ? raw.slice(0, 120).replace(/\n/g, '↵') : null;
             return { label, listName, _dbg };
-          }, i === 0 && totalSeen === 0).catch(() => ({ label: null, listName: null, _dbg: null }));
+          }, i === 0 && !diagDone).catch(() => ({ label: null, listName: null, _dbg: null }));
 
-          if (_dbg !== null) console.log(`\n=== ITEM#0 innerText: ${JSON.stringify(_dbg)} ===`);
+          if (_dbg !== null) { diagDone = true; console.log(`\n=== ITEM#0 innerText: ${JSON.stringify(_dbg)} ===`); }
           if (label === null) { process.stdout.write('✗'); continue; }
 
           const chatDay = dayLabelToDate(label);
@@ -695,7 +699,10 @@ async function runJob(job) {
           }
           // ข้าม item ใหม่กว่า dateTo (ทั้ง real-time และ historical mode)
           if (chatDay && chatDay.getTime() > dateTo.getTime()) {
-            process.stdout.write('⏭'); continue;
+            skipCount++;
+            if (skipCount % 50 === 0) process.stdout.write(`[⏭${skipCount}]`);
+            else process.stdout.write('⏭');
+            continue;
           }
 
           // Click item — URL จะเปลี่ยนเป็น chat ของลูกค้า (LINE OA SPA)
@@ -709,6 +716,7 @@ async function runJob(job) {
           if (processedUrls.has(url)) { process.stdout.write('↩'); continue; }
           processedUrls.add(url);
           totalSeen++;
+          roundClicked++;
 
           const m = url.match(/\/(U[a-f0-9]{32})/i);
           if (!m) continue;
@@ -854,7 +862,14 @@ async function runJob(job) {
       if (outerDone || wasCancelled) break;
 
       // scroll list ลงเพื่อโหลด items ถัดไป
-      const scrolled = await scrollChatListDown(page);
+      if (isHistorical && roundClicked === 0) {
+        consecutiveAllSkip++;
+      } else {
+        consecutiveAllSkip = 0;
+      }
+      const scrollMult = isHistorical && consecutiveAllSkip >= 3 ? 4 : 1;
+      if (scrollMult > 1) console.log(`\n  🚀 scroll ×${scrollMult} (${consecutiveAllSkip} รอบ all-⏭)`);
+      const scrolled = await scrollChatListDown(page, scrollMult);
       if (!scrolled) break;
       await page.waitForTimeout(400);
     } // end outer while
