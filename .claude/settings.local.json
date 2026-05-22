@@ -27,7 +27,18 @@
       "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill\\(\\) }; Write-Host \"killed all node processes\")",
       "Bash(curl -s -X POST \"https://qc-admin-1.vercel.app/api/scraper/init\" -H \"x-api-key: PKQC2026SUPERADMIN\" -H \"Content-Type: application/json\")",
       "Bash(node --check \"h:\\\\QCAdminPJ\\\\qc-scraper\\\\scraper.js\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(ls *.json)",
+      "Bash(ls *.lock)",
+      "Bash(ls package-lock.json)",
+      "Bash(npm run *)",
+      "Bash(git config *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git fetch *)",
+      "Bash(cat qc-admin-lineoa/.gitignore)",
+      "Bash(cat .gitignore)",
+      "Bash(git reset *)",
+      "Bash(git restore *)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
