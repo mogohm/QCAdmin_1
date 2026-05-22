@@ -14,7 +14,26 @@ const scheduleArg  = process.argv.find(a => a.startsWith('--schedule='));
 const SCHEDULE_MIN = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parseInt(process.env.SCHEDULE_MINUTES || '0');
 const MIN_IDLE_MIN = parseInt(process.env.MIN_IDLE_MINUTES || '30');
 
+// จำนวนลูกค้า (LINE user) สูงสุดที่จะ scrape ต่อ job — ไม่นับ skip/system chat
+const limitArg     = process.argv.find(a => a.startsWith('--limit='));
+const CUSTOMER_LIMIT = limitArg ? parseInt(limitArg.split('=')[1]) : parseInt(process.env.CUSTOMER_LIMIT || '100');
+
 const toISO = d => d.toISOString().slice(0, 10);
+
+// แปลง "M/D/YYYY, HH:MM" (LINE OA note format) → ISO timestamp
+function parseNotedAt(str) {
+  if (!str) return null;
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i);
+  if (!m) return null;
+  let [, mo, d, yr, h, mi, se = '00', ampm] = m;
+  h = parseInt(h); mi = parseInt(mi); se = parseInt(se);
+  if (ampm) {
+    if (/pm/i.test(ampm) && h < 12) h += 12;
+    if (/am/i.test(ampm) && h === 12) h = 0;
+  }
+  const dt = new Date(parseInt(yr), parseInt(mo) - 1, parseInt(d), h, mi, se);
+  return isNaN(dt.getTime()) ? null : dt.toISOString();
+}
 
 function getJobDate() {
   const dateArg = process.argv.find(a => a.startsWith('--date='));
@@ -179,14 +198,6 @@ async function loadChatListWithDates(page, dateFrom) {
     }
   }
 
-  // เก็บ timestamp labels ทุก item ก่อน scroll กลับบน
-  const itemLabels = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('.list-group-item-chat')).map((item, i) => {
-      const timeEl = item.querySelector('[class*="time"], time, [class*="date"]');
-      return timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || '';
-    });
-  });
-
   // Scroll กลับบนสุด
   await page.evaluate(() => {
     const item = document.querySelector('.list-group-item-chat');
@@ -205,51 +216,54 @@ async function loadChatListWithDates(page, dateFrom) {
 
   const total = await page.locator('.list-group-item-chat').count();
   console.log(`  📋 โหลด chat list: ${total} chats`);
-  return { total, itemLabels };
+  return { total };
 }
 
 // ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
 // LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager"
 // ใช้ waitForFunction เพื่อรอให้ title update หลัง right panel โหลดเสร็จ
 async function extractCustomerNameFromPanel(page) {
-  // poll title ทุก 250ms นานสูงสุด 2s — เพื่อรอ LINE OA อัปเดต title
+  // poll title ทุก 200ms นานสูงสุด 4s — รอให้ LINE OA อัปเดต title
   const fromTitle = await page.waitForFunction(
     () => {
       const raw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
       if (!raw || raw.length >= 80) return false;
-      // กรอง generic LINE OA titles ออก
       if (/^LINE\s*(Official|Chat|OA|Biz)/i.test(raw)) return false;
       if (/Official\s*Account/i.test(raw)) return false;
-      if (/^(หน้าหลัก|Home|Manager|Account\s*Manager)$/i.test(raw)) return false;
-      // ต้องมีตัวอักษรจริง (Thai/EN/digit) ไม่ใช่แค่ emoji
+      if (/^(หน้าหลัก|Home|Manager|Account\s*Manager|Chat)$/i.test(raw)) return false;
       if (!/[฀-๿a-zA-Z0-9]/.test(raw)) return false;
       return raw;
     },
     null,
-    { timeout: 2000, polling: 250 }
+    { timeout: 4000, polling: 200 }
   ).then(h => h.jsonValue()).catch(() => null);
 
   if (fromTitle && typeof fromTitle === 'string') return fromTitle;
 
-  // Fallback: DOM selectors ใน chat header / right panel
+  // Fallback: structural approach — LINE OA ใช้ hashed class ทำให้ [class*=...] ไม่ match
+  // แทนด้วย: img[alt] ในส่วน header ของ right panel + heading elements
   return page.evaluate(() => {
-    const selectors = [
-      '[class*="chat-header"] [class*="name"]',
-      '[class*="chat-top"] [class*="name"]',
-      '[class*="room-header"] [class*="name"]',
-      '[class*="room-title"]',
-      '[class*="chat-title"]',
-    ];
-    for (const sel of selectors) {
-      try {
-        const el = document.querySelector(sel);
-        if (el) {
-          const t = el.innerText?.trim();
-          if (t && t.length > 0 && t.length < 80 &&
-              !/^\d{1,2}:\d{2}$/.test(t) &&
-              !/^LINE\s*(Official|Chat|OA)/i.test(t)) return t;
-        }
-      } catch {}
+    // Strategy 1: img[alt] ที่อยู่ใกล้ด้านบนของ right panel (avatar ลูกค้า)
+    for (const img of document.querySelectorAll('img[alt]')) {
+      const alt = img.alt?.trim();
+      if (!alt || alt.length < 2 || alt.length >= 80) continue;
+      if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
+      if (/^(photo|image|avatar|icon|logo|sticker|LINE|emoji)$/i.test(alt)) continue;
+      const rect = img.getBoundingClientRect();
+      // ต้องอยู่ใกล้บนสุด (top < 15%) และอยู่ฝั่งขวา (left > 25%)
+      if (rect.top < window.innerHeight * 0.15 && rect.left > window.innerWidth * 0.25) {
+        return alt;
+      }
+    }
+    // Strategy 2: heading/strong ที่อยู่บน right panel
+    for (const el of document.querySelectorAll('h1, h2, h3, strong, b')) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top > window.innerHeight * 0.15) continue;
+      if (rect.left < window.innerWidth * 0.25) continue;
+      const t = el.innerText?.trim();
+      if (t && t.length >= 2 && t.length < 80 &&
+          /[฀-๿a-zA-Z0-9]/.test(t) &&
+          !/^LINE/i.test(t)) return t;
     }
     return null;
   }).catch(() => null);
@@ -288,23 +302,41 @@ async function extractNameFromListItem(page, idx) {
 }
 
 // ---- ดึง Notes จาก right panel (Box 4) ----
-// กลยุทธ์: หาทุก element ในฝั่งขวาของหน้าจอที่มีรูปแบบวันที่ "M/D/YYYY, HH:MM AdminName"
+// กลยุทธ์: หาทุก element ที่มีรูปแบบ "M/D/YYYY, HH:MM AdminName" และไม่อยู่ใน chat messages panel
 // เพราะ LINE OA ทุก note จะจบด้วย timestamp + ชื่อ admin เสมอ
 async function extractNotes(page) {
   return page.evaluate(() => {
     const results = [];
     const DATE_RE = /^(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+)$/;
-    const UI_SKIP = /^(Add tags?|Assign(ed)?|Follow up|Resolve|Search|Notes\s+\d|Basic|\+|Edit|Delete|Save|Cancel|×|✏️|🗑️)$/i;
+    const UI_SKIP = /^(Add tags?|Assign(ed)?|Follow up|Resolve|Search|Notes\s*\d*|Basic|\+|Edit|Delete|Save|Cancel|×|✏️|🗑️|Tag|Label|Follow-up)$/i;
 
-    // ค้นหา element ที่อยู่ในฝั่งขวา (x > 55% ของหน้าจอ) และมี date pattern
+    // หา chat messages container เพื่อ exclude — ป้องกันดึง chat bubble มาเป็น note
+    const chatContainer = (() => {
+      const dateEl = document.querySelector('.chatsys-date');
+      if (!dateEl) return null;
+      let el = dateEl.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+            el.scrollHeight > el.clientHeight + 50) return el;
+        el = el.parentElement;
+      }
+      return null;
+    })();
+
+    // fallback: ถ้าหา chat container ไม่เจอ ใช้ position x > 50% (กว้างขึ้นจากเดิม 55%)
+    const isExcluded = chatContainer
+      ? (el) => chatContainer.contains(el)
+      : (el) => el.getBoundingClientRect().left < window.innerWidth * 0.50;
+
     const allEls = Array.from(document.querySelectorAll('*'));
     const noteEls = [];
 
     for (const el of allEls) {
       if (['INPUT','TEXTAREA','BUTTON','SCRIPT','STYLE','SVG','IMG','CANVAS'].includes(el.tagName)) continue;
+      if (isExcluded(el)) continue; // ข้าม chat messages / left panel
       const rect = el.getBoundingClientRect();
-      if (rect.left < window.innerWidth * 0.55) continue; // ต้องอยู่ฝั่งขวา
-      if (rect.width < 80 || rect.height < 30)  continue; // ต้องมีขนาดพอสมควร
+      if (rect.width < 80 || rect.height < 30) continue; // ต้องมีขนาดพอสมควร
 
       const text = el.innerText?.trim() || '';
       if (text.length < 10) continue;
@@ -461,49 +493,41 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
     }
 
     // ดึงชื่อ admin จาก chat-reverse node
-    // LINE OA แสดงชื่อ admin ใน: .chat-profile, [class*="agent"], .chat-content header area
+    // กลยุทธ์ใหม่: LINE OA ใช้ hashed CSS class ทำให้ [class*="agent-name"] ไม่ match
+    // ใช้ img[alt] (profile picture) เป็น primary + text nodes นอก bubble เป็น fallback
     function extractAdminName(node) {
-      // วิธีที่ 1: element ที่ชัดเจน
-      const nameSelectors = [
-        '[class*="agent-name"]',
-        '[class*="admin-name"]',
-        '[class*="member-name"]',
-        '[class*="sender-name"]',
-        '.chat-profile [class*="name"]',
-        '.chat-name',
-      ];
-      for (const sel of nameSelectors) {
-        const el = node.querySelector(sel);
-        if (el) {
-          const t = el.innerText?.trim();
-          if (t && t.length > 0 && t.length < 60) return t;
-        }
+      // วิธีที่ 1: img[alt] — profile picture ของ admin มักมีชื่อเป็น alt text
+      for (const img of node.querySelectorAll('img')) {
+        const alt = img.alt?.trim();
+        if (!alt || alt.length < 2 || alt.length > 50) continue;
+        if (!/[฀-๿a-zA-Z]/.test(alt)) continue;
+        if (/^(photo|image|avatar|icon|sticker|emoji|undefined|null)$/i.test(alt)) continue;
+        return alt;
       }
 
-      // วิธีที่ 2: .chat-content — ตัด message body ออก แล้วดึงข้อความที่เหลือ
-      const contentEl = node.querySelector('.chat-content');
-      if (contentEl) {
-        const clone = contentEl.cloneNode(true);
-        clone.querySelectorAll('.chat-body, .chat-main, .chat-item, .chat-secondary, time').forEach(e => e.remove());
-        const remaining = clone.innerText?.trim().split('\n')[0]?.trim() || null;
-        if (remaining && remaining.length > 0 && remaining.length < 60) return remaining;
-      }
-
-      // วิธีที่ 3: หา text node ที่อยู่นอก bubble ในฝั่งขวา
+      // วิธีที่ 2: text nodes ที่ไม่อยู่ใน .chat-item-text bubble
+      // .chat-item-text เป็น class ที่ใช้ได้ผลจริง (ดึงข้อความได้อยู่แล้ว)
+      const bubble = node.querySelector('.chat-item-text');
       const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
       let txtNode;
       while ((txtNode = walker.nextNode())) {
         const t = txtNode.textContent?.trim();
-        if (t && t.length > 1 && t.length < 60 && !/^\d{1,2}:\d{2}/.test(t)) {
-          // ต้องไม่ใช่ข้อความใน bubble
-          const parent = txtNode.parentElement;
-          if (parent && !parent.classList.contains('chat-item-text') &&
-              !parent.closest('.chat-item-text') &&
-              !parent.closest('.chat-bubble')) {
-            return t;
-          }
-        }
+        if (!t || t.length < 2 || t.length > 50) continue;
+        if (/^\d{1,2}:\d{2}/.test(t)) continue;          // ข้าม timestamp
+        if (!/[฀-๿a-zA-Z]/.test(t)) continue;            // ต้องมี Thai/EN
+        if (bubble && bubble.contains(txtNode.parentElement)) continue; // ข้ามข้อความใน bubble
+        return t;
       }
+
+      // วิธีที่ 3: title / aria-label attribute บน element ใดๆ ใน node
+      for (const el of node.querySelectorAll('[title], [aria-label]')) {
+        const t = (el.title || el.getAttribute('aria-label'))?.trim();
+        if (!t || t.length < 2 || t.length > 50) continue;
+        if (!/[฀-๿a-zA-Z]/.test(t)) continue;
+        if (/^(close|delete|send|emoji|attach|like|heart|reaction|menu)$/i.test(t)) continue;
+        return t;
+      }
+
       return null;
     }
 
@@ -604,13 +628,14 @@ async function runJob(job) {
 
     await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
 
-    // โหลด chat list จนถึงวันที่เป้าหมาย พร้อมเก็บ timestamp label ทุก item
-    const { total, itemLabels } = await loadChatListWithDates(page, dateFrom);
+    // โหลด chat list จนถึงวันที่เป้าหมาย
+    const { total } = await loadChatListWithDates(page, dateFrom);
     await updateJob(job.id, { total_chats: total });
 
     let logged      = 0;
     let notes_saved = 0;
     let wasCancelled = false;
+    const visitedCustomers = new Set(); // track unique line_user_id เพื่อนับลูกค้า
 
     // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
     // → ปิด filter lastMsgIsAdmin และ idleEnough (ดูจาก state ปัจจุบัน ไม่ใช่ประวัติ)
@@ -619,8 +644,21 @@ async function runJob(job) {
 
     for (let i = 0; i < total; i++) {
       try {
-        // ---- กรอง 1: ตรวจ timestamp ของ chat item ก่อน click ----
-        const label   = itemLabels[i] || '';
+        // ---- กรอง 1: scroll item เข้า view แล้วอ่าน label live ----
+        // (ป้องกัน virtual scroll unload — ไม่ใช้ pre-collected array)
+        const item = page.locator('.list-group-item-chat').nth(i);
+        await item.scrollIntoViewIfNeeded().catch(() => {});
+        await page.waitForTimeout(150); // ให้ virtual scroll render item เข้า DOM
+
+        const label = await page.evaluate((idx) => {
+          const items = document.querySelectorAll('.list-group-item-chat');
+          if (!items[idx]) return null; // item หลุดออกจาก DOM
+          const timeEl = items[idx].querySelector('[class*="time"], time, [class*="date"]');
+          return timeEl?.innerText?.trim() || timeEl?.getAttribute('datetime') || '';
+        }, i);
+
+        if (label === null) { process.stdout.write('✗'); continue; } // item ไม่อยู่ใน DOM
+
         const chatDay = dayLabelToDate(label);
 
         if (chatDay) {
@@ -630,7 +668,6 @@ async function runJob(job) {
             break;
           }
           // chat ใหม่กว่า dateTo และไม่ใช่ historical mode → ข้าม
-          // (real-time mode: scrape เฉพาะ chat ที่ active ในช่วงเวลา)
           if (!isHistorical && chatDay.getTime() > dateTo.getTime()) {
             process.stdout.write('⏭');
             continue;
@@ -642,9 +679,7 @@ async function runJob(job) {
 
         // Click chat — บันทึก URL ก่อน click เพื่อตรวจว่าเปลี่ยนจริงไหม
         const urlBefore = page.url();
-        const item = page.locator('.list-group-item-chat').nth(i);
-        await item.scrollIntoViewIfNeeded().catch(() => {});
-        await item.click();
+        await item.click(); // already scrolled into view above
 
         try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 8000 }); } catch {}
         await page.waitForTimeout(1500);
@@ -660,6 +695,17 @@ async function runJob(job) {
         const m = url.match(/\/(U[a-f0-9]{32})/i);
         if (!m) { console.log(`  ข้ามแชท ${i + 1} — ไม่พบ user ID ใน URL`); continue; }
         const lineUserId = m[1];
+
+        // ลูกค้าคนเดิมอาจมีหลาย item ใน chat list → ข้ามถ้าเจอแล้ว
+        if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+
+        // ถึงลิมิตลูกค้าแล้ว → หยุด loop ทันที
+        if (visitedCustomers.size >= CUSTOMER_LIMIT) {
+          console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
+          break;
+        }
+
+        visitedCustomers.add(lineUserId);
 
         // ---- กรอง 2: lastMsgIsAdmin (เฉพาะ real-time mode) ----
         if (!isHistorical) {
@@ -747,7 +793,7 @@ async function runJob(job) {
 
         if (!msgs.length && !notesList.length) { process.stdout.write('.'); continue; }
 
-        console.log(`\n  [${i + 1}/${total}] "${displayName || lineUserId.slice(0, 12)}" [src:${panelName ? 'panel' : listName ? 'list' : '?'}] (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
+        console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName || lineUserId.slice(0, 12)}" [src:${panelName ? 'panel' : listName ? 'list' : '?'}] (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
 
         // บันทึก messages
         for (const msg of msgs) {
@@ -763,10 +809,10 @@ async function runJob(job) {
           if (chk?.cancelled) { wasCancelled = true; break; }
         }
 
-        // บันทึก notes
+        // บันทึก notes — แปลง noted_at string → ISO ก่อนส่ง API
         for (const note of notesList) {
           if (wasCancelled) break;
-          const r = await postNote(lineUserId, note.note_text, note.noted_at, note.noted_by);
+          const r = await postNote(lineUserId, note.note_text, parseNotedAt(note.noted_at), note.noted_by);
           if (r?.ok && r.inserted) {
             console.log(`    📝 Note บันทึก: "${note.note_text.slice(0, 50)}" (${note.noted_by || '?'} @ ${note.noted_at || '?'})`);
             notes_saved++;

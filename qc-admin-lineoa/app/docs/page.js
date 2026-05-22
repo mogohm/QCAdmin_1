@@ -16,6 +16,7 @@ export default function Docs() {
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
           <a className="active" href="/docs">Setup Docs</a>
+          <a href="/scraper-test">🔬 Scraper Test</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
       </aside>
@@ -77,7 +78,8 @@ npx playwright install chromium`)}
 QC_API_KEY=YOUR_SECRET_KEY          # ต้องตรงกับ ADMIN_API_KEY บน Vercel
 
 SCHEDULE_MINUTES=30                  # รัน auto ทุก 30 นาที (0 = รอ job จาก /scraper)
-MIN_IDLE_MINUTES=30                  # ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า 30 นาที`)}
+MIN_IDLE_MINUTES=30                  # ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า 30 นาที
+CUSTOMER_LIMIT=100                   # จำนวนลูกค้าสูงสุดต่อ job (default 100)`)}
 
           <h3 style={{ fontSize: 15 }}>3.3 Login LINE OA ครั้งแรก</h3>
           {pre(`node login.js    # เปิด browser ให้ login LINE OA Manager แล้ว Enter`)}

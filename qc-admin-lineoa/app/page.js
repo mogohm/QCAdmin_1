@@ -273,6 +273,7 @@ export default function Dashboard() {
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
           <a href="/docs">Setup Docs</a>
+          <a href="/scraper-test">🔬 Scraper Test</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
         <div style={{ marginTop: 'auto', padding: '16px 0', fontSize: 12 }}>
@@ -477,7 +478,7 @@ export default function Dashboard() {
             <h2 style={{ margin: 0 }}>ประวัติการตอบ</h2>
             {rpTotal > 0 && (
               <span style={{ fontSize: 12, color: '#888' }}>
-                {rpTotal} ลูกค้า · {replyLogSrc.length} ข้อความ{replyLogSrc.length >= 100 ? ' (แสดงสูงสุด 100)' : ''}
+                {rpTotal} ลูกค้า · {replyLogSrc.length} ข้อความ{rpTotal >= 100 ? ' (แสดง 100 ลูกค้าล่าสุด)' : ''}
               </span>
             )}
           </div>

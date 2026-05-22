@@ -91,6 +91,7 @@ export default function Admin() {
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
           <a href="/docs">Setup Docs</a>
+          <a href="/scraper-test">🔬 Scraper Test</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
       </aside>

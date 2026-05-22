@@ -253,6 +253,7 @@ export default function ScraperPage() {
           <a className="active" href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>
           <a href="/docs">Setup Docs</a>
+          <a href="/scraper-test">🔬 Scraper Test</a>
           <a href="/PROJECT_DOCS.html" target="_blank">📄 Project Docs</a>
         </nav>
         <div style={{ marginTop: 'auto', padding: '16px 0', fontSize: 12 }}>

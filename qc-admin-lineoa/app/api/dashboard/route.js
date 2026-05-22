@@ -102,6 +102,16 @@ export async function GET(req) {
         LIMIT 20`, []),
 
       safe(() => query`
+        WITH top_customers AS (
+          SELECT line_user_id, MAX(created_at) AS last_at
+          FROM messages
+          WHERE direction = 'admin'
+            AND admin_id IS NOT NULL
+            AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+          GROUP BY line_user_id
+          ORDER BY last_at DESC
+          LIMIT 100
+        )
         SELECT
           m.id, m.created_at,
           a.member_name     AS admin_name,
@@ -113,6 +123,7 @@ export async function GET(req) {
           q.sentiment_score, q.response_seconds,
           q.fail_reasons, q.matched_rules
         FROM messages m
+        JOIN top_customers tc       ON tc.line_user_id = m.line_user_id
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
         LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id
         LEFT JOIN qc_scores q       ON q.admin_message_id = m.id
@@ -120,7 +131,7 @@ export async function GET(req) {
         WHERE m.direction = 'admin'
           AND m.admin_id IS NOT NULL
           AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-        ORDER BY m.created_at DESC LIMIT 100`, []),
+        ORDER BY tc.last_at DESC, m.created_at DESC`, []),
 
       safe(() => query`
         SELECT
