@@ -615,6 +615,7 @@ async function runJob(job) {
     let diagDone = false;
     let skipCount = 0;
     let consecutiveAllSkip = 0;
+    let reachedTargetZone = false; // true เมื่อเห็น item แรกที่ label ตรง dateRange — ปิด fast-scroll
 
     // scroll กลับบนสุดก่อนเริ่ม
     await page.evaluate(() => {
@@ -713,6 +714,9 @@ async function runJob(job) {
             else process.stdout.write('⏭');
             continue;
           }
+
+          // เข้าสู่ zone วันที่เป้าหมาย → ปิด fast-scroll ×4 เพื่อไม่ข้ามข้อมูล
+          if (chatDay) reachedTargetZone = true;
 
           // Click item — URL จะเปลี่ยนเป็น chat ของลูกค้า (LINE OA SPA)
           const urlBefore = page.url();
@@ -875,7 +879,9 @@ async function runJob(job) {
       if (outerDone || wasCancelled) break;
 
       // scroll list ลงเพื่อโหลด items ถัดไป
-      if (isHistorical && roundClicked === 0) {
+      // fast-scroll ×4 ใช้ได้เฉพาะก่อนถึง zone วันที่เป้าหมาย
+      // เมื่อ reachedTargetZone=true ห้าม fast-scroll เพราะจะข้ามข้อมูลที่ต้องการ
+      if (isHistorical && roundClicked === 0 && !reachedTargetZone) {
         consecutiveAllSkip++;
       } else {
         consecutiveAllSkip = 0;
