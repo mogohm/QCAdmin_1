@@ -37,7 +37,12 @@ export default function RulesPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const saved = localStorage.getItem('qc_api_key') || '';
+    if (saved) setApiKey(saved);
+  }, []);
+  useEffect(() => { if (apiKey) localStorage.setItem('qc_api_key', apiKey); }, [apiKey]);
 
   const openAdd = () => { setEditId(null); setForm(blank()); setMsg(null); };
   const openEdit = (rule) => {

@@ -214,14 +214,19 @@ async function extractCustomerNameFromPanel(page) {
   // Fallback: structural approach — LINE OA ใช้ hashed class ทำให้ [class*=...] ไม่ match
   // แทนด้วย: img[alt] ในส่วน header ของ right panel + heading elements
   return page.evaluate(() => {
-    // Strategy 1: img[alt] ที่อยู่ใกล้ด้านบนของ right panel (avatar ลูกค้า)
+    function isValidName(s) {
+      if (!s || s.length < 2 || s.length >= 50) return false;
+      if (!/[฀-๿a-zA-Z0-9]/.test(s)) return false;
+      if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(s)) return false;
+      if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(s)) return false;
+      if (s.split(/\s+/).length > 6) return false;
+      return true;
+    }
+    // Strategy 1: img[alt] ที่อยู่ใกล้บนสุดของ right panel (avatar ลูกค้า)
     for (const img of document.querySelectorAll('img[alt]')) {
       const alt = img.alt?.trim();
-      if (!alt || alt.length < 2 || alt.length >= 80) continue;
-      if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
-      if (/^(photo|image|avatar|icon|logo|sticker|LINE|emoji)$/i.test(alt)) continue;
+      if (!isValidName(alt)) continue;
       const rect = img.getBoundingClientRect();
-      // ต้องอยู่ใกล้บนสุด (top < 15%) และอยู่ฝั่งขวา (left > 25%)
       if (rect.top < window.innerHeight * 0.15 && rect.left > window.innerWidth * 0.25) {
         return alt;
       }
@@ -232,9 +237,7 @@ async function extractCustomerNameFromPanel(page) {
       if (rect.top > window.innerHeight * 0.15) continue;
       if (rect.left < window.innerWidth * 0.25) continue;
       const t = el.innerText?.trim();
-      if (t && t.length >= 2 && t.length < 80 &&
-          /[฀-๿a-zA-Z0-9]/.test(t) &&
-          !/^LINE/i.test(t)) return t;
+      if (isValidName(t) && !/^LINE/i.test(t)) return t;
     }
     return null;
   }).catch(() => null);
@@ -672,15 +675,19 @@ async function runJob(job) {
               }
             }
 
-            // ชื่อจาก img[alt]
+            // ชื่อจาก img[alt] — avatar ของลูกค้าในรายการ
             let listName = null;
             for (const img of el.querySelectorAll('img[alt]')) {
               const alt = img.alt?.trim();
-              if (alt && alt.length >= 2 && alt.length < 60 &&
-                  /[฀-๿a-zA-Z0-9]/.test(alt) &&
-                  !/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif)$/i.test(alt)) {
-                listName = alt; break;
-              }
+              if (!alt || alt.length < 2 || alt.length >= 50) continue;
+              if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
+              // ปฏิเสธ exact single-word UI labels
+              if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(alt)) continue;
+              // ปฏิเสธประโยคบรรยาย — ชื่อคนไม่มีคำพวกนี้
+              if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(alt)) continue;
+              // ปฏิเสธถ้ามีคำมากกว่า 5 คำ (ชื่อคนสั้นกว่านี้)
+              if (alt.split(/\s+/).length > 5) continue;
+              listName = alt; break;
             }
 
             // Diagnostic สำหรับ item แรก
@@ -717,12 +724,16 @@ async function runJob(job) {
           if (url === urlBefore) { process.stdout.write('✗'); continue; } // click ไม่ได้ผล
           if (processedUrls.has(url)) { process.stdout.write('↩'); continue; }
           processedUrls.add(url);
-          totalSeen++;
-          roundClicked++;
 
           const m = url.match(/\/(U[a-f0-9]{32})/i);
           if (!m) continue;
           const lineUserId = m[1];
+
+          // dedup ด้วย lineUserId — ป้องกัน conversation ที่ reopen แล้ว URL เปลี่ยนแต่ customer คนเดิม
+          if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+
+          totalSeen++;
+          roundClicked++;
 
           // CUSTOMER_LIMIT
           if (!visitedCustomers.has(lineUserId) && visitedCustomers.size >= CUSTOMER_LIMIT) {

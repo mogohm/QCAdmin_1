@@ -28,7 +28,12 @@ export default function Admin() {
       .then(data => { if (Array.isArray(data)) setAdmins(data); })
       .catch(() => {});
 
-  useEffect(() => { load(); loadAdmins(); }, []);
+  useEffect(() => {
+    load(); loadAdmins();
+    const saved = localStorage.getItem('qc_api_key') || '';
+    if (saved) setKey(saved);
+  }, []);
+  useEffect(() => { if (key) localStorage.setItem('qc_api_key', key); }, [key]);
 
   async function send() {
     if (!adminId || !conv || !text.trim()) {
