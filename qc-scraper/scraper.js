@@ -635,6 +635,7 @@ async function runJob(job) {
     while (!outerDone && !wasCancelled) {
       const n = await page.locator('.list-group-item-chat').count();
       let roundClicked = 0;
+      let lastSeenLabel = null; // label ของ item สุดท้ายในรอบนี้ — ใช้ตัดสิน scroll multiplier
 
       for (let i = 0; i < n && !outerDone && !wasCancelled; i++) {
         try {
@@ -698,6 +699,7 @@ async function runJob(job) {
 
           if (_dbg !== null) { diagDone = true; console.log(`\n=== ITEM#0 innerText: ${JSON.stringify(_dbg)} ===`); }
           if (label === null) { process.stdout.write('✗'); continue; }
+          lastSeenLabel = label; // อัปเดต label ล่าสุดเพื่อใช้ตัดสิน scroll speed
 
           const chatDay = dayLabelToDate(label);
           // หยุดเมื่อ item เก่ากว่า dateFrom (list เรียงใหม่→เก่า)
@@ -879,15 +881,21 @@ async function runJob(job) {
       if (outerDone || wasCancelled) break;
 
       // scroll list ลงเพื่อโหลด items ถัดไป
-      // fast-scroll ×4 ใช้ได้เฉพาะก่อนถึง zone วันที่เป้าหมาย
+      // fast-scroll ใช้ได้เฉพาะก่อนถึง zone วันที่เป้าหมาย
       // เมื่อ reachedTargetZone=true ห้าม fast-scroll เพราะจะข้ามข้อมูลที่ต้องการ
       if (isHistorical && roundClicked === 0 && !reachedTargetZone) {
         consecutiveAllSkip++;
       } else {
         consecutiveAllSkip = 0;
       }
-      const scrollMult = isHistorical && consecutiveAllSkip >= 3 ? 4 : 1;
-      if (scrollMult > 1) console.log(`\n  🚀 scroll ×${scrollMult} (${consecutiveAllSkip} รอบ all-⏭)`);
+      // ตรวจสอบว่า item สุดท้ายที่เห็นในรอบนี้ยังเป็น "วันนี้" ไหม
+      // ถ้าใช่ → ปลอดภัยที่จะ fast-scroll ×20 (ข้ามวันนี้เร็วๆ)
+      // ถ้าไม่ใช่ → ใกล้ target zone แล้ว → ×1 เพื่อไม่ข้ามข้อมูล
+      const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
+      const lastItemStillToday = !reachedTargetZone &&
+        (!lastSeenDay || lastSeenDay.getTime() > dateTo.getTime());
+      const scrollMult = isHistorical && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
+      if (scrollMult > 1) process.stdout.write(`[×${scrollMult}]`);
       const scrolled = await scrollChatListDown(page, scrollMult);
       if (!scrolled) {
         if (isHistorical) {
