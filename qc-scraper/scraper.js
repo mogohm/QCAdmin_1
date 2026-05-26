@@ -617,6 +617,7 @@ async function runJob(job) {
     let diagDone = false;
     let skipCount = 0;
     let consecutiveAllSkip = 0;
+    let consecutiveEmptyAfterTarget = 0;
     let reachedTargetZone = false;
     let targetScrollPos = -1; // scroll position ของ Yesterday zone — ใช้กู้คืนเมื่อ LINE OA reset
 
@@ -902,6 +903,20 @@ async function runJob(job) {
       } else {
         consecutiveAllSkip = 0;
       }
+
+      // early stop หลัง Yesterday zone — ถ้าไม่เจอ chat ใหม่ 20 รอบติด → หยุด
+      if (reachedTargetZone) {
+        if (roundClicked === 0) {
+          consecutiveEmptyAfterTarget++;
+          if (consecutiveEmptyAfterTarget >= 20) {
+            console.log(`\n  🏁 หลัง Yesterday zone ไม่พบ chat ใหม่ ${consecutiveEmptyAfterTarget} รอบ — หยุด`);
+            break;
+          }
+        } else {
+          consecutiveEmptyAfterTarget = 0;
+        }
+      }
+
       // ×20 เฉพาะก่อนถึง Yesterday zone — หลัง reachedTargetZone ใช้ ×1 เสมอ
       // ป้องกันข้ามข้อมูลที่อยู่ใน Yesterday zone
       // (ถ้า LINE OA reset scroll กลับบน → jump-back code ข้างบนจัดการแล้ว)
