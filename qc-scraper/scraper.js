@@ -157,12 +157,14 @@ async function createAutoJob() {
       return;
     }
   }
-  const date = getJobDate();
+  // เป้าหมายคือ "เมื่อวาน" เสมอ
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  const date = toISO(d);
   const r = await apiFetch('/api/scraper/job', {
     method: 'POST',
     body: JSON.stringify({ date_from: date, date_to: date }),
   });
-  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน ${date} → ${date}`);
+  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน Yesterday (${date})`);
   else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
 }
 
@@ -579,10 +581,11 @@ async function runJob(job) {
   console.log(`\n📋 รับงาน: ${job.date_from} → ${job.date_to}`);
   await updateJob(job.id, { status: 'running' });
 
-  // date_from อาจมาเป็น "2026-05-17" หรือ "2026-05-17T00:00:00.000Z" — ตัดให้เหลือแค่ YYYY-MM-DD
-  const datePart = s => String(s).slice(0, 10);
-  const dateFrom = new Date(datePart(job.date_from) + 'T00:00:00');
-  const dateTo   = new Date(datePart(job.date_to)   + 'T23:59:59');
+  // เป้าหมายคือ "เมื่อวาน" เสมอ — ไม่ว่า job จะระบุวันไหนก็ตาม
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const dateFrom = new Date(toISO(yesterday) + 'T00:00:00');
+  const dateTo   = new Date(toISO(yesterday) + 'T23:59:59');
+  console.log(`  🎯 เป้าหมาย: Yesterday (${toISO(yesterday)})`);
 
   const browser = await chromium.launch({ headless: HEADLESS });
   const context = await browser.newContext({ storageState: AUTH_FILE });
@@ -601,9 +604,8 @@ async function runJob(job) {
 
     await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
 
-    // โหมด historical: dateTo เป็นอดีตเกิน MIN_IDLE_MIN นาที
-    const isHistorical = Date.now() - dateTo.getTime() > MIN_IDLE_MIN * 60 * 1000;
-    if (isHistorical) console.log(`  📅 Historical mode — ข้าม filter lastMsgIsAdmin & idleEnough`);
+    // Yesterday = historical เสมอ — ข้าม filter real-time ทั้งหมด
+    const isHistorical = true;
 
     let logged      = 0;
     let notes_saved = 0;
@@ -748,52 +750,6 @@ async function runJob(job) {
           }
           visitedCustomers.add(lineUserId);
           await updateJob(job.id, { total_chats: totalSeen });
-
-        // ---- กรอง 2: lastMsgIsAdmin (เฉพาะ real-time mode) ----
-        if (!isHistorical) {
-          const lastMsgIsAdmin = await page.evaluate(() => {
-            const msgs = Array.from(document.querySelectorAll('.chat')).filter(
-              el => !el.className.includes('chatsys')
-            );
-            if (!msgs.length) return false;
-            return msgs[msgs.length - 1].classList.contains('chat-reverse');
-          });
-          if (!lastMsgIsAdmin) { process.stdout.write('○'); continue; }
-        }
-
-        // ---- กรอง 3: idleEnough (เฉพาะ real-time mode) ----
-        if (!isHistorical) {
-          const idleEnough = await page.evaluate((minIdleMs) => {
-            const adminMsgs = Array.from(document.querySelectorAll('.chat.chat-reverse'))
-              .filter(el => !el.className.includes('chatsys'));
-            if (!adminMsgs.length) return true;
-
-            const last = adminMsgs[adminMsgs.length - 1];
-            const timeWithAttr = last.querySelector('time[datetime]');
-            if (timeWithAttr) {
-              const ts = new Date(timeWithAttr.getAttribute('datetime'));
-              if (!isNaN(ts)) return (Date.now() - ts.getTime()) >= minIdleMs;
-            }
-
-            const timePattern = /^(\d{1,2}):(\d{2})$/;
-            const walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT, null);
-            let node;
-            while ((node = walker.nextNode())) {
-              const txt = node.textContent.trim();
-              const mp  = txt.match(timePattern);
-              if (mp) {
-                const d = new Date();
-                d.setHours(parseInt(mp[1]), parseInt(mp[2]), 0, 0);
-                let msgTs = d.getTime();
-                if (msgTs > Date.now()) msgTs -= 86400000;
-                return (Date.now() - msgTs) >= minIdleMs;
-              }
-            }
-            return false;
-          }, MIN_IDLE_MIN * 60 * 1000).catch(() => false);
-
-          if (!idleEnough) { process.stdout.write('⏳'); continue; }
-        }
 
         // ---- ดึงชื่อลูกค้าจาก title / header (Box 2) ----
         const panelName   = await extractCustomerNameFromPanel(page);
