@@ -192,7 +192,7 @@ async function scrollChatListDown(page, multiplier = 1) {
 // LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager"
 // ใช้ waitForFunction เพื่อรอให้ title update หลัง right panel โหลดเสร็จ
 async function extractCustomerNameFromPanel(page) {
-  // poll title ทุก 200ms นานสูงสุด 4s — รอให้ LINE OA อัปเดต title
+  // poll title ทุก 200ms นานสูงสุด 6s — รอให้ LINE OA อัปเดต title
   const fromTitle = await page.waitForFunction(
     () => {
       const raw = (document.title || '').replace(/\s*[|–—]\s*.*/i, '').trim();
@@ -201,14 +201,12 @@ async function extractCustomerNameFromPanel(page) {
       if (/Official\s*Account/i.test(raw)) return false;
       if (/^(หน้าหลัก|Home|Manager|Account\s*Manager|Chat)$/i.test(raw)) return false;
       if (!/[฀-๿a-zA-Z0-9]/.test(raw)) return false;
-      // ปฏิเสธประโยค — ชื่อไม่ควรมีคำว่า photo/message/reply/video/sticker
       if (/\b(photo|message|replying|image|video|sticker|audio|file)\b/i.test(raw)) return false;
-      // ปฏิเสธถ้ามีคำมากกว่า 6 คำ (ชื่อไม่ยาวขนาดนี้)
       if (raw.split(/\s+/).length > 6) return false;
       return raw;
     },
     null,
-    { timeout: 4000, polling: 200 }
+    { timeout: 6000, polling: 200 }
   ).then(h => h.jsonValue()).catch(() => null);
 
   if (fromTitle && typeof fromTitle === 'string') return fromTitle;
@@ -491,6 +489,8 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
         if (/^\d{1,2}:\d{2}/.test(t)) continue;          // ข้าม timestamp
         if (!/[฀-๿a-zA-Z]/.test(t)) continue;            // ต้องมี Thai/EN
         if (bubble && bubble.contains(txtNode.parentElement)) continue; // ข้ามข้อความใน bubble
+        // ข้าม read receipt / status indicators ของ LINE OA
+        if (/^(read|seen|delivered|sent|อ่านแล้ว|ส่งแล้ว|ได้รับแล้ว)$/i.test(t)) continue;
         return t;
       }
 
@@ -837,19 +837,15 @@ async function runJob(job) {
       if (outerDone || wasCancelled) break;
 
       // scroll list ลงเพื่อโหลด items ถัดไป
-      // fast-scroll ใช้ได้เฉพาะก่อนถึง zone วันที่เป้าหมาย
-      // เมื่อ reachedTargetZone=true ห้าม fast-scroll เพราะจะข้ามข้อมูลที่ต้องการ
-      if (isHistorical && roundClicked === 0 && !reachedTargetZone) {
+      if (isHistorical && roundClicked === 0) {
         consecutiveAllSkip++;
       } else {
         consecutiveAllSkip = 0;
       }
-      // ตรวจสอบว่า item สุดท้ายที่เห็นในรอบนี้ยังเป็น "วันนี้" ไหม
-      // ถ้าใช่ → ปลอดภัยที่จะ fast-scroll ×20 (ข้ามวันนี้เร็วๆ)
-      // ถ้าไม่ใช่ → ใกล้ target zone แล้ว → ×1 เพื่อไม่ข้ามข้อมูล
+      // ×20 เมื่อ item สุดท้ายในหน้าเป็น "วันนี้" — ปลอดภัยข้ามวันนี้เร็วๆ
+      // ใช้ได้ทั้งก่อนและหลัง reachedTargetZone เพราะ LINE OA อาจ reset list กลับบนหลังคลิก chat
       const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
-      const lastItemStillToday = !reachedTargetZone &&
-        (!lastSeenDay || lastSeenDay.getTime() > dateTo.getTime());
+      const lastItemStillToday = !lastSeenDay || lastSeenDay.getTime() > dateTo.getTime();
       const scrollMult = isHistorical && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
       if (scrollMult > 1) process.stdout.write(`[×${scrollMult}]`);
       const scrolled = await scrollChatListDown(page, scrollMult);
