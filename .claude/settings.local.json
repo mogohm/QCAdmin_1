@@ -38,7 +38,9 @@
       "Bash(cat qc-admin-lineoa/.gitignore)",
       "Bash(cat .gitignore)",
       "Bash(git reset *)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(node -e \"require\\('fs'\\).existsSync\\('auth.json'\\) && require\\('fs'\\).unlinkSync\\('auth.json'\\); console.log\\('auth.json deleted'\\);\")",
+      "Bash(start cmd *)"
     ],
     "additionalDirectories": [
       "h:\\QCAdminPJ",
