@@ -902,11 +902,12 @@ async function runJob(job) {
       } else {
         consecutiveAllSkip = 0;
       }
-      // ×20 เมื่อ item สุดท้ายในหน้าเป็น "วันนี้" — ปลอดภัยข้ามวันนี้เร็วๆ
-      // ใช้ได้ทั้งก่อนและหลัง reachedTargetZone เพราะ LINE OA อาจ reset list กลับบนหลังคลิก chat
+      // ×20 เฉพาะก่อนถึง Yesterday zone — หลัง reachedTargetZone ใช้ ×1 เสมอ
+      // ป้องกันข้ามข้อมูลที่อยู่ใน Yesterday zone
+      // (ถ้า LINE OA reset scroll กลับบน → jump-back code ข้างบนจัดการแล้ว)
       const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
       const lastItemStillToday = !lastSeenDay || lastSeenDay.getTime() > dateTo.getTime();
-      const scrollMult = isHistorical && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
+      const scrollMult = isHistorical && !reachedTargetZone && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
       if (scrollMult > 1) process.stdout.write(`[×${scrollMult}]`);
       const scrolled = await scrollChatListDown(page, scrollMult);
       if (!scrolled) {
