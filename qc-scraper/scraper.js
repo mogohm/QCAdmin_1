@@ -617,7 +617,8 @@ async function runJob(job) {
     let diagDone = false;
     let skipCount = 0;
     let consecutiveAllSkip = 0;
-    let reachedTargetZone = false; // true เมื่อเห็น item แรกที่ label ตรง dateRange — ปิด fast-scroll
+    let reachedTargetZone = false;
+    let targetScrollPos = -1; // scroll position ของ Yesterday zone — ใช้กู้คืนเมื่อ LINE OA reset
 
     // scroll กลับบนสุดก่อนเริ่ม
     await page.evaluate(() => {
@@ -685,13 +686,23 @@ async function runJob(job) {
               const alt = img.alt?.trim();
               if (!alt || alt.length < 2 || alt.length >= 50) continue;
               if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
-              // ปฏิเสธ exact single-word UI labels
               if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(alt)) continue;
-              // ปฏิเสธประโยคบรรยาย — ชื่อคนไม่มีคำพวกนี้
               if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(alt)) continue;
-              // ปฏิเสธถ้ามีคำมากกว่า 5 คำ (ชื่อคนสั้นกว่านี้)
               if (alt.split(/\s+/).length > 5) continue;
               listName = alt; break;
+            }
+
+            // Fallback: บรรทัดแรกของ innerText = ชื่อลูกค้า (LINE OA format: "ชื่อ↵preview↵เวลา")
+            if (!listName) {
+              const firstLine = raw.split('\n')[0]?.trim() || '';
+              if (firstLine.length >= 2 && firstLine.length < 50 &&
+                  /[฀-๿a-zA-Z]/.test(firstLine) &&
+                  !/\b(photo|image|sticker|video|audio|file|ภาพ|วิดีโอ)\b/i.test(firstLine) &&
+                  !/^\d{1,2}:\d{2}/.test(firstLine) &&
+                  !/^(yesterday|today|เมื่อวาน|วันนี้|mon|tue|wed|thu|fri|sat|sun)/i.test(firstLine) &&
+                  !/^\d{1,2}\/\d{1,2}/.test(firstLine)) {
+                listName = firstLine;
+              }
             }
 
             // Diagnostic สำหรับ item แรก
@@ -835,6 +846,55 @@ async function runJob(job) {
       } // end inner for
 
       if (outerDone || wasCancelled) break;
+
+      // บันทึก scroll position ของ Yesterday zone ครั้งแรก
+      if (reachedTargetZone && targetScrollPos < 0) {
+        targetScrollPos = await page.evaluate(() => {
+          const item = document.querySelector('.list-group-item-chat');
+          if (!item) return 0;
+          let el = item.parentElement;
+          while (el && el !== document.body) {
+            const s = getComputedStyle(el);
+            if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+                el.scrollHeight > el.clientHeight + 50) return el.scrollTop;
+            el = el.parentElement;
+          }
+          return 0;
+        }).catch(() => 0);
+        if (targetScrollPos > 0) console.log(`\n  📍 Yesterday zone อยู่ที่ scroll ${targetScrollPos}px — จำไว้`);
+      }
+
+      // ตรวจว่า LINE OA reset scroll กลับบน → กระโดดกลับ Yesterday zone ทันที
+      if (reachedTargetZone && targetScrollPos > 3000) {
+        const currentPos = await page.evaluate(() => {
+          const item = document.querySelector('.list-group-item-chat');
+          if (!item) return 0;
+          let el = item.parentElement;
+          while (el && el !== document.body) {
+            const s = getComputedStyle(el);
+            if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+                el.scrollHeight > el.clientHeight + 50) return el.scrollTop;
+            el = el.parentElement;
+          }
+          return 0;
+        }).catch(() => 0);
+        if (currentPos < targetScrollPos - 3000) {
+          console.log(`\n  🔄 LINE OA reset scroll (${currentPos}→${targetScrollPos}) — กระโดดกลับ`);
+          await page.evaluate((pos) => {
+            const item = document.querySelector('.list-group-item-chat');
+            if (!item) return;
+            let el = item.parentElement;
+            while (el && el !== document.body) {
+              const s = getComputedStyle(el);
+              if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+                  el.scrollHeight > el.clientHeight + 50) { el.scrollTop = pos; return; }
+              el = el.parentElement;
+            }
+          }, targetScrollPos).catch(() => {});
+          await page.waitForTimeout(800);
+          continue;
+        }
+      }
 
       // scroll list ลงเพื่อโหลด items ถัดไป
       if (isHistorical && roundClicked === 0) {
