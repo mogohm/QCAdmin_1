@@ -778,7 +778,8 @@ async function runJob(job) {
           }
           if (chatDay && chatDay.getTime() > dateTo.getTime()) {
             skipCount++;
-            if (skipCount % 50 === 0) process.stdout.write(`[⏭${skipCount}]`);
+            if (skipCount % 200 === 0) process.stdout.write(`\n  [scan ⏭${skipCount} | ${label}]`);
+            else if (skipCount % 50 === 0) process.stdout.write(`[⏭${skipCount}]`);
             else process.stdout.write('⏭');
             continue;
           }
