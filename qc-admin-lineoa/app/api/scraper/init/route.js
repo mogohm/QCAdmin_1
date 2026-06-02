@@ -31,5 +31,10 @@ export async function POST(req) {
       UNIQUE(line_user_id, note_text, noted_at)
     )
   `;
-  return Response.json({ ok: true, message: 'scraper_jobs + customer_notes tables ready' });
+  // v2 migrations
+  await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS assigned_admin TEXT`;
+  await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS phone TEXT`;
+  await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS email TEXT`;
+  await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text'`;
+  return Response.json({ ok: true, message: 'tables ready (v2)' });
 }

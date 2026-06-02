@@ -132,13 +132,19 @@ async function apiFetch(endpoint, opts = {}) {
 const pollJob   = ()      => apiFetch('/api/scraper/poll');
 const updateJob = (id, f) => apiFetch('/api/scraper/poll', { method: 'PATCH', body: JSON.stringify({ id, ...f }) });
 
-const postReply = (uid, text, adminName, customerText, adminTs, customerTs, customerName) =>
+const postReply = (uid, text, adminName, customerText, adminTs, customerTs, customerName, profile, messageType) =>
   apiFetch('/api/admin/log-reply', { method: 'POST', body: JSON.stringify({
-    line_user_id: uid, text, admin_name: adminName,
-    customer_text:  customerText  || null,
-    admin_ts:       adminTs       || null,
-    customer_ts:    customerTs    || null,
-    customer_name:  customerName  || null,
+    line_user_id:   uid,
+    text,
+    admin_name:     adminName,
+    customer_text:  customerText    || null,
+    admin_ts:       adminTs         || null,
+    customer_ts:    customerTs      || null,
+    customer_name:  customerName    || null,
+    assigned_admin: profile?.assignedAdmin || null,
+    phone:          profile?.phone  || null,
+    email:          profile?.email  || null,
+    message_type:   messageType     || 'text',
   }) });
 
 const postNote = (uid, noteText, notedAt, notedBy) =>
@@ -236,9 +242,18 @@ async function scrollChatListDown(page, multiplier = 1) {
   }, multiplier);
 }
 
-// ---- ดึงชื่อลูกค้าจาก document.title (Box 2) ----
-// LINE OA ตั้ง title เป็น "ชื่อลูกค้า | LINE Official Account Manager"
-// ใช้ waitForFunction เพื่อรอให้ title update หลัง right panel โหลดเสร็จ
+// ---- debug screenshot ----
+const DEBUG_DIR = require('path').join(__dirname, 'debug');
+async function saveScreenshot(page, name) {
+  try {
+    if (!require('fs').existsSync(DEBUG_DIR)) require('fs').mkdirSync(DEBUG_DIR, { recursive: true });
+    await page.screenshot({ path: require('path').join(DEBUG_DIR, `${name}.png`), fullPage: false });
+  } catch {}
+}
+
+// ---- ดึงชื่อลูกค้า + assigned_admin + phone + email จาก right panel (Box 2) ----
+// ชื่อมาจาก document.title (primary) หรือ img[alt] (fallback)
+// assigned_admin มาจาก element ใกล้ "assign" keyword ในแผงขวา
 async function extractCustomerNameFromPanel(page) {
   // poll title ทุก 200ms นานสูงสุด 6s — รอให้ LINE OA อัปเดต title
   const fromTitle = await page.waitForFunction(
@@ -291,6 +306,48 @@ async function extractCustomerNameFromPanel(page) {
   }).catch(() => null);
 }
 
+
+// ---- ดึง profile เพิ่มเติม: assigned_admin, phone, email จาก right panel (Box 2) ----
+async function extractCustomerProfile(page) {
+  const name = await extractCustomerNameFromPanel(page);
+
+  const extra = await page.evaluate(() => {
+    let assignedAdmin = null, phone = null, email = null;
+
+    function inRightPanel(el) {
+      const r = el.getBoundingClientRect();
+      return r.left > window.innerWidth * 0.45 && r.width > 0 && r.height > 0;
+    }
+
+    // เก็บ text nodes ทั้งหมดในแผงขวา (leaf nodes เท่านั้น)
+    const leafTexts = [];
+    for (const el of document.querySelectorAll('span,p,div,button,a')) {
+      if (!inRightPanel(el)) continue;
+      if (el.children.length > 0) continue;
+      const t = (el.innerText || el.textContent || '').trim();
+      if (t && t.length > 0 && t.length < 120) leafTexts.push(t);
+    }
+
+    for (let i = 0; i < leafTexts.length; i++) {
+      const t = leafTexts[i];
+      // Phone
+      if (!phone && /^0[0-9]{8,9}$/.test(t.replace(/[-\s]/g, ''))) { phone = t; continue; }
+      // Email
+      if (!email && /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/.test(t)) { email = t; continue; }
+      // Assigned admin — element หลัง "Assigned to" / "ผู้รับผิดชอบ"
+      if (!assignedAdmin && /assign|ผู้รับ|มอบหมาย/i.test(t)) {
+        const next = leafTexts[i + 1] || '';
+        if (next.length >= 2 && next.length < 60 && /[ก-๿a-zA-Z]/.test(next) &&
+            !/^(assign|tag|note|follow|resolve|เพิ่ม|บันทึก)/i.test(next)) {
+          assignedAdmin = next;
+        }
+      }
+    }
+    return { assignedAdmin, phone, email };
+  }).catch(() => ({ assignedAdmin: null, phone: null, email: null }));
+
+  return { name, ...extra };
+}
 
 // ---- ดึง Notes จาก right panel (Box 4) ----
 // กลยุทธ์: หาทุก element ที่มีรูปแบบ "M/D/YYYY, HH:MM AdminName" และไม่อยู่ใน chat messages panel
@@ -589,11 +646,24 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
 
       if (!node.classList.contains('chat-reverse')) continue;
 
-      // ข้อความ admin (ขวา)
+      // ข้อความ admin (ขวา) — ตรวจ type ก่อน
+      const msgType = (() => {
+        if (node.querySelector('img[src*="sticker"], [class*="sticker"]')) return 'sticker';
+        if (node.querySelector('[class*="file"], [class*="document"], a[download]')) return 'file';
+        if (node.querySelector('audio, video')) return 'media';
+        if (node.querySelector('img:not([alt=""])')) {
+          const imgs = node.querySelectorAll('img');
+          for (const img of imgs) {
+            if (!img.alt || !/^(read|seen|icon|avatar|logo)$/i.test(img.alt)) return 'image';
+          }
+        }
+        return 'text';
+      })();
+
       const textEl = node.querySelector(
         '.chat-item-text.user-select-text, .chat-item-text, [class*="chat-text"], [class*="message-text"]'
       );
-      const text = textEl?.innerText?.trim() || '';
+      const text = textEl?.innerText?.trim() || (msgType !== 'text' ? `[${msgType}]` : '');
       if (!text || text.length < 1) continue;
 
       const tsIso = extractTs(node, currentDate);
@@ -614,7 +684,8 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
       results.push({
         text,
         adminName,
-        timestamp: tsIso,
+        timestamp:    tsIso,
+        messageType:  msgType,
         customerText: lastCustomerText,
         customerTs:   lastCustomerTs,
       });
@@ -829,6 +900,7 @@ async function runJob(job) {
       return;
     }
     console.log(`\n✅ Phase 1 เสร็จ — Yesterday zone สิ้นสุดที่ scroll ~${yesterdayZoneEndScrollPos}px`);
+    await saveScreenshot(page, '01_phase1_complete');
     console.log(`🔄 Phase 2: ประมวลผลจาก Yesterday chat ล่าสุด เลื่อนขึ้น...`);
 
     await scrollToPos(page, yesterdayZoneEndScrollPos);
@@ -929,8 +1001,9 @@ async function runJob(job) {
           visitedCustomers.add(lineUserId);
           await updateJob(job.id, { total_chats: totalSeen });
 
-          const panelName   = await extractCustomerNameFromPanel(page);
-          const displayName = panelName || listName || lineUserId.slice(0, 16);
+          const profile     = await extractCustomerProfile(page);
+          const displayName = profile.name || listName || lineUserId.slice(0, 16);
+          if (profile.assignedAdmin) console.log(`\n    👤 Assigned: ${profile.assignedAdmin}`);
 
           const upd = await updateJob(job.id, { current_chat: displayName, logged_count: logged });
           if (upd?.cancelled) {
@@ -970,11 +1043,12 @@ async function runJob(job) {
             break;
           }
 
+          await saveScreenshot(page, `02_chat_${visitedCustomers.size}_${lineUserId.slice(0, 8)}`);
           console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName}" (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
 
           for (const msg of msgs) {
             if (wasCancelled) break;
-            const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
+            const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName, profile, msg.messageType);
             if (r?.ok) {
               console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0, 40)}"${msg.customerText ? ` | ❓"${msg.customerText.slice(0, 30)}"` : ''}`);
               logged++;
@@ -1030,6 +1104,7 @@ async function runJob(job) {
     }
   } catch (err) {
     await updateJob(job.id, { status: 'error', error_text: err.message });
+    await saveScreenshot(page, '99_error').catch(() => {});
     console.error('❌', err.message);
   } finally {
     await browser.close();

@@ -19,7 +19,8 @@ export async function OPTIONS() {
 export async function POST(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
 
-  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts, customer_name } = await req.json();
+  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts, customer_name,
+          assigned_admin, phone, email, message_type } = await req.json();
   if (!line_user_id || !text)
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
@@ -50,11 +51,14 @@ export async function POST(req) {
   // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
   // ถ้ามี customer_name จาก scraper (ชื่อที่เห็นใน LINE OA) ให้อัปเดตด้วย
   await query`
-    INSERT INTO line_customers (line_user_id, display_name)
-    VALUES (${line_user_id}, ${customer_name || null})
+    INSERT INTO line_customers (line_user_id, display_name, assigned_admin, phone, email)
+    VALUES (${line_user_id}, ${customer_name || null}, ${assigned_admin || null}, ${phone || null}, ${email || null})
     ON CONFLICT (line_user_id)
     DO UPDATE SET
-      display_name = COALESCE(EXCLUDED.display_name, line_customers.display_name)
+      display_name   = COALESCE(EXCLUDED.display_name,   line_customers.display_name),
+      assigned_admin = COALESCE(EXCLUDED.assigned_admin, line_customers.assigned_admin),
+      phone          = COALESCE(EXCLUDED.phone,          line_customers.phone),
+      email          = COALESCE(EXCLUDED.email,          line_customers.email)
   `;
   // ดึงชื่อจาก LINE API (fire-and-forget) — override เฉพาะถ้า display_name ยังเป็น null
   getLineProfile(line_user_id).then(profile => {
@@ -173,14 +177,15 @@ export async function POST(req) {
   }
 
   // บันทึก admin message พร้อม timestamp จริงจาก LINE
-  const adminAt = admin_ts || null;
+  const adminAt  = admin_ts || null;
+  const msgType  = message_type || 'text';
   const adminMsg = adminAt ? await query`
-    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, created_at)
-    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${adminAt}::timestamptz)
+    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type, created_at)
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType}, ${adminAt}::timestamptz)
     RETURNING *
   ` : await query`
-    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text)
-    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text})
+    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type)
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType})
     RETURNING *
   `;
 
