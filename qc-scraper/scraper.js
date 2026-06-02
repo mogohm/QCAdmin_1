@@ -881,7 +881,9 @@ async function runJob(job) {
 
       const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
       const lastItemStillToday = !lastSeenDay || lastSeenDay.getTime() > dateTo.getTime();
-      const scrollMult = isHistorical && !reachedTargetZone && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
+      // ถ้า label เป็น time ช่วง 00:xx–05:xx = ใกล้ midnight → ชะลอเป็น ×1 เพื่อไม่ข้าม Yesterday zone
+      const nearMidnight = lastSeenLabel ? /^0[0-5]:\d{2}/.test(lastSeenLabel) : false;
+      const scrollMult = isHistorical && !reachedTargetZone && consecutiveAllSkip >= 2 && lastItemStillToday && !nearMidnight ? 20 : 1;
       if (scrollMult > 1) process.stdout.write(`[×${scrollMult}]`);
       const scrolled = await scrollChatListDown(page, scrollMult);
       if (!scrolled) {
