@@ -814,6 +814,7 @@ async function runJob(job) {
               if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
               if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(alt)) continue;
               if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(alt)) continue;
+              if (/hourglass|not.?done|pending|loading|clock|ยังไม่|เสร็จ/i.test(alt)) continue;
               if (alt.split(/\s+/).length > 5) continue;
               listName = alt; break;
             }
@@ -822,7 +823,7 @@ async function runJob(job) {
             if (!listName) {
               const firstLine = raw.split('\n')[0]?.trim() || '';
               if (firstLine.length >= 2 && firstLine.length < 50 &&
-                  /[฀-๿a-zA-Z]/.test(firstLine) &&
+                  (/[฀-๿a-zA-Z]/.test(firstLine) || /\d{6,}/.test(firstLine)) &&
                   !/\b(photo|image|sticker|video|audio|file|ภาพ|วิดีโอ)\b/i.test(firstLine) &&
                   !/^\d{1,2}:\d{2}/.test(firstLine) &&
                   !/^(yesterday|today|เมื่อวาน|วันนี้|mon|tue|wed|thu|fri|sat|sun)/i.test(firstLine) &&
@@ -956,13 +957,14 @@ async function runJob(job) {
               if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
               if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(alt)) continue;
               if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(alt)) continue;
+              if (/hourglass|not.?done|pending|loading|clock|ยังไม่|เสร็จ/i.test(alt)) continue;
               if (alt.split(/\s+/).length > 5) continue;
               listName = alt; break;
             }
             if (!listName) {
               const firstLine = raw.split('\n')[0]?.trim() || '';
               if (firstLine.length >= 2 && firstLine.length < 50 &&
-                  /[฀-๿a-zA-Z]/.test(firstLine) &&
+                  (/[฀-๿a-zA-Z]/.test(firstLine) || /\d{6,}/.test(firstLine)) &&
                   !/\b(photo|image|sticker|video|audio|file|ภาพ|วิดีโอ)\b/i.test(firstLine) &&
                   !/^\d{1,2}:\d{2}/.test(firstLine) &&
                   !/^(yesterday|today|เมื่อวาน|วันนี้|mon|tue|wed|thu|fri|sat|sun)/i.test(firstLine) &&
