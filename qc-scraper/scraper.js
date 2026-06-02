@@ -168,7 +168,55 @@ async function createAutoJob() {
   else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
 }
 
-// ---- scroll chat list ลง ----
+// ---- scroll chat list ลง/ขึ้น + get/set scroll position ----
+async function getScrollPos(page) {
+  return page.evaluate(() => {
+    const item = document.querySelector('.list-group-item-chat');
+    if (!item) return 0;
+    let el = item.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+          el.scrollHeight > el.clientHeight + 50) return el.scrollTop;
+      el = el.parentElement;
+    }
+    return 0;
+  }).catch(() => 0);
+}
+
+async function scrollToPos(page, pos) {
+  await page.evaluate((pos) => {
+    const item = document.querySelector('.list-group-item-chat');
+    if (!item) return;
+    let el = item.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+          el.scrollHeight > el.clientHeight + 50) { el.scrollTop = pos; return; }
+      el = el.parentElement;
+    }
+  }, pos);
+}
+
+async function scrollChatListUp(page, multiplier = 1) {
+  return page.evaluate((mult) => {
+    const item = document.querySelector('.list-group-item-chat');
+    if (!item) return false;
+    let el = item.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
+          el.scrollHeight > el.clientHeight + 50) {
+        const before = el.scrollTop;
+        el.scrollTop -= Math.max(el.clientHeight * 0.75, 200) * mult;
+        return el.scrollTop !== before;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }, multiplier);
+}
+
 async function scrollChatListDown(page, multiplier = 1) {
   return page.evaluate((mult) => {
     const item = document.querySelector('.list-group-item-chat');
@@ -619,7 +667,7 @@ async function runJob(job) {
     let consecutiveAllSkip = 0;
     let consecutiveEmptyAfterTarget = 0;
     let reachedTargetZone = false;
-    let targetScrollPos = -1; // scroll position ของ Yesterday zone — ใช้กู้คืนเมื่อ LINE OA reset
+    let yesterdayZoneEndScrollPos = 0; // scroll position ที่สิ้นสุด Yesterday zone (ใช้เริ่ม Phase 2)
 
     // scroll กลับบนสุดก่อนเริ่ม
     await page.evaluate(() => {
@@ -635,13 +683,19 @@ async function runJob(job) {
     });
     await page.waitForTimeout(600);
 
-    // วน scroll ลง เปิดทุก item ที่เห็นใน DOM ขณะนั้น
-    while (!outerDone && !wasCancelled) {
-      const n = await page.locator('.list-group-item-chat').count();
-      let roundClicked = 0;
-      let lastSeenLabel = null; // label ของ item สุดท้ายในรอบนี้ — ใช้ตัดสิน scroll multiplier
+    // =============================================
+    // PHASE 1: SCAN — scroll ผ่านทั้งหมด ไม่ click
+    // =============================================
+    console.log('\n🔍 Phase 1: สแกนหา Yesterday zone...');
 
-      for (let i = 0; i < n && !outerDone && !wasCancelled; i++) {
+    let scanDone = false;
+    while (!scanDone && !wasCancelled) {
+      const n = await page.locator('.list-group-item-chat').count();
+      let foundOlderThanTarget = false;
+      let foundYesterdayThisRound = false;
+      let lastSeenLabel = null;
+
+      for (let i = 0; i < n && !foundOlderThanTarget; i++) {
         try {
           const item = page.locator('.list-group-item-chat').nth(i);
 
@@ -716,210 +770,42 @@ async function runJob(job) {
           lastSeenLabel = label; // อัปเดต label ล่าสุดเพื่อใช้ตัดสิน scroll speed
 
           const chatDay = dayLabelToDate(label);
-          // หยุดเมื่อ item เก่ากว่า dateFrom (list เรียงใหม่→เก่า)
+          // Phase 1: ตรวจ zone — ไม่ click
           if (chatDay && chatDay.getTime() < dateFrom.getTime()) {
-            console.log(`\n📅 "${label}" เก่ากว่า dateFrom — หยุด`);
-            outerDone = true; break;
+            console.log(`\n📅 Scan: "${label}" เก่ากว่า Yesterday — สิ้นสุด scan`);
+            yesterdayZoneEndScrollPos = await getScrollPos(page);
+            foundOlderThanTarget = true; break;
           }
-          // ข้าม item ที่ label ใหม่กว่า dateTo (ทั้ง real-time และ historical)
-          // historical: label "วันนี้" = conversation ยังมีแอดมินทำงานอยู่ หรือลูกค้าส่งข้อความใหม่
-          // — ควรข้าม แล้วเลื่อนลงหา conversation ที่ label ตรง dateTo จริงๆ
           if (chatDay && chatDay.getTime() > dateTo.getTime()) {
             skipCount++;
             if (skipCount % 50 === 0) process.stdout.write(`[⏭${skipCount}]`);
             else process.stdout.write('⏭');
             continue;
           }
-
-          // เข้าสู่ zone วันที่เป้าหมาย → ปิด fast-scroll ×4 เพื่อไม่ข้ามข้อมูล
-          if (chatDay) reachedTargetZone = true;
-
-          // Click item — URL จะเปลี่ยนเป็น chat ของลูกค้า (LINE OA SPA)
-          const urlBefore = page.url();
-          await item.click().catch(() => {});
-          try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 6000 }); } catch {}
-          await page.waitForTimeout(800);
-
-          const url = page.url();
-          if (url === urlBefore) { process.stdout.write('✗'); continue; } // click ไม่ได้ผล
-          if (processedUrls.has(url)) { process.stdout.write('↩'); continue; }
-          processedUrls.add(url);
-
-          const m = url.match(/\/(U[a-f0-9]{32})/i);
-          if (!m) continue;
-          const lineUserId = m[1];
-
-          // dedup ด้วย lineUserId — ป้องกัน conversation ที่ reopen แล้ว URL เปลี่ยนแต่ customer คนเดิม
-          if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
-
-          totalSeen++;
-          roundClicked++;
-
-          // CUSTOMER_LIMIT
-          if (!visitedCustomers.has(lineUserId) && visitedCustomers.size >= CUSTOMER_LIMIT) {
-            console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
-            outerDone = true; break;
-          }
-          visitedCustomers.add(lineUserId);
-          await updateJob(job.id, { total_chats: totalSeen });
-
-        // ---- ดึงชื่อลูกค้าจาก title / header (Box 2) ----
-        const panelName   = await extractCustomerNameFromPanel(page);
-        const displayName = panelName || listName || lineUserId.slice(0, 16);
-
-        const upd = await updateJob(job.id, { current_chat: displayName, logged_count: logged });
-        if (upd?.cancelled) {
-          console.log('\n🚫 Job ถูกยกเลิกจากเว็บ — หยุด scrape');
-          wasCancelled = true; break;
-        }
-
-        // ---- Scroll chat ขึ้นจนถึง dateFrom ----
-        const abortedLoad = await loadChatHistory(page, dateFrom, async () => {
-          const r = await updateJob(job.id, {});
-          return r?.cancelled === true;
-        });
-        if (abortedLoad) {
-          console.log('\n🚫 Job ถูกยกเลิกระหว่าง loadChatHistory — หยุด scrape');
-          wasCancelled = true; break;
-        }
-
-        // ---- ดึง messages (Box 3) ----
-        const msgs = await extractAdminMessages(page, dateFrom, dateTo);
-
-        // ถ้า LINE OA ไม่มี <time datetime> element scraper จะไม่ได้ timestamp
-        // ผล: created_at ใน DB จะเป็น now() (วันที่ scrape) แทนวันที่จริง → report ไม่เจอ
-        // Fix: ใช้ dateFrom+noon เป็น fallback timestamp เพื่อให้ created_at อยู่ในช่วงที่ถูกต้อง
-        for (const msg of msgs) {
-          if (!msg.timestamp) {
-            const d = new Date(dateFrom);
-            d.setHours(12, 0, 0, 0);
-            msg.timestamp = d.toISOString();
-          }
-        }
-
-        // ---- ดึง Notes (Box 4) ----
-        const notesList = await extractNotes(page);
-
-        if (!msgs.length && !notesList.length) {
-          // debug: แสดงสิ่งที่เห็นใน chat panel เพื่อช่วย diagnose
-          const dbg = await page.evaluate(() => {
-            const dates  = Array.from(document.querySelectorAll('.chatsys-date')).map(d => d.innerText?.trim()).filter(Boolean);
-            const admins = document.querySelectorAll('.chat.chat-reverse').length;
-            const all    = document.querySelectorAll('.chat').length;
-            return { dates: dates.slice(0, 3), admins, all };
-          }).catch(() => ({}));
-          process.stdout.write(`\n  . ${displayName.slice(0,20)} [lbl:${label}|d:${(dbg.dates||[]).join('|')},adm:${dbg.admins}/${dbg.all}]`);
-          continue;
-        }
-
-        console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName}" (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
-
-        // บันทึก messages
-        for (const msg of msgs) {
-          if (wasCancelled) break;
-          const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
-          if (r?.ok) {
-            console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0, 40)}"${msg.customerText ? ` | ❓"${msg.customerText.slice(0, 30)}"` : ''}`);
-            logged++;
-          } else {
-            console.log(`    ⚠️ [${r?.error}] "${msg.text.slice(0, 40)}"`);
-          }
-          const chk = await updateJob(job.id, { logged_count: logged });
-          if (chk?.cancelled) { wasCancelled = true; break; }
-        }
-
-        // บันทึก notes — แปลง noted_at string → ISO ก่อนส่ง API
-        for (const note of notesList) {
-          if (wasCancelled) break;
-          const r = await postNote(lineUserId, note.note_text, parseNotedAt(note.noted_at), note.noted_by);
-          if (r?.ok && r.inserted) {
-            console.log(`    📝 Note บันทึก: "${note.note_text.slice(0, 50)}" (${note.noted_by || '?'} @ ${note.noted_at || '?'})`);
-            notes_saved++;
-          }
-        }
-
-        if (wasCancelled) {
-          console.log('\n🚫 Job ถูกยกเลิกระหว่างส่งข้อมูล — หยุด scrape'); break;
-        }
+          // Yesterday item
+          reachedTargetZone = true;
+          foundYesterdayThisRound = true;
+          process.stdout.write('📅');
+          yesterdayZoneEndScrollPos = await getScrollPos(page);
         } catch (e) {
-          console.log(`\n  ⚠️ item ${i}: ${e.message}`);
+          process.stdout.write('✗');
         }
-      } // end inner for
+      } // end inner for (Phase 1)
 
-      if (outerDone || wasCancelled) break;
+      if (foundOlderThanTarget) { scanDone = true; break; }
 
-      // บันทึก scroll position ของ Yesterday zone ครั้งแรก
-      if (reachedTargetZone && targetScrollPos < 0) {
-        targetScrollPos = await page.evaluate(() => {
-          const item = document.querySelector('.list-group-item-chat');
-          if (!item) return 0;
-          let el = item.parentElement;
-          while (el && el !== document.body) {
-            const s = getComputedStyle(el);
-            if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
-                el.scrollHeight > el.clientHeight + 50) return el.scrollTop;
-            el = el.parentElement;
-          }
-          return 0;
-        }).catch(() => 0);
-        if (targetScrollPos > 0) console.log(`\n  📍 Yesterday zone อยู่ที่ scroll ${targetScrollPos}px — จำไว้`);
-      }
-
-      // ตรวจว่า LINE OA reset scroll กลับบน → กระโดดกลับ Yesterday zone ทันที
-      if (reachedTargetZone && targetScrollPos > 3000) {
-        const currentPos = await page.evaluate(() => {
-          const item = document.querySelector('.list-group-item-chat');
-          if (!item) return 0;
-          let el = item.parentElement;
-          while (el && el !== document.body) {
-            const s = getComputedStyle(el);
-            if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
-                el.scrollHeight > el.clientHeight + 50) return el.scrollTop;
-            el = el.parentElement;
-          }
-          return 0;
-        }).catch(() => 0);
-        if (currentPos < targetScrollPos - 3000) {
-          console.log(`\n  🔄 LINE OA reset scroll (${currentPos}→${targetScrollPos}) — กระโดดกลับ`);
-          await page.evaluate((pos) => {
-            const item = document.querySelector('.list-group-item-chat');
-            if (!item) return;
-            let el = item.parentElement;
-            while (el && el !== document.body) {
-              const s = getComputedStyle(el);
-              if ((s.overflowY === 'auto' || s.overflowY === 'scroll' || s.overflowY === 'overlay') &&
-                  el.scrollHeight > el.clientHeight + 50) { el.scrollTop = pos; return; }
-              el = el.parentElement;
-            }
-          }, targetScrollPos).catch(() => {});
-          await page.waitForTimeout(800);
-          continue;
+      if (reachedTargetZone && !foundYesterdayThisRound) {
+        consecutiveEmptyAfterTarget++;
+        if (consecutiveEmptyAfterTarget >= 20) {
+          console.log(`\n  ⏱️ ไม่พบ Yesterday chat ใหม่ ${consecutiveEmptyAfterTarget} รอบ — จบ scan`);
+          scanDone = true; break;
         }
-      }
-
-      // scroll list ลงเพื่อโหลด items ถัดไป
-      if (isHistorical && roundClicked === 0) {
-        consecutiveAllSkip++;
       } else {
-        consecutiveAllSkip = 0;
+        consecutiveEmptyAfterTarget = 0;
       }
 
-      // early stop หลัง Yesterday zone — ถ้าไม่เจอ chat ใหม่ 20 รอบติด → หยุด
-      if (reachedTargetZone) {
-        if (roundClicked === 0) {
-          consecutiveEmptyAfterTarget++;
-          if (consecutiveEmptyAfterTarget >= 20) {
-            console.log(`\n  🏁 หลัง Yesterday zone ไม่พบ chat ใหม่ ${consecutiveEmptyAfterTarget} รอบ — หยุด`);
-            break;
-          }
-        } else {
-          consecutiveEmptyAfterTarget = 0;
-        }
-      }
+      if (!reachedTargetZone) { consecutiveAllSkip++; } else { consecutiveAllSkip = 0; }
 
-      // ×20 เฉพาะก่อนถึง Yesterday zone — หลัง reachedTargetZone ใช้ ×1 เสมอ
-      // ป้องกันข้ามข้อมูลที่อยู่ใน Yesterday zone
-      // (ถ้า LINE OA reset scroll กลับบน → jump-back code ข้างบนจัดการแล้ว)
       const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
       const lastItemStillToday = !lastSeenDay || lastSeenDay.getTime() > dateTo.getTime();
       const scrollMult = isHistorical && !reachedTargetZone && consecutiveAllSkip >= 2 && lastItemStillToday ? 20 : 1;
@@ -927,18 +813,213 @@ async function runJob(job) {
       const scrolled = await scrollChatListDown(page, scrollMult);
       if (!scrolled) {
         if (isHistorical) {
-          // LINE OA ใช้ infinite scroll — พอถึงท้ายรายการ ระบบจะโหลด conversation เพิ่มจาก server
-          // รอ 2 วินาทีแล้ว retry ก่อนหยุดจริง
           console.log(`\n  ⏳ ถึงท้าย chat list — รอ LINE OA โหลดเพิ่ม...`);
           await page.waitForTimeout(2000);
           const scrolled2 = await scrollChatListDown(page, 1);
-          if (!scrolled2) { console.log(`\n  🏁 โหลดครบแล้ว ไม่มี chat เพิ่ม — หยุด`); break; }
-        } else {
-          break;
-        }
+          if (!scrolled2) { console.log(`\n  🏁 โหลดครบแล้ว — จบ scan`); scanDone = true; break; }
+        } else { scanDone = true; break; }
       }
       await page.waitForTimeout(600);
-    } // end outer while
+    } // end Phase 1 scan while
+
+    if (!reachedTargetZone) {
+      console.log('\n⚠️ ไม่พบ Yesterday zone ใน chat list');
+      await updateJob(job.id, { status: 'done', logged_count: 0, current_chat: null });
+      return;
+    }
+    console.log(`\n✅ Phase 1 เสร็จ — Yesterday zone สิ้นสุดที่ scroll ~${yesterdayZoneEndScrollPos}px`);
+    console.log(`🔄 Phase 2: ประมวลผลจาก Yesterday chat ล่าสุด เลื่อนขึ้น...`);
+
+    await scrollToPos(page, yesterdayZoneEndScrollPos);
+    await page.waitForTimeout(1000);
+
+    // =============================================
+    // PHASE 2: PROCESS — scan จากล่างขึ้น, click Yesterday item ล่าสุดก่อน
+    // =============================================
+    let scrollUpWithoutYesterday = 0;
+
+    while (!outerDone && !wasCancelled) {
+      const n = await page.locator('.list-group-item-chat').count();
+      let processedThisRound = false;
+
+      // วน item จาก LAST → FIRST หา Yesterday item ที่ยังไม่ได้ process
+      for (let i = n - 1; i >= 0 && !outerDone && !wasCancelled; i--) {
+        try {
+          const item = page.locator('.list-group-item-chat').nth(i);
+
+          const { label, listName } = await item.evaluate((el) => {
+            const SINGLE_PATS = [
+              /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i,
+              /^(yesterday|today)$/i,
+              /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
+              /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/,
+              /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
+            ];
+            const MONTH_DAY_PAT = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:,?\s*\d{4})?$/i;
+            const raw = el.innerText || '';
+            const tokens = raw.split(/\s+/).map(t => t.trim()).filter(Boolean);
+            let label = '';
+            for (let i = tokens.length - 1; i >= 0; i--) {
+              if (SINGLE_PATS.some(p => p.test(tokens[i]))) { label = tokens[i]; break; }
+            }
+            if (!label && tokens.length >= 2) {
+              for (let i = tokens.length - 2; i >= 0; i--) {
+                const pair2 = tokens[i] + ' ' + tokens[i + 1];
+                const pair3 = i + 2 < tokens.length ? tokens[i] + ' ' + tokens[i+1] + ' ' + tokens[i+2] : '';
+                if (MONTH_DAY_PAT.test(pair3)) { label = pair3; break; }
+                if (MONTH_DAY_PAT.test(pair2)) { label = pair2; break; }
+              }
+            }
+            if (!label) {
+              for (const child of el.querySelectorAll('[datetime],[aria-label],[title]')) {
+                const v = (child.getAttribute('datetime') || child.getAttribute('aria-label') || child.getAttribute('title') || '').trim();
+                if (v && (SINGLE_PATS.some(p => p.test(v)) || MONTH_DAY_PAT.test(v))) { label = v; break; }
+              }
+            }
+            let listName = null;
+            for (const img of el.querySelectorAll('img[alt]')) {
+              const alt = img.alt?.trim();
+              if (!alt || alt.length < 2 || alt.length >= 50) continue;
+              if (!/[฀-๿a-zA-Z0-9]/.test(alt)) continue;
+              if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(alt)) continue;
+              if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(alt)) continue;
+              if (alt.split(/\s+/).length > 5) continue;
+              listName = alt; break;
+            }
+            if (!listName) {
+              const firstLine = raw.split('\n')[0]?.trim() || '';
+              if (firstLine.length >= 2 && firstLine.length < 50 &&
+                  /[฀-๿a-zA-Z]/.test(firstLine) &&
+                  !/\b(photo|image|sticker|video|audio|file|ภาพ|วิดีโอ)\b/i.test(firstLine) &&
+                  !/^\d{1,2}:\d{2}/.test(firstLine) &&
+                  !/^(yesterday|today|เมื่อวาน|วันนี้|mon|tue|wed|thu|fri|sat|sun)/i.test(firstLine) &&
+                  !/^\d{1,2}\/\d{1,2}/.test(firstLine)) {
+                listName = firstLine;
+              }
+            }
+            return { label, listName };
+          }).catch(() => ({ label: null, listName: null }));
+
+          if (!label) continue;
+          const chatDay = dayLabelToDate(label);
+          if (!chatDay || chatDay.getTime() > dateTo.getTime() || chatDay.getTime() < dateFrom.getTime()) continue;
+
+          // Click item
+          const urlBefore = page.url();
+          await item.click().catch(() => {});
+          try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 6000 }); } catch {}
+          await page.waitForTimeout(800);
+
+          const url = page.url();
+          if (url === urlBefore) { process.stdout.write('✗'); continue; }
+          if (processedUrls.has(url)) { process.stdout.write('↩'); continue; }
+          processedUrls.add(url);
+
+          const m = url.match(/\/(U[a-f0-9]{32})/i);
+          if (!m) continue;
+          const lineUserId = m[1];
+          if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+
+          totalSeen++;
+          if (visitedCustomers.size >= CUSTOMER_LIMIT) {
+            console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
+            outerDone = true; break;
+          }
+          visitedCustomers.add(lineUserId);
+          await updateJob(job.id, { total_chats: totalSeen });
+
+          const panelName   = await extractCustomerNameFromPanel(page);
+          const displayName = panelName || listName || lineUserId.slice(0, 16);
+
+          const upd = await updateJob(job.id, { current_chat: displayName, logged_count: logged });
+          if (upd?.cancelled) {
+            console.log('\n🚫 Job ถูกยกเลิกจากเว็บ — หยุด scrape');
+            wasCancelled = true; break;
+          }
+
+          const abortedLoad = await loadChatHistory(page, dateFrom, async () => {
+            const r = await updateJob(job.id, {});
+            return r?.cancelled === true;
+          });
+          if (abortedLoad) {
+            console.log('\n🚫 Job ถูกยกเลิกระหว่าง loadChatHistory — หยุด scrape');
+            wasCancelled = true; break;
+          }
+
+          const msgs = await extractAdminMessages(page, dateFrom, dateTo);
+          for (const msg of msgs) {
+            if (!msg.timestamp) {
+              const d = new Date(dateFrom);
+              d.setHours(12, 0, 0, 0);
+              msg.timestamp = d.toISOString();
+            }
+          }
+
+          const notesList = await extractNotes(page);
+
+          if (!msgs.length && !notesList.length) {
+            const dbg = await page.evaluate(() => {
+              const dates  = Array.from(document.querySelectorAll('.chatsys-date')).map(d => d.innerText?.trim()).filter(Boolean);
+              const admins = document.querySelectorAll('.chat.chat-reverse').length;
+              const all    = document.querySelectorAll('.chat').length;
+              return { dates: dates.slice(0, 3), admins, all };
+            }).catch(() => ({}));
+            process.stdout.write(`\n  . ${displayName.slice(0,20)} [lbl:${label}|d:${(dbg.dates||[]).join('|')},adm:${dbg.admins}/${dbg.all}]`);
+            processedThisRound = true;
+            break;
+          }
+
+          console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName}" (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
+
+          for (const msg of msgs) {
+            if (wasCancelled) break;
+            const r = await postReply(lineUserId, msg.text, msg.adminName, msg.customerText, msg.timestamp, msg.customerTs, displayName);
+            if (r?.ok) {
+              console.log(`    ✅ score ${r.qc?.finalScore ?? 'no-cust'} (${msg.adminName || 'ไม่รู้ชื่อ'}) "${msg.text.slice(0, 40)}"${msg.customerText ? ` | ❓"${msg.customerText.slice(0, 30)}"` : ''}`);
+              logged++;
+            } else {
+              console.log(`    ⚠️ [${r?.error}] "${msg.text.slice(0, 40)}"`);
+            }
+            const chk = await updateJob(job.id, { logged_count: logged });
+            if (chk?.cancelled) { wasCancelled = true; break; }
+          }
+
+          for (const note of notesList) {
+            if (wasCancelled) break;
+            const r = await postNote(lineUserId, note.note_text, parseNotedAt(note.noted_at), note.noted_by);
+            if (r?.ok && r.inserted) {
+              console.log(`    📝 Note บันทึก: "${note.note_text.slice(0, 50)}" (${note.noted_by || '?'} @ ${note.noted_at || '?'})`);
+              notes_saved++;
+            }
+          }
+
+          if (wasCancelled) { console.log('\n🚫 Job ถูกยกเลิกระหว่างส่งข้อมูล — หยุด scrape'); break; }
+
+          processedThisRound = true;
+          break; // ประมวลผล 1 item แล้ว restart outer loop หา item ต่อไปจากล่าง
+        } catch (e) {
+          console.log(`\n  ⚠️ item ${i}: ${e.message}`);
+        }
+      } // end inner for (Phase 2)
+
+      if (outerDone || wasCancelled) break;
+
+      if (!processedThisRound) {
+        scrollUpWithoutYesterday++;
+        if (scrollUpWithoutYesterday >= 30) {
+          console.log(`\n  🏁 เลื่อนขึ้น ${scrollUpWithoutYesterday} รอบ ไม่พบ Yesterday เพิ่ม — หยุด`);
+          break;
+        }
+        const scrolledUp = await scrollChatListUp(page);
+        if (!scrolledUp) {
+          console.log('\n  🏁 เลื่อนขึ้นสุดแล้ว — จบ Phase 2');
+          break;
+        }
+        await page.waitForTimeout(600);
+      } else {
+        scrollUpWithoutYesterday = 0;
+      }
+    } // end Phase 2 while
 
     if (wasCancelled) {
       console.log(`\n🚫 ยกเลิกแล้ว — บันทึก QC ${logged} ข้อความ, ${notes_saved} notes`);
