@@ -760,11 +760,18 @@ async function runJob(job) {
     console.log('\n🔍 Phase 1: สแกนหา Yesterday zone...');
 
     let scanDone = false;
+    const seenItemKeys    = new Set(); // dedup — ป้องกัน LINE OA virtual scroll cycling
+    let lastScanScrollTop = -1;        // ตรวจ scroll ไม่เดินหน้า
+    let scrollStuckCount  = 0;
+    let phase1ZoneStartMs = 0;         // เวลาที่เริ่มพบ Yesterday zone
+    const PHASE1_ZONE_MAX_MS = 90_000; // หลังพบ Yesterday zone ให้ scan ต่ออีก 90 วินาทีแล้วหยุด
+
     while (!scanDone && !wasCancelled) {
       const n = await page.locator('.list-group-item-chat').count();
       let foundOlderThanTarget = false;
       let foundYesterdayThisRound = false;
       let lastSeenLabel = null;
+      let newItemsThisRound = 0;
 
       for (let i = 0; i < n && !foundOlderThanTarget; i++) {
         try {
@@ -839,7 +846,13 @@ async function runJob(job) {
 
           if (_dbg !== null) { diagDone = true; console.log(`\n=== ITEM#0 innerText: ${JSON.stringify(_dbg)} ===`); }
           if (label === null) { process.stdout.write('✗'); continue; }
-          lastSeenLabel = label; // อัปเดต label ล่าสุดเพื่อใช้ตัดสิน scroll speed
+          lastSeenLabel = label;
+
+          // dedup: ถ้าเคยเห็น item นี้แล้ว ข้ามเลย (LINE OA virtual scroll cycling)
+          const itemKey = `${listName || ''}|${label}`;
+          if (seenItemKeys.has(itemKey)) { continue; }
+          seenItemKeys.add(itemKey);
+          newItemsThisRound++;
 
           const chatDay = dayLabelToDate(label);
           // Phase 1: ตรวจ zone — ไม่ click
@@ -859,13 +872,28 @@ async function runJob(job) {
           reachedTargetZone = true;
           foundYesterdayThisRound = true;
           process.stdout.write('📅');
-          yesterdayZoneEndScrollPos = await getScrollPos(page);
+          // ไม่ call getScrollPos ที่นี่ — เรียกครั้งเดียวหลัง inner loop
         } catch (e) {
           process.stdout.write('✗');
         }
       } // end inner for (Phase 1)
 
+      // อัปเดต scroll position ครั้งเดียวต่อ round (ไม่ใช่ต่อ item)
+      if (foundYesterdayThisRound) {
+        yesterdayZoneEndScrollPos = await getScrollPos(page);
+        const total = seenItemKeys.size;
+        if (total % 200 === 0 || foundOlderThanTarget) process.stdout.write(`\n  [scan 📅zone scroll=${yesterdayZoneEndScrollPos}px items=${total}]`);
+        // บันทึกเวลาที่เจอ Yesterday zone ครั้งแรก
+        if (!phase1ZoneStartMs) { phase1ZoneStartMs = Date.now(); console.log(`\n  🎯 พบ Yesterday zone ครั้งแรก — scan ต่ออีก ${PHASE1_ZONE_MAX_MS/1000}s`); }
+      }
+
       if (foundOlderThanTarget) { scanDone = true; break; }
+
+      // หยุด Phase 1 หลังจาก scan ใน Yesterday zone ครบเวลา
+      if (phase1ZoneStartMs && Date.now() - phase1ZoneStartMs > PHASE1_ZONE_MAX_MS) {
+        console.log(`\n  ⏱️ Phase 1 ครบ ${PHASE1_ZONE_MAX_MS/1000}s ใน Yesterday zone — ดำเนิน Phase 2`);
+        scanDone = true; break;
+      }
 
       if (reachedTargetZone && !foundYesterdayThisRound) {
         consecutiveEmptyAfterTarget++;
@@ -881,11 +909,35 @@ async function runJob(job) {
 
       const lastSeenDay = lastSeenLabel ? dayLabelToDate(lastSeenLabel) : null;
       const lastItemStillToday = !lastSeenDay || lastSeenDay.getTime() > dateTo.getTime();
-      // ถ้า label เป็น time ช่วง 00:xx–05:xx = ใกล้ midnight → ชะลอเป็น ×1 เพื่อไม่ข้าม Yesterday zone
-      const nearMidnight = lastSeenLabel ? /^0[0-5]:\d{2}/.test(lastSeenLabel) : false;
-      const scrollMult = isHistorical && !reachedTargetZone && consecutiveAllSkip >= 2 && lastItemStillToday && !nearMidnight ? 20 : 1;
+      // Phase 1 = fast scan เพื่อหาจุดสิ้นสุด Yesterday zone เท่านั้น
+      // ×20 ก่อน Yesterday, ×10 ใน/หลัง Yesterday (Phase 2 จะ cover ทุก item อีกครั้ง)
+      const scrollMult = isHistorical && consecutiveAllSkip >= 2
+        ? (lastItemStillToday ? 20 : 10) : 1;
       if (scrollMult > 1) process.stdout.write(`[×${scrollMult}]`);
       const scrolled = await scrollChatListDown(page, scrollMult);
+
+      // ตรวจ scroll position — ถ้าไม่เดินหน้า = ถึงท้ายรายการจริงๆ
+      const curScrollTop = await getScrollPos(page);
+      if (curScrollTop <= lastScanScrollTop + 100 && lastScanScrollTop >= 0) {
+        scrollStuckCount++;
+        if (scrollStuckCount >= 4) {
+          console.log(`\n  🏁 Scroll หยุดเดินหน้า (${curScrollTop}px) — สิ้นสุด chat list`);
+          scanDone = true; break;
+        }
+      } else {
+        scrollStuckCount = 0;
+      }
+      lastScanScrollTop = curScrollTop;
+
+      // ถ้าไม่มี new unique items เลยใน round นี้ → ทุก item ซ้ำหมดแล้ว → scroll stuck
+      if (newItemsThisRound === 0 && seenItemKeys.size > 100) {
+        scrollStuckCount++;
+        if (scrollStuckCount >= 4) {
+          console.log(`\n  🏁 ไม่มี item ใหม่ ${scrollStuckCount} รอบ — สิ้นสุด chat list`);
+          scanDone = true; break;
+        }
+      }
+
       if (!scrolled) {
         if (isHistorical) {
           console.log(`\n  ⏳ ถึงท้าย chat list — รอ LINE OA โหลดเพิ่ม...`);
