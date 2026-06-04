@@ -265,6 +265,8 @@ async function extractCustomerNameFromPanel(page) {
       if (/^(หน้าหลัก|Home|Manager|Account\s*Manager|Chat)$/i.test(raw)) return false;
       if (!/[฀-๿a-zA-Z0-9]/.test(raw)) return false;
       if (/\b(photo|message|replying|image|video|sticker|audio|file)\b/i.test(raw)) return false;
+      if (/^\(.*\)$/.test(raw)) return false; // emoji/sticker alt เช่น "(happy face)"
+      if (/hourglass|not.?done|pending|loading|\bface\b|ยังไม่|เสร็จ/i.test(raw)) return false;
       if (raw.split(/\s+/).length > 6) return false;
       return raw;
     },
@@ -282,6 +284,8 @@ async function extractCustomerNameFromPanel(page) {
       if (!/[฀-๿a-zA-Z0-9]/.test(s)) return false;
       if (/^(LINE|photo|image|avatar|icon|logo|sticker|emoji|gif|video|audio|file)$/i.test(s)) return false;
       if (/\b(photo|image|replying|message|sticker|video|audio|file)\b/i.test(s)) return false;
+      if (/^\(.*\)$/.test(s)) return false; // emoji/sticker alt เช่น "(happy face)"
+      if (/hourglass|not.?done|pending|loading|\bface\b|ยังไม่|เสร็จ/i.test(s)) return false;
       if (s.split(/\s+/).length > 6) return false;
       return true;
     }
