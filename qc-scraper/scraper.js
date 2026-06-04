@@ -954,10 +954,81 @@ async function runJob(job) {
       await updateJob(job.id, { status: 'done', logged_count: 0, current_chat: null });
       return;
     }
-    console.log(`\n✅ Phase 1 เสร็จ — Yesterday zone สิ้นสุดที่ scroll ~${yesterdayZoneEndScrollPos}px`);
+    console.log(`\n✅ Phase 1 เสร็จ — Yesterday zone ที่ scroll ~${yesterdayZoneEndScrollPos}px`);
     await saveScreenshot(page, '01_phase1_complete');
-    console.log(`🔄 Phase 2: ประมวลผลจาก Yesterday chat ล่าสุด เลื่อนขึ้น...`);
 
+    // =============================================
+    // PHASE 1.5: EXTEND — scroll ลงต่อจนถึงท้าย Yesterday zone จริงๆ
+    // (Phase 1 อาจหยุดกลางทางเพราะ 90s limit — ต้องหาจุดสิ้นสุดที่แท้จริง)
+    // =============================================
+    console.log(`\n⬇️ Phase 1.5: ค้นหาจุดสิ้นสุด Yesterday zone จริงๆ (ไม่ click)...`);
+    let extendDone = false;
+    let extendStuckCount = 0;
+    let lastExtendScrollPos = yesterdayZoneEndScrollPos;
+
+    await scrollToPos(page, yesterdayZoneEndScrollPos);
+    await page.waitForTimeout(600);
+
+    while (!extendDone && !wasCancelled) {
+      const n = await page.locator('.list-group-item-chat').count();
+      let foundOlderInExtend = false;
+
+      for (let i = 0; i < n && !foundOlderInExtend; i++) {
+        const item = page.locator('.list-group-item-chat').nth(i);
+        const label = await item.evaluate((el) => {
+          const SINGLE_PATS = [
+            /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i, /^(yesterday|today)$/i,
+            /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
+            /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/, /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
+          ];
+          const MONTH_DAY_PAT = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:,?\s*\d{4})?$/i;
+          const raw = el.innerText || '';
+          const tokens = raw.split(/\s+/).map(t => t.trim()).filter(Boolean);
+          let label = '';
+          for (let i = tokens.length - 1; i >= 0; i--) {
+            if (SINGLE_PATS.some(p => p.test(tokens[i]))) { label = tokens[i]; break; }
+          }
+          if (!label && tokens.length >= 2) {
+            for (let i = tokens.length - 2; i >= 0; i--) {
+              const pair = tokens[i] + ' ' + tokens[i + 1];
+              if (MONTH_DAY_PAT.test(pair)) { label = pair; break; }
+            }
+          }
+          return label;
+        }).catch(() => null);
+
+        if (!label) continue;
+        const chatDay = dayLabelToDate(label);
+        if (chatDay && chatDay.getTime() < dateFrom.getTime()) {
+          yesterdayZoneEndScrollPos = await getScrollPos(page);
+          console.log(`\n  📅 พบ item เก่ากว่า Yesterday ("${label}") — จุดสิ้นสุดจริงที่ ${yesterdayZoneEndScrollPos}px`);
+          foundOlderInExtend = true;
+          extendDone = true;
+          break;
+        }
+        if (chatDay && chatDay.getTime() >= dateFrom.getTime() && chatDay.getTime() <= dateTo.getTime()) {
+          yesterdayZoneEndScrollPos = await getScrollPos(page);
+        }
+      }
+
+      if (!extendDone) {
+        const scrolled = await scrollChatListDown(page, 3);
+        const newPos = await getScrollPos(page);
+        if (!scrolled || newPos <= lastExtendScrollPos + 50) {
+          extendStuckCount++;
+          if (extendStuckCount >= 3) {
+            console.log(`\n  🏁 Extend scroll หยุด — จุดสิ้นสุดที่ ${yesterdayZoneEndScrollPos}px`);
+            extendDone = true;
+          }
+        } else {
+          extendStuckCount = 0;
+        }
+        lastExtendScrollPos = newPos;
+        await page.waitForTimeout(500);
+      }
+    }
+
+    console.log(`\n🔄 Phase 2: ประมวลผลจาก Yesterday chat ล่าสุด (scroll ~${yesterdayZoneEndScrollPos}px) เลื่อนขึ้น...`);
     await scrollToPos(page, yesterdayZoneEndScrollPos);
     await page.waitForTimeout(1000);
 
@@ -965,17 +1036,19 @@ async function runJob(job) {
     // PHASE 2: PROCESS — scan จากล่างขึ้น, click Yesterday item ล่าสุดก่อน
     // =============================================
     let scrollUpWithoutYesterday = 0;
+    const attemptedKeys = new Set(); // dedup ระดับ DOM item — ไม่ click visual item ซ้ำ
 
     while (!outerDone && !wasCancelled) {
       const n = await page.locator('.list-group-item-chat').count();
       let processedThisRound = false;
+      let newKeyThisRound = false;
 
       // วน item จาก LAST → FIRST หา Yesterday item ที่ยังไม่ได้ process
       for (let i = n - 1; i >= 0 && !outerDone && !wasCancelled; i--) {
         try {
           const item = page.locator('.list-group-item-chat').nth(i);
 
-          const { label, listName } = await item.evaluate((el) => {
+          const { label, listName, itemKey } = await item.evaluate((el) => {
             const SINGLE_PATS = [
               /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i,
               /^(yesterday|today)$/i,
@@ -1026,28 +1099,42 @@ async function runJob(job) {
                 listName = firstLine;
               }
             }
-            return { label, listName };
-          }).catch(() => ({ label: null, listName: null }));
+            // itemKey = ตัวระบุ visual item (ชื่อ + preview 30 ตัวแรก) เพื่อ dedup ไม่ให้ click ซ้ำ
+            const itemKey = (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 50);
+            return { label, listName, itemKey };
+          }).catch(() => ({ label: null, listName: null, itemKey: null }));
 
           if (!label) continue;
           const chatDay = dayLabelToDate(label);
           if (!chatDay || chatDay.getTime() > dateTo.getTime() || chatDay.getTime() < dateFrom.getTime()) continue;
 
-          // Click item
+          // ข้าม visual item ที่เคยลอง click แล้ว — ป้องกัน ↩ storm (re-click ซ้ำๆ)
+          if (itemKey && attemptedKeys.has(itemKey)) continue;
+          if (itemKey) { attemptedKeys.add(itemKey); newKeyThisRound = true; }
+
+          // Click item — รอจน customer id (หลัง /chat/) เปลี่ยนเป็นคนใหม่
+          // URL format: https://chat.line.biz/<ACCOUNT_ID>/chat/<CUSTOMER_ID>
           const urlBefore = page.url();
+          const custIdRE  = /\/chat\/(U[a-f0-9]{32})/i;
+          const idBefore  = (urlBefore.match(custIdRE) || [])[1] || '';
+          await item.scrollIntoViewIfNeeded().catch(() => {});
           await item.click().catch(() => {});
-          try { await page.waitForURL(/\/U[a-f0-9]{32}/i, { timeout: 6000 }); } catch {}
-          await page.waitForTimeout(800);
+          try {
+            await page.waitForFunction((prev) => {
+              const mm = location.href.match(/\/chat\/(U[a-f0-9]{32})/i);
+              return mm && mm[1].toLowerCase() !== prev;
+            }, idBefore.toLowerCase(), { timeout: 6000 });
+          } catch {}
+          await page.waitForTimeout(600);
 
           const url = page.url();
-          if (url === urlBefore) { process.stdout.write('✗'); continue; }
-          if (processedUrls.has(url)) { process.stdout.write('↩'); continue; }
-          processedUrls.add(url);
-
-          const m = url.match(/\/(U[a-f0-9]{32})/i);
-          if (!m) continue;
+          const m = url.match(custIdRE);
+          if (!m) { process.stdout.write('✗'); continue; }
           const lineUserId = m[1];
-          if (visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+          // click ไม่เปลี่ยนแชท (ยังเปิดคนเดิม) — ข้ามไป item ถัดไป
+          if (lineUserId.toLowerCase() === idBefore.toLowerCase()) { process.stdout.write('✗'); continue; }
+          if (processedUrls.has(url) || visitedCustomers.has(lineUserId)) { process.stdout.write('↩'); continue; }
+          processedUrls.add(url);
 
           totalSeen++;
           if (visitedCustomers.size >= CUSTOMER_LIMIT) {
@@ -1135,20 +1222,25 @@ async function runJob(job) {
 
       if (outerDone || wasCancelled) break;
 
-      if (!processedThisRound) {
-        scrollUpWithoutYesterday++;
-        if (scrollUpWithoutYesterday >= 30) {
-          console.log(`\n  🏁 เลื่อนขึ้น ${scrollUpWithoutYesterday} รอบ ไม่พบ Yesterday เพิ่ม — หยุด`);
-          break;
-        }
-        const scrolledUp = await scrollChatListUp(page);
-        if (!scrolledUp) {
-          console.log('\n  🏁 เลื่อนขึ้นสุดแล้ว — จบ Phase 2');
-          break;
-        }
-        await page.waitForTimeout(600);
-      } else {
+      // ถ้า process ได้ → reset counter, วนต่อ (ยังมี Yesterday ใน viewport เดิม)
+      // ถ้าไม่ได้ process แต่ยังเจอ key ใหม่ → วนต่อโดยไม่ scroll (ลอง item อื่นใน viewport)
+      // ถ้าไม่เจอ key ใหม่เลย → viewport นี้ลองครบแล้ว เลื่อนขึ้น
+      if (processedThisRound) {
         scrollUpWithoutYesterday = 0;
+      } else if (!newKeyThisRound) {
+        scrollUpWithoutYesterday++;
+        const curPos = await getScrollPos(page);
+        if (scrollUpWithoutYesterday >= 30 || curPos <= 50) {
+          console.log(`\n  🏁 เลื่อนขึ้นสุด/ครบแล้ว (pos=${curPos}, รอบ=${scrollUpWithoutYesterday}) — จบ Phase 2`);
+          break;
+        }
+        const scrolledUp = await scrollChatListUp(page, 1);
+        await page.waitForTimeout(600);
+        const newPos = await getScrollPos(page);
+        if (!scrolledUp || newPos >= curPos - 20) {
+          // เลื่อนขึ้นไม่ได้แล้ว — ถ้าทำซ้ำหลายรอบให้หยุด
+          if (scrollUpWithoutYesterday >= 5) { console.log('\n  🏁 เลื่อนขึ้นสุดแล้ว — จบ Phase 2'); break; }
+        }
       }
     } // end Phase 2 while
 
