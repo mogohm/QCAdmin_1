@@ -15,8 +15,12 @@ const SCHEDULE_MIN = scheduleArg ? parseInt(scheduleArg.split('=')[1]) : parseIn
 const MIN_IDLE_MIN = parseInt(process.env.MIN_IDLE_MINUTES || '30');
 
 // จำนวนลูกค้า (LINE user) สูงสุดที่จะ scrape ต่อ job — ไม่นับ skip/system chat
+// default = ไม่จำกัด (เก็บทุกแชทของ Yesterday จนกว่า Phase 2 จะ scroll พ้น zone)
+// ตั้ง --limit=N หรือ CUSTOMER_LIMIT ใน .env เพื่อจำกัด (ใช้ตอนทดสอบ)
 const limitArg     = process.argv.find(a => a.startsWith('--limit='));
-const CUSTOMER_LIMIT = limitArg ? parseInt(limitArg.split('=')[1]) : parseInt(process.env.CUSTOMER_LIMIT || '100');
+const CUSTOMER_LIMIT = limitArg ? parseInt(limitArg.split('=')[1])
+  : (process.env.CUSTOMER_LIMIT ? parseInt(process.env.CUSTOMER_LIMIT) : Infinity);
+const LIMIT_LABEL = Number.isFinite(CUSTOMER_LIMIT) ? String(CUSTOMER_LIMIT) : 'ทั้งหมด';
 
 const toISO = d => d.toISOString().slice(0, 10);
 
@@ -1142,7 +1146,7 @@ async function runJob(job) {
 
           totalSeen++;
           if (visitedCustomers.size >= CUSTOMER_LIMIT) {
-            console.log(`\n🏁 ถึงลิมิต ${CUSTOMER_LIMIT} ลูกค้าแล้ว — หยุด`);
+            console.log(`\n🏁 ถึงลิมิต ${LIMIT_LABEL} ลูกค้าแล้ว — หยุด`);
             outerDone = true; break;
           }
           visitedCustomers.add(lineUserId);
@@ -1191,7 +1195,7 @@ async function runJob(job) {
           }
 
           await saveScreenshot(page, `02_chat_${visitedCustomers.size}_${lineUserId.slice(0, 8)}`);
-          console.log(`\n  [${visitedCustomers.size}/${CUSTOMER_LIMIT}] "${displayName}" (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
+          console.log(`\n  [${visitedCustomers.size}/${LIMIT_LABEL}] "${displayName}" (${lineUserId.slice(0, 8)}): ${msgs.length} ข้อความ, ${notesList.length} note`);
 
           for (const msg of msgs) {
             if (wasCancelled) break;
@@ -1293,6 +1297,7 @@ async function loop() {
   if (SCHEDULE_MIN > 0) console.log(`⏰ Auto : ทุก ${SCHEDULE_MIN} นาที`);
   else console.log(`⏰ Mode : รอรับ job จากหน้าเว็บ`);
   console.log(`💤 Idle : ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า ${MIN_IDLE_MIN} นาที`);
+  console.log(`👥 Limit: ${LIMIT_LABEL === 'ทั้งหมด' ? 'ทั้งหมดของ Yesterday' : LIMIT_LABEL + ' ลูกค้า'}`);
   console.log('='.repeat(50));
   console.log();
 
