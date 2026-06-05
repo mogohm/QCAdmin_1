@@ -703,6 +703,59 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
   }, { fromMs: dateFrom.getTime(), toMs: dateTo.getTime() });
 }
 
+// ---- เก็บข้อความทั้งหมดในแชท โดย scroll ไล่ลงทีละ viewport ----
+// แก้ปัญหา virtual scroll: LINE OA render เฉพาะ message ที่มองเห็น
+// loadChatHistory scroll ขึ้นบนสุดแล้ว — ฟังก์ชันนี้ไล่ลงล่าง เก็บสะสม (dedup) จนสุด
+async function collectAllMessages(page, dateFrom, dateTo, shouldCancel) {
+  const byKey = new Map(); // dedup: side|text|timestamp
+  const addBatch = (batch) => {
+    for (const m of batch) {
+      const key = `${m.text}||${m.timestamp || ''}||${m.customerText || ''}`;
+      if (!byKey.has(key)) byKey.set(key, m);
+    }
+  };
+
+  // เริ่มจากบนสุด (loadChatHistory พาขึ้นบนสุดแล้ว) เผื่อ reset อีกครั้ง
+  await page.evaluate(() => {
+    const chat = document.querySelector('.chat');
+    if (!chat) return;
+    let el = chat.parentElement;
+    while (el && el !== document.body) {
+      const s = getComputedStyle(el);
+      if ((s.overflowY==='auto'||s.overflowY==='scroll'||s.overflowY==='overlay') && el.scrollHeight > el.clientHeight + 50) { el.scrollTop = 0; return; }
+      el = el.parentElement;
+    }
+  }).catch(() => {});
+  await page.waitForTimeout(400);
+
+  let stable = 0;
+  for (let i = 0; i < 80; i++) {
+    addBatch(await extractAdminMessages(page, dateFrom, dateTo));
+
+    if (shouldCancel && i % 5 === 4 && await shouldCancel()) break;
+
+    const pos = await page.evaluate(() => {
+      const chat = document.querySelector('.chat');
+      if (!chat) return null;
+      let el = chat.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if ((s.overflowY==='auto'||s.overflowY==='scroll'||s.overflowY==='overlay') && el.scrollHeight > el.clientHeight + 50) {
+          const before = el.scrollTop;
+          el.scrollTop = Math.min(el.scrollHeight, el.scrollTop + el.clientHeight * 0.7);
+          return { before, after: el.scrollTop, atBottom: el.scrollTop + el.clientHeight >= el.scrollHeight - 5 };
+        }
+        el = el.parentElement;
+      }
+      return null;
+    });
+    if (!pos) break; // ไม่มี scroll container = แชทสั้น อยู่ใน viewport เดียว
+    await page.waitForTimeout(450);
+    if (pos.atBottom || pos.after === pos.before) { stable++; if (stable >= 2) break; } else stable = 0;
+  }
+  return Array.from(byKey.values());
+}
+
 // ---- Job Runner ----
 async function runJob(job) {
   console.log(`\n📋 รับงาน: ${job.date_from} → ${job.date_to}`);
@@ -948,10 +1001,28 @@ async function runJob(job) {
 
       if (!scrolled) {
         if (isHistorical) {
+          // ถึงท้าย list หรือ LINE OA ยังโหลดไม่เสร็จ — retry หลายรอบก่อนยอมแพ้
+          // (ป้องกัน false stop ตอน chat list โหลดช้าตอนเริ่ม เห็นแค่ไม่กี่ item)
           console.log(`\n  ⏳ ถึงท้าย chat list — รอ LINE OA โหลดเพิ่ม...`);
-          await page.waitForTimeout(2000);
-          const scrolled2 = await scrollChatListDown(page, 1);
-          if (!scrolled2) { console.log(`\n  🏁 โหลดครบแล้ว — จบ scan`); scanDone = true; break; }
+          let recovered = false;
+          for (let r = 0; r < 4; r++) {
+            await page.waitForTimeout(2500);
+            // ลอง mouse-wheel เป็น fallback เผื่อ scrollTop ธรรมดาไม่ trigger lazy-load
+            await page.evaluate(() => {
+              const item = document.querySelector('.list-group-item-chat');
+              if (!item) return;
+              let el = item.parentElement;
+              while (el && el !== document.body) {
+                const s = getComputedStyle(el);
+                if ((s.overflowY==='auto'||s.overflowY==='scroll'||s.overflowY==='overlay') && el.scrollHeight > el.clientHeight + 10) { el.scrollTop = el.scrollHeight; return; }
+                el = el.parentElement;
+              }
+            }).catch(() => {});
+            if (await scrollChatListDown(page, 1)) { recovered = true; break; }
+            const cnt = await page.locator('.list-group-item-chat').count();
+            if (cnt > seenItemKeys.size) { recovered = true; break; } // มี item ใหม่โผล่
+          }
+          if (!recovered) { console.log(`\n  🏁 โหลดครบแล้ว — จบ scan (${seenItemKeys.size} items)`); scanDone = true; break; }
         } else { scanDone = true; break; }
       }
       await page.waitForTimeout(600);
@@ -1171,7 +1242,11 @@ async function runJob(job) {
             wasCancelled = true; break;
           }
 
-          const msgs = await extractAdminMessages(page, dateFrom, dateTo);
+          // เก็บข้อความทั้งหมดโดย scroll ไล่ลง (แก้ virtual scroll ทำข้อความหาย)
+          const msgs = await collectAllMessages(page, dateFrom, dateTo, async () => {
+            const r = await updateJob(job.id, {});
+            return r?.cancelled === true;
+          });
           for (const msg of msgs) {
             if (!msg.timestamp) {
               const d = new Date(dateFrom);
