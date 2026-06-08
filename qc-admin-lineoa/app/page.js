@@ -269,6 +269,7 @@ export default function Dashboard() {
         <div className="brand">QC<span>Admin</span></div>
         <nav className="nav">
           <a className="active" href="/">Dashboard</a>
+          <a href="/qc-dashboard">📊 QC Dashboard</a>
           <a href="/admin">Admin Console</a>
           <a href="/scraper">Scraper</a>
           <a href="/rules">⚙️ QC Rules</a>

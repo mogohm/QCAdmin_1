@@ -8,12 +8,15 @@ const COACH_THRESHOLD = 70; // คะแนนต่ำกว่านี้ →
 function reasonFrom(scoreResult, sop, adminText) {
   const r = [];
   const d = scoreResult.dimensions || {};
-  if (scoreResult.isFatal) r.push('พบข้อผิดพลาดร้ายแรง (fatal): ' + (scoreResult.fatalReasons || []).map(x => x.name).join(', '));
-  if (d.responseTime != null && d.responseTime < 80) r.push('ตอบกลับช้ากว่ามาตรฐาน ควรตอบให้เร็วขึ้น');
-  if (d.sopAccuracy != null && d.sopAccuracy < 70) r.push(sop ? `คำตอบไม่ตรงกับ SOP "${sop.topic}" ควรอ้างอิงสคริปต์มาตรฐาน` : 'ไม่พบ SOP ที่ตรง คำตอบอาจไม่ครบถ้วน');
-  if (d.tone != null && d.tone < 70) r.push('น้ำเสียงควรสุภาพและแสดงความเข้าใจลูกค้ามากขึ้น (เติมคำว่า ค่ะ/ขออภัย/เข้าใจ)');
-  if (d.escalation != null && d.escalation < 70) r.push('เคสนี้ควรส่งต่อทีมงาน/Live chat แต่แอดมินไม่ได้แนะนำ');
-  if (d.closing != null && d.closing < 60) r.push('ควรปิดการสนทนาให้เรียบร้อย เช่น ยืนยันว่าดำเนินการแล้ว/สอบถามเพิ่มเติม');
+  if (scoreResult.isFatal) r.push('พบข้อผิดพลาดร้ายแรง (Fatal): ' + (scoreResult.fatalReasons || []).map(x => x.name).join(', '));
+  if (d.responseTime != null && d.responseTime < 80) r.push('ตอบกลับช้ากว่ามาตรฐาน ควรตอบให้เร็วขึ้น (Response time)');
+  if (d.problemSolving != null && d.problemSolving < 70) r.push(sop ? `คำตอบไม่ตรงกับ SOP "${sop.topic}" ควรอ้างอิงสคริปต์มาตรฐาน (Problem Solving)` : 'ไม่พบ SOP ที่ตรง คำตอบอาจไม่ครบถ้วน');
+  if (d.communicationTone != null && d.communicationTone < 70) r.push('น้ำเสียงควรสุภาพและแสดงความเข้าใจลูกค้ามากขึ้น เติมคำว่า ค่ะ/ขออภัย/เข้าใจ (Communication & Tone)');
+  if (d.greetingClosing != null && d.greetingClosing < 65) r.push('ควรทักทาย/ปิดการสนทนาให้เรียบร้อย เช่น ยืนยันว่าดำเนินการแล้ว/สอบถามเพิ่มเติม (Greeting & Closing)');
+  if (d.creditDepositWithdraw != null && d.creditDepositWithdraw < 70) r.push('ขั้นตอนฝาก/ถอนยังไม่ครบ ควรแจ้งลิงก์/ยอด/ขอสลิป ตาม SOP (Credit deposit/withdraw)');
+  if (d.kycProcess != null && d.kycProcess < 70) r.push('ควรอธิบายขั้นตอน KYC ให้ครบ (ยืนยันตัวตน/เอกสาร/อีเมล)');
+  if (d.upsellPromotion != null && d.upsellPromotion < 70) r.push('ควรนำเสนอโปรโมชั่น/สิทธิประโยชน์เพิ่มเติม (Upselling & Promotion)');
+  for (const mi of scoreResult.minorIssues || []) r.push('Minor: ' + mi);
   if (!r.length) r.push('คำตอบพอใช้ได้แต่ยังปรับให้ตรง SOP มากขึ้นได้');
   return r;
 }
