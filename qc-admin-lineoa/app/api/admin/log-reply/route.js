@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 import { scoreReply } from '@/lib/qc-engine';
 import { generateCoaching } from '@/lib/coaching';
 import { matchSOP } from '@/lib/sop-matcher';
+import { isPkName } from '@/lib/admin-name';
 import { sendTelegram } from '@/lib/telegram';
 import { getLineProfile } from '@/lib/line';
 
@@ -42,8 +43,7 @@ export async function POST(req) {
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
   // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา หรือสร้างใหม่อัตโนมัติ
-  // กฎ: admin จริงทุกคนขึ้นต้นด้วย "PK" — ชื่อที่ไม่ขึ้นต้น PK = scraper ดึงผิด → ไม่สร้าง/ไม่บันทึก
-  const isPkName = (s) => /^\s*pk\b/i.test(String(s || ''));
+  // กฎ: admin จริงทุกคนขึ้นต้นด้วย "PK" (รองรับฟอนต์ Unicode แปลก) — ไม่ใช่ = scraper ดึงผิด → ไม่บันทึก
   let resolvedAdminId = admin_id;
   if (!resolvedAdminId && admin_name) {
     if (!isPkName(admin_name)) {
