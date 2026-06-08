@@ -6,7 +6,7 @@ import sopData from '@/data/sop-data.json';
 // เรียกครั้งเดียวหลัง deploy:  POST /api/admin/import-sop
 export async function POST(req) {
   if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
-
+  try {
   // ---- migration v3 (idempotent) ----
   await query`CREATE TABLE IF NOT EXISTS sop_categories (
     id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, description TEXT,
@@ -23,14 +23,14 @@ export async function POST(req) {
     id SERIAL PRIMARY KEY, code TEXT UNIQUE NOT NULL, name TEXT NOT NULL, description TEXT,
     patterns JSONB NOT NULL DEFAULT '[]', applies_to TEXT, severity TEXT DEFAULT 'fatal',
     is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now())`;
-  // qc_scores upgrade columns
-  for (const col of [
-    `intent TEXT`, `matched_sop_id INT`, `sop_confidence INT`,
-    `dimension_scores JSONB DEFAULT '{}'`, `is_fatal BOOLEAN DEFAULT false`,
-    `fatal_reasons JSONB DEFAULT '[]'`, `coaching JSONB`,
-  ]) {
-    await query(`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS ${col}`);
-  }
+  // qc_scores upgrade columns (tagged template, no interpolation)
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS intent TEXT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS matched_sop_id INT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS sop_confidence INT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS dimension_scores JSONB DEFAULT '{}'`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS is_fatal BOOLEAN DEFAULT false`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS fatal_reasons JSONB DEFAULT '[]'`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS coaching JSONB`;
 
   // ---- insert จาก JSON ----
   for (const c of sopData.categories)
@@ -63,6 +63,9 @@ export async function POST(req) {
     fatal_rules: sopData.fatal_rules.length,
   };
   return Response.json({ ok: true, imported: counts, stats: sopData.stats });
+  } catch (e) {
+    return Response.json({ error: e.message, stack: String(e.stack || '').split('\n').slice(0, 3) }, { status: 500 });
+  }
 }
 
 // GET: ดูสถานะ knowledge base ปัจจุบัน
