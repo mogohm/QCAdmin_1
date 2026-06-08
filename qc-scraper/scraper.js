@@ -158,23 +158,38 @@ const postNote = (uid, noteText, notedAt, notedBy) =>
     noted_by: notedBy || null,
   }) });
 
+// สร้าง Yesterday job "วันละครั้ง" — กันสร้างซ้ำ/cancel ตัวที่กำลังรัน
+let lastYesterdayCreated = null; // date string ของ Yesterday ที่สร้าง job ไปแล้ว
 async function createAutoJob() {
+  // เป้าหมายคือ "เมื่อวาน" เสมอ (เปลี่ยนเองตอนข้ามเที่ยงคืน)
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  const date = toISO(d);
+
+  // วันนี้สร้าง job สำหรับ Yesterday นี้ไปแล้ว — ข้าม
+  if (lastYesterdayCreated === date) return;
+
   const existing = await apiFetch('/api/scraper/job');
   if (Array.isArray(existing)) {
+    // มี job กำลังทำงาน/รอ — อย่าสร้างใหม่ (กัน cancel ตัวที่รันอยู่)
     const active = existing.find(j => j.status === 'pending' || j.status === 'running');
     if (active) {
       console.log(`\n⏭️ [auto-job] ข้าม — มี job ${active.status} อยู่แล้ว (id=${active.id})`);
       return;
     }
+    // เคยเก็บ Yesterday นี้สำเร็จแล้ว — ข้าม (ไม่ scrape ซ้ำ เช่นเปิดโปรแกรมใหม่กลางวัน)
+    const doneForDate = existing.find(j => j.status === 'done' && toISO(new Date(j.date_from)) === date);
+    if (doneForDate) {
+      lastYesterdayCreated = date;
+      console.log(`\n✅ [auto-job] Yesterday (${date}) เก็บครบแล้ววันนี้ — รอวันถัดไป`);
+      return;
+    }
   }
-  // เป้าหมายคือ "เมื่อวาน" เสมอ
-  const d = new Date(); d.setDate(d.getDate() - 1);
-  const date = toISO(d);
+
   const r = await apiFetch('/api/scraper/job', {
     method: 'POST',
     body: JSON.stringify({ date_from: date, date_to: date }),
   });
-  if (r?.ok) console.log(`\n🔄 [auto-job] สร้างงาน Yesterday (${date})`);
+  if (r?.ok) { lastYesterdayCreated = date; console.log(`\n🔄 [auto-job] สร้างงาน Yesterday (${date}) — วันละครั้ง`); }
   else console.log(`\n⚠️ [auto-job] ${r?.error || 'error'}`);
 }
 
@@ -1338,6 +1353,9 @@ async function runJob(job) {
     await saveScreenshot(page, '99_error').catch(() => {});
     console.error('❌', err.message);
   } finally {
+    // refresh session — เซฟ cookies ที่อัปเดตกลับ auth.json
+    // ทำให้ session ไม่หมดอายุตราบใดที่ scraper รันทุกวัน (ไม่ต้อง login ใหม่)
+    try { await context.storageState({ path: AUTH_FILE }); console.log('🔐 refresh session (auth.json)'); } catch {}
     await browser.close();
   }
 }
@@ -1369,7 +1387,7 @@ async function loop() {
   console.log(`🌐 API  : ${API_URL}`);
   console.log(`🔑 Key  : ${API_KEY ? API_KEY.slice(0, 6) + '...' : '(ไม่ได้ตั้ง)'}`);
   console.log(`🖥️  Mode : ${HEADLESS ? 'headless' : 'headed (มีหน้าต่าง browser)'}`);
-  if (SCHEDULE_MIN > 0) console.log(`⏰ Auto : ทุก ${SCHEDULE_MIN} นาที`);
+  if (SCHEDULE_MIN > 0) console.log(`⏰ Auto : Yesterday วันละครั้ง (เช็คทุก ${SCHEDULE_MIN} นาที)`);
   else console.log(`⏰ Mode : รอรับ job จากหน้าเว็บ`);
   console.log(`💤 Idle : ข้ามแชทที่ admin ตอบล่าสุดน้อยกว่า ${MIN_IDLE_MIN} นาที`);
   console.log(`👥 Limit: ${LIMIT_LABEL === 'ทั้งหมด' ? 'ทั้งหมดของ Yesterday' : LIMIT_LABEL + ' ลูกค้า'}`);
