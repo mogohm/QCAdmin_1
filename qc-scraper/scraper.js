@@ -1064,28 +1064,28 @@ async function runJob(job) {
     // PHASE 1.5: EXTEND — scroll ลงต่อจนถึงท้าย Yesterday zone จริงๆ
     // (Phase 1 อาจหยุดกลางทางเพราะ 90s limit — ต้องหาจุดสิ้นสุดที่แท้จริง)
     // =============================================
-    console.log(`\n⬇️ Phase 1.5: ค้นหาจุดสิ้นสุด Yesterday zone จริงๆ (ไม่ click)...`);
-    let extendDone = false;
-    let extendStuckCount = 0;
-    let lastExtendScrollPos = yesterdayZoneEndScrollPos;
+    console.log(`\n⬇️ Phase 1.5: หาจุดสิ้นสุด Yesterday zone (ไม่ click)...`);
+    // เช็คเฉพาะ item ล่างสุดในจอต่อรอบ (เร็ว) + hard cap 90s กัน hang เมื่อ zone ใหญ่
+    const EXTEND_MAX_MS = 90_000;
+    const extendStart = Date.now();
+    let extendStuck = 0;
+    let lastExtPos = -1;
 
     await scrollToPos(page, yesterdayZoneEndScrollPos);
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(500);
 
-    while (!extendDone && !wasCancelled) {
-      const n = await page.locator('.list-group-item-chat').count();
-      let foundOlderInExtend = false;
-
-      for (let i = 0; i < n && !foundOlderInExtend; i++) {
-        const item = page.locator('.list-group-item-chat').nth(i);
-        const label = await item.evaluate((el) => {
-          const SINGLE_PATS = [
-            /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i, /^(yesterday|today)$/i,
-            /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
-            /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/, /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
-          ];
-          const MONTH_DAY_PAT = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:,?\s*\d{4})?$/i;
-          const raw = el.innerText || '';
+    while (!wasCancelled) {
+      // label ของ item ล่างสุด (3 ตัวท้าย เผื่อ parse บางตัวไม่ได้)
+      const lastLabel = await page.evaluate(() => {
+        const SINGLE_PATS = [
+          /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i, /^(yesterday|today)$/i,
+          /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)$/i,
+          /^\d{1,2}\/\d{1,2}(?:\/\d{2,4})?$/, /^(วันนี้|เมื่อวาน|จันทร์|อังคาร|พุธ|พฤหัสบดี|ศุกร์|เสาร์|อาทิตย์)$/,
+        ];
+        const MONTH_DAY_PAT = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d{1,2}(?:,?\s*\d{4})?$/i;
+        const items = document.querySelectorAll('.list-group-item-chat');
+        for (let k = items.length - 1; k >= Math.max(0, items.length - 3); k--) {
+          const raw = items[k].innerText || '';
           const tokens = raw.split(/\s+/).map(t => t.trim()).filter(Boolean);
           let label = '';
           for (let i = tokens.length - 1; i >= 0; i--) {
@@ -1097,37 +1097,32 @@ async function runJob(job) {
               if (MONTH_DAY_PAT.test(pair)) { label = pair; break; }
             }
           }
-          return label;
-        }).catch(() => null);
+          if (label) return label;
+        }
+        return null;
+      }).catch(() => null);
 
-        if (!label) continue;
-        const chatDay = dayLabelToDate(label);
-        if (chatDay && chatDay.getTime() < dateFrom.getTime()) {
-          yesterdayZoneEndScrollPos = await getScrollPos(page);
-          console.log(`\n  📅 พบ item เก่ากว่า Yesterday ("${label}") — จุดสิ้นสุดจริงที่ ${yesterdayZoneEndScrollPos}px`);
-          foundOlderInExtend = true;
-          extendDone = true;
-          break;
-        }
-        if (chatDay && chatDay.getTime() >= dateFrom.getTime() && chatDay.getTime() <= dateTo.getTime()) {
-          yesterdayZoneEndScrollPos = await getScrollPos(page);
-        }
+      const curPos = await getScrollPos(page);
+      const d = lastLabel ? dayLabelToDate(lastLabel) : null;
+      if (d && d.getTime() < dateFrom.getTime()) {
+        yesterdayZoneEndScrollPos = curPos;
+        console.log(`\n  📅 ถึง item เก่ากว่า Yesterday ("${lastLabel}") — สิ้นสุดที่ ${curPos}px`);
+        break;
       }
+      yesterdayZoneEndScrollPos = curPos; // item ล่างยังเป็น yesterday/ใหม่กว่า → ยังไม่สุด
 
-      if (!extendDone) {
-        const scrolled = await scrollChatListDown(page, 3);
-        const newPos = await getScrollPos(page);
-        if (!scrolled || newPos <= lastExtendScrollPos + 50) {
-          extendStuckCount++;
-          if (extendStuckCount >= 3) {
-            console.log(`\n  🏁 Extend scroll หยุด — จุดสิ้นสุดที่ ${yesterdayZoneEndScrollPos}px`);
-            extendDone = true;
-          }
-        } else {
-          extendStuckCount = 0;
-        }
-        lastExtendScrollPos = newPos;
-        await page.waitForTimeout(500);
+      await scrollChatListDown(page, 4);
+      await page.waitForTimeout(450);
+      const newPos = await getScrollPos(page);
+      if (newPos <= lastExtPos + 30) {
+        extendStuck++;
+        if (extendStuck >= 3) { yesterdayZoneEndScrollPos = newPos; console.log(`\n  🏁 ถึงท้ายสุดของ list — สิ้นสุดที่ ${newPos}px`); break; }
+      } else extendStuck = 0;
+      lastExtPos = newPos;
+
+      if (Date.now() - extendStart > EXTEND_MAX_MS) {
+        console.log(`\n  ⏱️ Phase 1.5 ครบ ${EXTEND_MAX_MS/1000}s — ใช้จุด ${curPos}px (zone ใหญ่)`);
+        break;
       }
     }
 
