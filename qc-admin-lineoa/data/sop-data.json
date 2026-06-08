@@ -1,0 +1,3928 @@
+{
+  "categories": [
+    {
+      "code": "bonus",
+      "name": "โบนัส",
+      "description": "หมวด SOP: โบนัส"
+    },
+    {
+      "code": "tournament",
+      "name": "ทัวร์นาเมนต์",
+      "description": "หมวด SOP: ทัวร์นาเมนต์"
+    },
+    {
+      "code": "escalation",
+      "name": "ส่งต่อทีมงาน",
+      "description": "หมวด SOP: ส่งต่อทีมงาน"
+    },
+    {
+      "code": "technical_issue",
+      "name": "ปัญหาทางเทคนิค/ระบบ",
+      "description": "หมวด SOP: ปัญหาทางเทคนิค/ระบบ"
+    },
+    {
+      "code": "promotion",
+      "name": "โปรโมชั่น",
+      "description": "หมวด SOP: โปรโมชั่น"
+    },
+    {
+      "code": "poker",
+      "name": "โป๊กเกอร์/วิธีเล่น",
+      "description": "หมวด SOP: โป๊กเกอร์/วิธีเล่น"
+    },
+    {
+      "code": "withdraw",
+      "name": "ถอนเงิน",
+      "description": "หมวด SOP: ถอนเงิน"
+    },
+    {
+      "code": "kyc",
+      "name": "ยืนยันตัวตน/บัญชี",
+      "description": "หมวด SOP: ยืนยันตัวตน/บัญชี"
+    },
+    {
+      "code": "deposit",
+      "name": "ฝากเงิน",
+      "description": "หมวด SOP: ฝากเงิน"
+    },
+    {
+      "code": "register",
+      "name": "สมัครสมาชิก",
+      "description": "หมวด SOP: สมัครสมาชิก"
+    },
+    {
+      "code": "closing",
+      "name": "ปิดเคส/แจ้งรอ",
+      "description": "หมวด SOP: ปิดเคส/แจ้งรอ"
+    },
+    {
+      "code": "jackpot",
+      "name": "แจ็คพอต/Leaderboard",
+      "description": "หมวด SOP: แจ็คพอต/Leaderboard"
+    },
+    {
+      "code": "general",
+      "name": "ทั่วไป",
+      "description": "หมวด SOP: ทั่วไป"
+    }
+  ],
+  "scripts": [
+    {
+      "category_code": "bonus",
+      "topic": "โบนัสคาสิโน ทำยังไงถึงได้โบนัสนี้",
+      "question": "โบนัสคาสิโน ทำยังไงถึงได้โบนัสนี้",
+      "answer": "สำหรับคำถามในส่วนของคาสิโน รบกวนลูกค้าติดต่อที่ Live chat support ทางหน้าเว็บ Natural8.com ได้เลยนะคะ\n\nหากเป็นในส่วนของโป๊กเกอร์ ลูกค้าสามารถสอบถามแอดมินเข้ามาได้ พร้อมให้บริการตลอด 24 ชม. เช่นเดิมค่ะ",
+      "intent": "bonus",
+      "keywords": [
+        "โบนัสคาสิโน",
+        "ทำยังไงถึงได้โบนัสนี้"
+      ],
+      "required_keywords": [
+        "live",
+        "chat",
+        "support",
+        "natural8"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 2
+    },
+    {
+      "category_code": "tournament",
+      "topic": "การซื้อขายหุ้น tournament",
+      "question": "การซื้อขายหุ้น tournament",
+      "answer": "การซื้อหุ้น เป็นการซื้อ Action ผู้เล่นในการแข่งขันใน tournament ซึ่งราคาการซื้อขึ้นอยู่กับรายการที่ผู้เล่นลงแข่งขันค่ะ\nหากผู้เล่นที่คุณซื้อหุ้นไว้ เข้าสู่ ITM คุณก็จะได้รับส่วนแบ่งเงินรางวัลตามเงื่อนไข ในทางกลับกัน คุณเองก็สามารถเปิดขายหุ้นได้ด้วยเช่นกันค่ะ\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗  https://www.natural8.com/th/features/tournament-staking#details",
+      "intent": "tournament",
+      "keywords": [
+        "tournament",
+        "การซื้อขายหุ้น"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/th/features/tournament-staking#details",
+        "action",
+        "tournament",
+        "itm",
+        "natural8",
+        "features"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 3
+    },
+    {
+      "category_code": "tournament",
+      "topic": "การป้องกันหรือคืนบายอินให้กรณี Bubble",
+      "question": "การป้องกันหรือคืนบายอินให้กรณี Bubble",
+      "answer": "Bubble คือผู้ที่ตกรอบก่อนได้เงินรางวัล (ITM) พอดี\nถ้าทัวร์ใดมีสัญลักษณ์ “ป้องกัน Bubble” และลงทะเบียนก่อนเริ่ม\n→ จะมีเพียงผู้เดียวทที่ตกรอบตอน Bubble และจะได้คืนค่าบายอินค่ะ\n\nรายละเอียดเพิ่มเติม 🔗 https://bit.ly/4cD1Mkd",
+      "intent": "tournament",
+      "keywords": [
+        "bubble",
+        "การป้องกันหรือคืนบายอินให้กรณี"
+      ],
+      "required_keywords": [
+        "https://bit.ly/4cD1Mkd",
+        "bubble",
+        "itm",
+        "bit",
+        "cd1mkd"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 4
+    },
+    {
+      "category_code": "escalation",
+      "topic": "ตั๋วแลกเป็นเงินคืน",
+      "question": "ตั๋วแลกเป็นเงินคืน",
+      "answer": "หากลูกค้าต้องการ เปลี่ยนตั๋วเป็นเงินคืน\nติดต่อ Live Chat หน้าเว็บ N8 ได้เลยนะคะ พร้อมแจ้งเหตุผลที่ต้องการเปลี่ยนค่ะ\n\n📌 รบกวนลูกค้าเตรียมข้อมูลก่อนติดต่อ:\n\n1.อีเมลที่ใช้สมัคร (GGPass / N8)\n2.ชื่อเล่นในเกม\n\nหลังดำเนินการแล้ว รบกวนแจ้งแอดมินอีกครั้งเพื่ออัปเดตข้อมูลได้เลยค่ะ",
+      "intent": "escalation",
+      "keywords": [
+        "ตั๋วแลกเป็นเงินคืน"
+      ],
+      "required_keywords": [
+        "live",
+        "chat",
+        "ggpass"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 5
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ปัญหาทัวร์ล่ม / ทัวร์หยุดแข่งขันชั่วคราว",
+      "question": "ปัญหาทัวร์ล่ม / ทัวร์หยุดแข่งขันชั่วคราว",
+      "answer": "ขณะนี้ระบบหลักมีปัญหา ทำให้เข้าเกมไม่ได้หรือเกมหยุดชั่วคราว\nทางเครือข่ายกำลังเร่งแก้ไขให้อย่างเร็วที่สุดค่ะ\n\nตอนนี้แนะนำให้รอจนกว่าเกมจะกลับมาแข่งขันต่ออีกครั้ง\nและหากพบว่าทัวร์นาเมนต์หยุดเพราะระบบขัดข้อง ระบบจะคืนค่าสมัครให้ภายใน 72 ชม. ค่ะ\n\nขออภัยในความไม่สะดวกด้วยค่ะ",
+      "intent": "technical_issue",
+      "keywords": [
+        "ปัญหาทัวร์ล่ม",
+        "ทัวร์หยุดแข่งขันชั่วคราว"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 6
+    },
+    {
+      "category_code": "tournament",
+      "topic": "Final table",
+      "question": "Final table",
+      "answer": "การเข้าสู่ Final table ในทัวร์นาเมนต์\nโดยในตอนแรกผู้เล่นสามารถสลับที่นั่ง ทำข้อตกลงต่างๆ หรือใช้ประโยชน์จากนาฬิกาจับเวลาก่อนแอคชั่นได้\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3VHhXXN",
+      "intent": "tournament",
+      "keywords": [
+        "final",
+        "table"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3VHhXXN",
+        "final",
+        "table",
+        "bit",
+        "vhhxxn"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 7
+    },
+    {
+      "category_code": "promotion",
+      "topic": "Fish buffet / Ocean reward",
+      "question": "Fish buffet / Ocean reward",
+      "answer": "Ocean reward\nFish buffet ที่พัฒนาไปอีกขั้น รับเงินคืนสูงสุดถึง 80%\nผู้เล่น Fish Buffet Platinum Octopus จะถูกเลื่อนระดับไปเป็น Octopus ใน Ocean Rewards\nจะได้รับ Tide Points (TP) ในอัตรา 100 คะแนนสำหรับทุก $1 ของเรคที่สร้าง\nยิ่งสะสมเพชรมากเท่าไหร่ ก็ยิ่งได้เปรียบมากขึ้นเท่านั้น นำไปแลกเป็นมูลค่าพรีเมียมได้เลยค่ะ \n\nศึกษาเพิ่มเติมได้ที่นี่ค่ะ https://www.natural8.com/th/promotions/ocean-rewards",
+      "intent": "promotion",
+      "keywords": [
+        "fish",
+        "buffet",
+        "ocean",
+        "reward"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/th/promotions/ocean-rewards",
+        "ocean",
+        "reward",
+        "fish",
+        "buffet",
+        "platinum"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 8
+    },
+    {
+      "category_code": "tournament",
+      "topic": "PICK AND GO",
+      "question": "PICK AND GO",
+      "answer": "PICK & GO คือแคมเปญพิเศษช่วงเทศกาล\nเล่นทัวร์นาเมนต์โป๊กเกอร์ ไปพร้อมกับทายผลฟุตบอลในแต่ละคู่ค่ะ\n\n✔ บายอินเพื่อสมัครทัวร์ตามปกติ และแต่ละทีมราคาบายอินจะไม่เท่ากัน (สูงสุดไม่เกิน $10)\n✔ ถ้าทีมที่เลือก ชนะหรือเสมอ → เล่นโป๊กเกอร์ทัวร์ต่อ\n❌ ถ้า ทีมแพ้ → จะปรับตกรอบอัตโนมัติ โดยไม่ต้องเล่นทัวร์นาเมนต์โป๊กเกอร์ค่ะ\n\nสรุปแล้ว จะมีแค่เฉพาะผู้เล่นที่บายอินเข้ามา และเลือกทีมฟุตบอลที่ชนะเท่านั้น ที่จะได้เล่นทัวร์นาเมนต์โป๊กเกอร์ต่อค่ะ",
+      "intent": "tournament",
+      "keywords": [
+        "pick",
+        "and"
+      ],
+      "required_keywords": [
+        "pick"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 9
+    },
+    {
+      "category_code": "poker",
+      "topic": "คำศัพ poker",
+      "question": "คำศัพ poker",
+      "answer": "ผู้เล่นสามารถเรียนรู้คำศัพท์โป๊กเกอร์ เพื่อทำความเข้าใจกับเกมมากขึ้น ได้ที่นี่ค่ะ 🔗 https://bit.ly/49pNLDA",
+      "intent": "poker",
+      "keywords": [
+        "poker",
+        "คำศัพ"
+      ],
+      "required_keywords": [
+        "https://bit.ly/49pNLDA",
+        "bit",
+        "pnlda",
+        "คำศัพ"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 10
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "เงินฟรีใน Natural8",
+      "question": "เงินฟรีใน Natural8",
+      "answer": "Play Money คือชิพฟรีที่รับได้วันละ 2 ครั้งในแอป N8 ใช้เล่นได้เฉพาะโหมดที่เป็น Play Money เท่านั้นค่ะ (โหมดเล่นฟรี ไม่ใช่มูลค่าเงินจริง ไม่สามารถถอนใดๆได้)",
+      "intent": "withdraw",
+      "keywords": [
+        "natural8",
+        "เงินฟรีใน"
+      ],
+      "required_keywords": [
+        "play",
+        "money"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 11
+    },
+    {
+      "category_code": "poker",
+      "topic": "บทความ Poker",
+      "question": "บทความ Poker",
+      "answer": "โป๊กเกอร์เริ่มจากผู้เล่นแต่ละคนได้รับไพ่ คนละ 2 ใบ\nมีการเปิดไพ่กองกลางรวม 5 ใบเป็นช่วง ๆ Flop (3 ใบ), Turn (1 ใบ), River (1 ใบ)\nแต่ละรอบจะมีการวางเดิมพัน ผู้เล่นเลือกได้ว่าจะหมอบ (fold), ตาม (call), หรือเก (raise)\nผู้เล่นต้องผสมไพ่ในมือกับไพ่กองกลางให้ได้มือดีที่สุดจาก 5 ใบ เพื่อวัดว่าใครดีที่สุดค่ะ\n\nผู้เล่นสามารถอ่านบทความและศึกษาเกี่ยวกับ Poker ได้ที่ลิงก์นี้ค่ะ 🔗 https://bit.ly/3PMxWQj",
+      "intent": "poker",
+      "keywords": [
+        "poker",
+        "บทความ"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PMxWQj",
+        "flop",
+        "turn",
+        "river",
+        "fold",
+        "call"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 12
+    },
+    {
+      "category_code": "poker",
+      "topic": "C$ คืออะไร",
+      "question": "C$ คืออะไร",
+      "answer": "C$ คือเงินที่ใช้แทน $ สำหรับเล่นโหมด Cash Game เช่น All-in or Fold, Rush&Cash, Hold’em, PLO และ Short Deck\n\n1C$ = $1 และจะถอนเป็นเงินสดได้ ก็ต่อเมื่อเล่นแล้วชนะเป็น $ จริง เท่านั้นค่ะ",
+      "intent": "poker",
+      "keywords": [
+        "คืออะไร"
+      ],
+      "required_keywords": [
+        "cash",
+        "game",
+        "all",
+        "fold",
+        "rush&cash",
+        "hold"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 13
+    },
+    {
+      "category_code": "tournament",
+      "topic": "T$ คืออะไร",
+      "question": "T$ คืออะไร",
+      "answer": "T$ คือเงินสำหรับใช้เล่นทัวร์นาเมนต์ต่าง ๆ เช่น Tournament, Spin & Gold, Battle Royale และ Sit & Go\n\n1 T$ = $1 ใช้แทนเงินสดได้ แต่จะถอนเป็นเงินสดได้ก็ต่อเมื่อเล่นแล้วชนะเป็น $ จริง เท่านั้นค่ะ",
+      "intent": "tournament",
+      "keywords": [
+        "คืออะไร"
+      ],
+      "required_keywords": [
+        "tournament",
+        "spin",
+        "gold",
+        "battle",
+        "royale",
+        "sit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 14
+    },
+    {
+      "category_code": "poker",
+      "topic": "EV Cashout",
+      "question": "EV Cashout",
+      "answer": "EV Cashout เป็นการช่วยรับมือกับความเสี่ยงที่คุณอาจจะแพ้ได้ค่ะ จะเกิดขึ้นก็ต่อเมื่อมีการ All-in และผู้เล่นมีโอกาสชนะมากกว่า 60% \n1. ซึ่งหากผู้เล่นกดยอมรับ จะมีการจ่ายเงินบางส่วนให้ผู้เล่นเลย (โดยไม่คำนึงถึงผลลัพธ์ของไพ่) และเงินกองกลางจะถูกสละสิทธ์ \n2. หากผู้เล่นปฎิเสธ เกมจะยังคงเล่นเพื่อชิงเงินกองกลางไปตามปกติค่ะ\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/4axMxXQ",
+      "intent": "poker",
+      "keywords": [
+        "cashout"
+      ],
+      "required_keywords": [
+        "https://bit.ly/4axMxXQ",
+        "cashout",
+        "all",
+        "bit",
+        "axmxxq"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 15
+    },
+    {
+      "category_code": "poker",
+      "topic": "PokerCraft",
+      "question": "PokerCraft",
+      "answer": "PokerCraft เป็นการเก็บสถิติต่างๆ ของการเล่น เพื่อนำมาเรียนรู้ วิเคราะห์ และปรับปรุงในการเล่นได้ค่ะ\n\nเช็คข้อมูลได้ที่หน้าโปร์ไฟล์ของตนเอง และศึกษาเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3PMXJIl",
+      "intent": "poker",
+      "keywords": [
+        "pokercraft"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PMXJIl",
+        "pokercraft",
+        "bit",
+        "pmxjil"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 16
+    },
+    {
+      "category_code": "poker",
+      "topic": "Prop Bet",
+      "question": "Prop Bet",
+      "answer": "Prop Bet เป็นฟีเจอร์ใหม่บน Natural8 ที่สามารถเลือกคนที่เรามั่นใจว่าจะทำออกมาได้ดีที่สุด ซึ่งแบ่งออกเป็น 3 หมวดหมู่ ได้แก่ Last Longer, Bankroll Challenge และ ELO Challenge\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3TIHdtX",
+      "intent": "poker",
+      "keywords": [
+        "prop",
+        "bet"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3TIHdtX",
+        "prop",
+        "bet",
+        "natural8",
+        "last",
+        "longer"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 17
+    },
+    {
+      "category_code": "poker",
+      "topic": "Smart HUD",
+      "question": "Smart HUD",
+      "answer": "Smart hud ใช้สำหรับศึกษาและประเมิณคู่แข่ง เพื่อนำไปวิเคราะห์และปรับใช้ในกลยุทธ์การแข่งขันได้\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3TExwg9",
+      "intent": "poker",
+      "keywords": [
+        "smart",
+        "hud"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3TExwg9",
+        "smart",
+        "hud",
+        "bit",
+        "texwg9"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 18
+    },
+    {
+      "category_code": "bonus",
+      "topic": "Spin & Gold Challenge\nรับเงินคืนสูงสุด 80%",
+      "question": "Spin & Gold Challenge\nรับเงินคืนสูงสุด 80%",
+      "answer": "การเข้าร่วม Spin & Gold Challenge จะมีโอกาสรับเงินคืนได้สูงสุด 80%\n\nซึ่งผู้เล่นจะต้องเลือกเข้าร่วมการท้าทายนี้ก่อนหรือระหว่างเล่นเกม เลือกตั้งเวลา ยิ่งนาน รางวัลก็จะยิ่งมากขึ้น\nหลังจากนั้นเลือกภารกิจที่ต้องการท้าทายและคาดว่าจะสำเร็จ เพราะหากทำภารกิจล้มเหลว ก็จะเสียทองที่รวบรวมมาด้วยเช่นกันค่ะ\n*สามารถเข้าร่วม Spin & Gold Challenge ได้เพียงวันละครั้งเท่านั้น\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3J0zsKFe",
+      "intent": "bonus",
+      "keywords": [
+        "spin",
+        "gold",
+        "challenge",
+        "รับเงินคืนสูงสุด"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3J0zsKFe",
+        "spin",
+        "gold",
+        "challenge",
+        "bit",
+        "j0zskfe"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 19
+    },
+    {
+      "category_code": "promotion",
+      "topic": "ช่องทางการติดต่อ Natural8 Thailad",
+      "question": "ช่องทางการติดต่อ Natural8 Thailad",
+      "answer": "ลูกค้าสามารถติดตามข่าวสาร โปรโมชั่น Natural8 Thailand ในช่องทางต่างๆ ได้ที่ลิงก์ด้านล่างนี้ค่ะ\n\nFacebook page\nhttps://www.facebook.com/natural8thai\n\nInstragram \nhttps://www.instagram.com/natural8.th/\n\nTelegram\n https://t.me/n8thailand\n\nWebsite Natural8th\nhttps://natural8thpoker.com/",
+      "intent": "promotion",
+      "keywords": [
+        "natural8",
+        "thailad",
+        "ช่องทางการติดต่อ"
+      ],
+      "required_keywords": [
+        "https://www.facebook.com/natural8thai",
+        "https://www.instagram.com/natural8.th/",
+        "https://t.me/n8thailand",
+        "https://natural8thpoker.com/",
+        "natural8",
+        "thailand"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 20
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ดาวน์โหลดแอป N8",
+      "question": "ดาวน์โหลดแอป N8",
+      "answer": "ลูกค้าสามารถดาวน์โหลดแอปพลิเคชั่น Natural8 โดยรองรับทั้ง Window, iOS และ Android \nได้ที่ลิงก์นี้ค่ะ 🔗 https://bit.ly/43HMuqg",
+      "intent": "technical_issue",
+      "keywords": [
+        "ดาวน์โหลดแอป"
+      ],
+      "required_keywords": [
+        "https://bit.ly/43HMuqg",
+        "natural8",
+        "window",
+        "ios",
+        "android",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 21
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ดาวน์โหลดแอป N8\nโดยไม่ผ่านเว็บ N8",
+      "question": "ดาวน์โหลดแอป N8\nโดยไม่ผ่านเว็บ N8",
+      "answer": "ลิงก์ดาวน์โหลดแอป Natural8 ตามอุปกรณ์ที่ใช้งานค่ะ\n\n💻 Windows 64-bit\nhttps://portal-front.good-game-network.com/desktop/installer/windows/natural8?arch=x64\n\n💻 Windows 32-bit\nhttps://download.good-game-network.com/desktop/installer/windows/natural8\n\n🍎 Mac\nhttps://download.good-game-network.com/desktop/installer/osx/natural8\n\n📱 มือถือ (Android/iOS)\nhttps://download.good-game-network.com/mobile-page/natural8\n\nสำหรับ iPhone/iPad/Mac แนะนำให้เปิดลิงก์ผ่าน Safari เท่านั้นนะคะ",
+      "intent": "technical_issue",
+      "keywords": [
+        "ดาวน์โหลดแอป",
+        "โดยไม่ผ่านเว็บ"
+      ],
+      "required_keywords": [
+        "https://portal-front.good-game-network.com/desktop/installer/windows/natural8?arch=x64",
+        "https://download.good-game-network.com/desktop/installer/windows/natural8",
+        "https://download.good-game-network.com/desktop/installer/osx/natural8",
+        "https://download.good-game-network.com/mobile-page/natural8",
+        "natural8",
+        "windows"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 22
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ดาวน์โหลด IOS",
+      "question": "ดาวน์โหลด IOS",
+      "answer": "สำหรับอุปกรณ์มือถือ IOS จะต้องเป็นรุ่นที่สูงกว่า iPhone X, iPad 7, iPad Air 3, iPad pro 2, iPad mini 5 รวมถึง iOS 17.3.1 ขึ้นไป จึงจะสามารถโหลดได้\n\nอัปเดตแอปพลิเคชั่น สามารถทำตามขั้นตอนได้ดังนี้ค่ะ\n*กรุณาเปิดผ่าน Safari เท่านั้น\n(หากยังไม่มีแอปฯ N8 อยู่ในเครื่อง สามารถข้ามไปที่ข้อ 3)\n\n1. ลบแอป Natural8 ออก\n\n2. ไปที่ ตั้งค่า(Setting) > ทั่วไป(General) > การจัดการ VPN และอุปกรณ์(VPN & Device management) > Natural8 > ลบการจัดการ(Remove management)\n\n3. คลิกลิงก์เพื่อดาวน์โหลดแอปใหม่อีกครั้ง https://download.good-game-network.com/mobile-page/natural8/th\n\n4. เลือก อนุญาต(Allow) > เลือก Natural8 > เลือก ติดตั้ง(Install)> ป้อนรหัสผ่านเครื่องของคุณ > เลือก ติดตั้ง(Install) อีกครั้ง > เลือก เชื่อถือ(Trust)\n\n5. อย่าเพิ่งเลือกคำว่า เสร็จสิ้น(Done) ให้รอจนกว่าจะขึ้นหน้าจอ การติดตั้งแอป(App Installation) > เลือก ติดตั้ง(Install) > เสร็จสิ้น(Done)",
+      "intent": "technical_issue",
+      "keywords": [
+        "ios",
+        "ดาวน์โหลด"
+      ],
+      "required_keywords": [
+        "https://download.good-game-network.com/mobile-page/natural8/th",
+        "ios",
+        "iphone",
+        "ipad",
+        "air",
+        "pro"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 23
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ดาวน์โหลด iOS บน App store",
+      "question": "ดาวน์โหลด iOS บน App store",
+      "answer": "ตอนนี้แอป Natural8 สามารถดาวน์โหลดได้แล้วผ่าน App Store (iOS) ค่ะ\n\nลูกค้าสามารถเลือกดาวน์โหลดได้ 2 วิธี\n\n1. คลิกที่ลิงก์นี้\nhttps://www.natural8.com/en/download?ref=N8Thailand&utm_campaign=download&utm_medium=sns&utm_source=agents\n\n2. หรือเข้า App Store แล้วพิมพ์ค้นหาคำว่า Natural8 Play ก็ได้เช่นกันค่ะ\n\nหากมีคำถามเพิ่มเติม หรือพบปัญหาในการติดตั้ง สามารถสอบถามได้เลยค่ะ",
+      "intent": "technical_issue",
+      "keywords": [
+        "ios",
+        "app",
+        "store",
+        "ดาวน์โหลด"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/en/download?ref=N8Thailand&utm_campaign=download&utm_medium=sns&utm_source=agents",
+        "natural8",
+        "app",
+        "store",
+        "ios",
+        "download"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 24
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "สเปคเครื่องการดาวร์โหลด",
+      "question": "สเปคเครื่องการดาวร์โหลด",
+      "answer": "📲 สเปคขั้นต่ำสำหรับใช้งานแอป N8\n\n🔹 Windows: ใช้ได้ตั้งแต่ Windows 8 (แนะนำ Windows 10 ขึ้นไป), RAM 2 GB+, พื้นที่ว่าง 1 GB+\n🔹 Mac: OS X 10.10+, RAM 2 GB+, CPU 3GHz+\n🔹 Android: Android 6.0+ (แนะนำ 10 ขึ้นไป), RAM 2–3 GB+, พื้นที่ว่าง 250 MB+\n🔹 iOS: รองรับตั้งแต่ iPad Air 2 / Mini 4 (แนะนำรุ่นใหม่กว่า), RAM 3 GB+, พื้นที่ว่าง 250 MB+",
+      "intent": "technical_issue",
+      "keywords": [
+        "สเปคเครื่องการดาวร์โหลด"
+      ],
+      "required_keywords": [
+        "windows",
+        "ram",
+        "mac",
+        "cpu",
+        "ghz",
+        "android"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 25
+    },
+    {
+      "category_code": "kyc",
+      "topic": "โดนล็อค ID",
+      "question": "โดนล็อค ID",
+      "answer": "แอดมินขอชี้แจงสาเหตุที่อาจทำให้บัญชีถูกล็อคนะคะ:\n\n1.นำ ID ให้ผู้อื่นเล่นแทน\n\n2.เล่นใกล้กับผู้เล่นอื่นในบริเวณเดียวกัน\n\n3.เข้าระบบจากหลายอุปกรณ์มากเกินไป\n\n4.มีหลาย ID\n\nเมื่อระบบตรวจพบกรณีเหล่านี้ อาจทำให้บัญชีถูกล็อคได้ค่ะ",
+      "intent": "kyc",
+      "keywords": [
+        "โดนล็อค"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 26
+    },
+    {
+      "category_code": "kyc",
+      "topic": "วิธีส่งคำขอปลดล็อค ID",
+      "question": "วิธีส่งคำขอปลดล็อค ID",
+      "answer": "หากผู้เล่นโดนล็อคบัญชี ให้ลองทำตามรายการต่อไปนี้ค่ะ  \n1. ผู้เล่นจะต้องส่งเมลล์ไปที่ operations@natural8.com ตั้งชื่อหัวข้อ \"balance unlock\" และรอตอบกลับทางอีเมลค่ะ\n\n2. ระหว่างรออีเมลตอบกลับ ให้ลูกค้าเตรียมเอกสารดังนี้ค่ะ - รูปถ่ายบัตรประชาชน หน้า - หลัง - ถ่ายรูป Selfie โดยมือข้างหนึ่งถือบัตรประชาชน หรือ Passport และมืออีกข้างหนึ่ง ถือกระดาษที่เขียนชื่อ Nick name ภายในแอปฯ N8 พร้อมวันที่ปัจจุบันที่สุด\n\n3. หลักฐานยืนยันที่อยู่ เช่น บิลค่าน้ำ ค่า ไฟ หรือ Statement ที่เป็นชื่อตัวเอง อย่างใดอย่างหนึ่ง *ให้เขียนหรือวาดกรอบในส่วนของ ชื่อ และที่อยู่ เพื่อสื่อสารถึงส่วนสำคัญให้ด้วยค่ะ\n\n4. รออีเมลตอบกลับจากทาง Natural8 เพื่อแจ้งถึงการปลดล็อคแล้ว หรือในบางกรณีอาจจะมีให้ยื่นหลักฐานเพิ่มเติมค่ะ",
+      "intent": "kyc",
+      "keywords": [
+        "วิธีส่งคำขอปลดล็อค"
+      ],
+      "required_keywords": [
+        "operations",
+        "natural8",
+        "balance",
+        "unlock",
+        "selfie",
+        "passport"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 27
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "การ Dump chip",
+      "question": "การ Dump chip",
+      "answer": "1. จากการตรวจสอบพบว่าแอคเคาท์ของลูกค้า\nมีการทำ Transaction ที่ผิดกับกฎระเบียบของทาง N8TH จึงไม่สามารถทำรายการให้ได้ค่ะ\n\n2. ลูกค้ามีการนำเข้า Chip ที่ไม่ได้เกิดจากระบบของเรา ทำให้ไม่สามารถทำการถอนให้ได้ค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "dump",
+        "chip"
+      ],
+      "required_keywords": [
+        "transaction",
+        "n8th",
+        "chip"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 28
+    },
+    {
+      "category_code": "deposit",
+      "topic": "บันทึก QR CODE ไม่ได้",
+      "question": "บันทึก QR CODE ไม่ได้",
+      "answer": "กรณีฝากเงิน AUTO ผ่าน QR CODE แล้วไม่สามารถบันทึกสลิปหรือแคปหน้าจอได้\nแนะนำให้ลูกค้าเปิดลิงก์ฝากเงิน AUTO ผ่าน บราวเซอร์อื่น หรือทำตามขั้นตอนนี้ค่ะ\n\n1.เข้าเมนู “ฝากเงินระบบ AUTO” ในไลน์\n\n2.เมื่อมีลิงก์ฝากปรากฏขึ้น ให้กดสัญลักษณ์ 3 จุด มุมขวาล่าง\n\n3.เลือก เปิดด้วยบราวเซอร์ (Open in browser)\n\n4.จากนั้นสามารถใช้งานระบบฝากเงิน AUTO ได้ตามปกติค่ะ\n\nหากมีข้อสงสัยเพิ่มเติม สามารถสอบถามแอดมินได้ตลอดนะคะ",
+      "intent": "deposit",
+      "keywords": [
+        "code",
+        "บันทึก",
+        "ไม่ได้"
+      ],
+      "required_keywords": [
+        "auto",
+        "code",
+        "open",
+        "browser",
+        "บันทึก"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 29
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดระบบถอนชั่วคราว 2",
+      "question": "ปิดระบบถอนชั่วคราว 2",
+      "answer": "ลูกค้าที่ต้องการถอนเงิน โปรดรอสักครู่นะคะ\n\nเนื่องจากขณะนี้ระบบเครือข่ายทางการเงินกำลังอัปเดต ซึ่งคาดว่าจะใช้เวลาไม่เกิน 1 ชั่วโมง\nรบกวนลูกค้าทำรายการถอนในภายหลังอีกครั้ง และแอดมินจะเร่งทำรายการให้โดยเร็วที่สุดค่ะ\n\nขออภัยในความไม่สะดวกค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดระบบถอนชั่วคราว"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 30
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดฝาก-ถอน",
+      "question": "ปิดฝาก-ถอน",
+      "answer": "📢 แจ้งอัปเดตระบบฝาก–ถอนเงิน\n\nขณะนี้ระบบฝาก–ถอนกำลังอยู่ระหว่างการอัปเดตจากธนาคาร\nเมื่อระบบกลับมาใช้งานได้ แอดมินจะดำเนินการให้โดยเร็วที่สุดค่ะ\n\nขออภัยในความไม่สะดวกมา ณ ที่นี้ค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดฝาก",
+        "ถอน"
+      ],
+      "required_keywords": [
+        "ถอน"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 31
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ปิดฝาก-ถอน (bitpay)",
+      "question": "ปิดฝาก-ถอน (bitpay)",
+      "answer": "📢 แจ้งสำหรับลูกค้าที่ฝากผ่านธนาคารกรุงไทย\n\nในช่วงเวลา 23.00 – 02.00 น. ของทุกวัน\nระบบธนาคารจะมีการอัปเดต ทำให้ยอดเงินจะปรับเข้าแบบอัตโนมัติ หลัง 02.00 น. เป็นต้นไป\n\nเพื่อป้องกันความล่าช้า\nครั้งต่อไปแนะนำให้ลูกค้า ตรวจสอบเลขบัญชีที่หน้าฝากทุกครั้ง หรือสอบถามแอดมินได้ตลอดค่ะ\n\nขอบคุณมากค่ะ 🙏",
+      "intent": "deposit",
+      "keywords": [
+        "bitpay",
+        "ปิดฝาก",
+        "ถอน"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 32
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดระบบถอนชั่วคราว 1",
+      "question": "ปิดระบบถอนชั่วคราว 1",
+      "answer": "ขณะนี้ระบบถอนเงินอยู่ในระหว่างการอัพเดตจากธนาคาร\nส่งผลให้ผู้เล่นไม่สามารถทำรายการถอนได้ในขณะนี้ ขอความกรุณาแจ้งการถอนอีกครั้งในภายหลังค่ะ\n\nอย่างไรก็ตาม ผู้เล่นสามารถฝากเงินและเข้าเล่นภายในแอปฯได้ตามปกติ\nทางเราขออภัยในความไม่สะดวกค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดระบบถอนชั่วคราว"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 33
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดระบบถอนชั่วคราว (ตามช่วงเวลา) 2",
+      "question": "ปิดระบบถอนชั่วคราว (ตามช่วงเวลา) 2",
+      "answer": "ขณะนี้ระบบถอนเงินอยู่ระหว่างการอัปเดตจากทางธนาคาร\n⏰ ช่วงเวลา 23.00 – 02.00 น.\n\nรบกวนลูกค้า ทำรายการถอนใหม่อีกครั้งหลังเวลา 02.00 น.\nทางแอดมินจะเร่งดำเนินการให้ทันทีที่ระบบกลับมาใช้งานได้ค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดระบบถอนชั่วคราว",
+        "ตามช่วงเวลา"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 34
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ฝากเงิน - ธนาคารดีเลย์ 1",
+      "question": "ฝากเงิน - ธนาคารดีเลย์ 1",
+      "answer": "ยอดเงินกำลังอัปเดตเข้าให้อัตโนมัติ รบกวนรอสักครู่นะคะ\nหากเงินยังไม่เข้าระบบหลังครบ10นาทีติดต่อแจ้งน้องแอดมินได้เลยค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ฝากเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 35
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ฝากเงิน - ธนาคารดีเลย์ 2",
+      "question": "ฝากเงิน - ธนาคารดีเลย์ 2",
+      "answer": "ตอนนี้ระบบธนาคารล่าช้า อาจใช้เวลานานกว่าปกติค่ะ\nแอดมินกำลังเร่งดำเนินการให้อย่างเร็วที่สุด\n\n📌 รบกวนอย่าทักซ้ำ เพราะจะทำให้คิวแชทเลื่อนใหม่นะคะ\nขออภัยในความไม่สะดวกด้วยค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ฝากเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 36
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ฝากเงิน - ธนาคารดีเลย์ 3",
+      "question": "ฝากเงิน - ธนาคารดีเลย์ 3",
+      "answer": "ขณะนี้ระบบธนาคารเกิดความล่าช้า ส่งผลให้การฝาก-ถอนอาจใช้เวลานานกว่าปกติ แอดมินขอแจ้งให้ทราบว่าเราได้รับข้อความของลูกค้าเรียบร้อยแล้ว และกำลังเร่งดำเนินการให้โดยเร็วที่สุดตามลำดับคิวค่ะ\n\n📌 ทั้งนี้ หากลูกค้าทักข้อความซ้ำเข้ามา ระบบจะแจ้งคิวใหม่ล่าสุดแทนคิวเดิม ซึ่งอาจทำให้ลูกค้าได้รับการตอบกลับช้ากว่าเดิมนะคะ\n\nแอดมินเข้าใจว่าลูกค้ากังวล และขออภัยในความไม่สะดวกอีกครั้งค่ะ\nหากมีความคืบหน้าใด ๆ แอดมินจะแจ้งให้ทราบทันทีนะคะ ขอบคุณที่รอค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ฝากเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 37
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ฝากเงิน - ธนาคารดีเลย์ 4",
+      "question": "ฝากเงิน - ธนาคารดีเลย์ 4",
+      "answer": "คุณลูกค้าคะ แอดมินได้รับข้อความของลูกค้าแล้วนะคะ และต้องขอเรียนแจ้งอีกครั้งว่า ทุกข้อความที่ส่งเข้ามาซ้ำ จะทำให้คิวแชทของลูกค้าถูกเลื่อนออกไปใหม่ ส่งผลให้การดำเนินการล่าช้ากว่าเดิมได้ค่ะ\n\nขณะนี้ระบบธนาคารยังคงล่าช้าอยู่เล็กน้อย แอดมินกำลังเร่งตรวจสอบและดำเนินการให้ตามลำดับอย่างเต็มที่ค่ะ\n\nรบกวนคุณลูกค้าอดใจรออีกสักนิด แอดมินจะไม่ลืมยอดของลูกค้าแน่นอนค่ะ\nขออภัยในความไม่สะดวกและขอบคุณที่เข้าใจนะคะ",
+      "intent": "deposit",
+      "keywords": [
+        "ฝากเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 38
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "พบปัญหาขัดข้องจากธนาคาร ไม่สามารถทำรายการโอนไปบัญชีปลายทาง",
+      "question": "พบปัญหาขัดข้องจากธนาคาร ไม่สามารถทำรายการโอนไปบัญชีปลายทาง",
+      "answer": "ขณะนี้พบปัญหาขัดข้องจากธนาคาร จึงไม่สามารถทำรายการโอนไปบัญชีปลายทางได้ในขณะนี้\n\nหากระบบธนาคารกลับมาตามปกติแล้ว ทางเราจะดำเนินการให้ผู้เล่นตามลำดับอีกครั้งนะคะ \nทุกยอดถอน ของผู้เล่นจะเข้าอย่างแน่นอนและไม่มีการตกหล่นค่ะ \n\nทางเราขออภัยในความไม่สะดวกที่เกิดขึ้นด้วยนะคะ ขอบคุณค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "พบปัญหาขัดข้องจากธนาคาร",
+        "ไม่สามารถทำรายการโอนไปบัญชีปลายทาง"
+      ],
+      "required_keywords": [
+        "พบปัญหาขัดข้องจากธนาคาร",
+        "ไม่สามารถทำรายการโอนไปบัญชีปลายทาง"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 39
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ลิมิตการถอนเงินของผู้เล่นเต็ม",
+      "question": "ลิมิตการถอนเงินของผู้เล่นเต็ม",
+      "answer": "แอดมินเข้าใจว่าลูกค้ากังวล และขออภัยในความไม่สะดวกอีกครั้งค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ลิมิตการถอนเงินของผู้เล่นเต็ม"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 40
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ถอนเงิน - ธนาคารดีเลย์ 1",
+      "question": "ถอนเงิน - ธนาคารดีเลย์ 1",
+      "answer": "หากมีความคืบหน้าใด ๆ แอดมินจะแจ้งให้ทราบทันทีนะคะ ขอบคุณที่รอค่ะ\"",
+      "intent": "withdraw",
+      "keywords": [
+        "ถอนเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 41
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ถอนเงิน - ธนาคารดีเลย์ 2",
+      "question": "ถอนเงิน - ธนาคารดีเลย์ 2",
+      "answer": "ขณะนี้พบปัญหาขัดข้องจากธนาคาร จึงไม่สามารถทำรายการโอนไปบัญชีปลายทางได้ในขณะนี้\n\nหากระบบธนาคารกลับมาตามปกติแล้ว ทางเราจะดำเนินการให้ผู้เล่นตามลำดับอีกครั้งนะคะ \nทุกยอดถอน ของผู้เล่นจะเข้าอย่างแน่นอนและไม่มีการตกหล่นค่ะ \n\nทางเราขออภัยในความไม่สะดวกที่เกิดขึ้นด้วยนะคะ ขอบคุณค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ถอนเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 42
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ถอนเงิน - ธนาคารดีเลย์ 3",
+      "question": "ถอนเงิน - ธนาคารดีเลย์ 3",
+      "answer": "คุณลูกค้าไม่ต้องกังวลนะคะ \nยอดถอนคุณลูกค้าจะเข้าอย่างแน่นอน รบกวนลูกค้ารอจนกว่าระบบจะกลับมาปกตินะคะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ถอนเงิน",
+        "ธนาคารดีเลย์"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 43
+    },
+    {
+      "category_code": "kyc",
+      "topic": "ลูกค้าต้องการเปลี่ยนบัญชี",
+      "question": "ลูกค้าต้องการเปลี่ยนบัญชี",
+      "answer": "กรณีลูกค้าต้องการเปลี่ยนบัญชี Natural8Thailand\n\nสามารถเปลี่ยนธนาคารได้ แต่จะต้องเป็นบัญชีที่เป็นชื่อเจ้าของบัญชีชื่อเดิม เพื่อความปลอดภัยในการใช้งานของลูกค้าค่ะ",
+      "intent": "kyc",
+      "keywords": [
+        "ลูกค้าต้องการเปลี่ยนบัญชี"
+      ],
+      "required_keywords": [
+        "natural8thailand",
+        "ลูกค้าต้องการเปลี่ยนบัญชี"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 44
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ลูกค้าที่ฝากเงินกับแคชเชียร์แล้ว นำเงินมาถอนกับ N8TH",
+      "question": "ลูกค้าที่ฝากเงินกับแคชเชียร์แล้ว นำเงินมาถอนกับ N8TH",
+      "answer": "สำหรับกรณีที่ลูกค้าฝากโดยตรงผ่านระบบ N8 ตามเงื่อนไขแล้วจำเป็นที่จะต้องถอนผ่านระบบ N8 เท่านั้นนะคะ แอดมินต้องขออภัยในความไม่สะดวกที่ไม่สามารถให้บริการได้ในกรณีนี้ค่ะ\n\nแต่หากกรณีเงินที่ยังเหลืออยู่จากการฝากผ่านระบบหลัก คุณลูกค้าจำเป็นต้องใช้ให้หมด จึงจะสามารถเริ่มทำรายการฝาก-ถอนผ่านไลน์กับ N8TH ได้ค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "n8th",
+        "ลูกค้าที่ฝากเงินกับแคชเชียร์แล้ว",
+        "นำเงินมาถอนกับ"
+      ],
+      "required_keywords": [
+        "n8th"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 45
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ลูกค้าที่ฝากหน้าแอพ(แคชเชียร์) แล้วต้องการฝากเงินกับ N8TH",
+      "question": "ลูกค้าที่ฝากหน้าแอพ(แคชเชียร์) แล้วต้องการฝากเงินกับ N8TH",
+      "answer": "หากลูกค้าต้องการฝาก - ถอน กับทางแอดมิน รบกวนลูกค้าทำการถอนยอดให้เหลือ 0 ก่อนนะคะ และลูกค้าต้องทำรายการฝาก - ถอน กับทางแอดมินเท่านั้นค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "n8th",
+        "ลูกค้าที่ฝากหน้าแอพ",
+        "แคชเชียร์",
+        "แล้วต้องการฝากเงินกับ"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 46
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ลูกค้าพบปัญหาฝากถอน ให้ตอบกลับข้อความนี้ทุกคน",
+      "question": "ลูกค้าพบปัญหาฝากถอน ให้ตอบกลับข้อความนี้ทุกคน",
+      "answer": "เรียนคุณลูกค้า หากท่านพบปัญหาในการฝาก-ถอน หรือปัญหาต่างๆ\nสามารถติดต่อแอดมิน N8TH ได้โดยตรงตลอด 24 ชม.\n\nแอดมินจะรับเรื่องและดำเนินการเพื่อแก้ไขปัญหาให้ทุกท่านโดยเร็วที่สุดค่ะ\n\nทางเราต้องขออภัยล่วงหน้าหากท่านได้รับบริการล่าช้าในบางช่วงเวลา\nเนื่องจากอยู่ในช่วงถ่ายโอนระบบ และพัฒนาเพื่อขยายความสามารถในการรับรองลูกค้าค่ะ\nขอบคุณค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ลูกค้าพบปัญหาฝากถอน",
+        "ให้ตอบกลับข้อความนี้ทุกคน"
+      ],
+      "required_keywords": [
+        "n8th"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 47
+    },
+    {
+      "category_code": "kyc",
+      "topic": "ลูกค้าลืมรหัส",
+      "question": "ลูกค้าลืมรหัส",
+      "answer": "กรณีลูกค้าลืมรหัสผ่าน \nสามารถกรอก Email > รับรหัส OTP > รีเซ็ตรหัสผ่านใหม่ได้ที่ลิงก์นี้เลยค่ะ https://fp.cashier-natural8.com/app/find-pw/info",
+      "intent": "kyc",
+      "keywords": [
+        "ลูกค้าลืมรหัส"
+      ],
+      "required_keywords": [
+        "https://fp.cashier-natural8.com/app/find-pw/info",
+        "email",
+        "otp",
+        "cashier",
+        "natural8",
+        "app"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 48
+    },
+    {
+      "category_code": "register",
+      "topic": "ลูกค้าแจ้งขอสมัคร ID ใหม่",
+      "question": "ลูกค้าแจ้งขอสมัคร ID ใหม่",
+      "answer": "เรียนคุณลูกค้า\n\nขอเรียนแจ้งว่า ไม่แนะนำให้สมัครไอดีใหม่ เนื่องจากการมีหลายไอดีอาจเข้าข่ายการละเมิดข้อกำหนดของระบบ และเสี่ยงต่อการถูกระงับบัญชีใช้งาน\n\nหากเกิดปัญหาจากการใช้งานหลายไอดี ทางแอดมินจะ ไม่สามารถรับผิดชอบหรือดำเนินการช่วยเหลือในกรณีดังกล่าวได้\n\nขออภัยในความไม่สะดวก และขอบคุณสำหรับความเข้าใจค่ะ",
+      "intent": "register",
+      "keywords": [
+        "ลูกค้าแจ้งขอสมัคร",
+        "ใหม่"
+      ],
+      "required_keywords": [
+        "ใหม่"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 49
+    },
+    {
+      "category_code": "closing",
+      "topic": "แจ้งรอทุกกรณี1",
+      "question": "แจ้งรอทุกกรณี1",
+      "answer": "โปรดรอสักครู่นะคะ, Waiting for the system, please.",
+      "intent": "closing",
+      "keywords": [
+        "แจ้งรอทุกกรณี"
+      ],
+      "required_keywords": [
+        "waiting",
+        "system"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 50
+    },
+    {
+      "category_code": "closing",
+      "topic": "แจ้งรอทุกกรณี 2",
+      "question": "แจ้งรอทุกกรณี 2",
+      "answer": "แอดมินดำเนินการสักครู่ค่ะ, Please wait a moment sir.",
+      "intent": "closing",
+      "keywords": [
+        "แจ้งรอทุกกรณี"
+      ],
+      "required_keywords": [
+        "moment",
+        "sir"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 51
+    },
+    {
+      "category_code": "escalation",
+      "topic": "แจ้งรอทุกกรณี 3",
+      "question": "แจ้งรอทุกกรณี 3",
+      "answer": "แอดมินประสานงานกับทีมงานสักครู่นะคะ",
+      "intent": "escalation",
+      "keywords": [
+        "แจ้งรอทุกกรณี"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 52
+    },
+    {
+      "category_code": "closing",
+      "topic": "แจ้งรอทุกกรณี 4",
+      "question": "แจ้งรอทุกกรณี 4",
+      "answer": "ทางเรากำลังเร่งดำเนินการแก้ไขให้ระบบกลับมาปกตินะคะ\nน้องแอดมินต้องขออภัยในความไม่สะดวกด้วยค่ะ",
+      "intent": "closing",
+      "keywords": [
+        "แจ้งรอทุกกรณี"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 53
+    },
+    {
+      "category_code": "closing",
+      "topic": "ปิดเคส 1",
+      "question": "ปิดเคส 1",
+      "answer": "ทำรายการเรียบร้อยค่ะ, Completed successfully.",
+      "intent": "closing",
+      "keywords": [
+        "ปิดเคส"
+      ],
+      "required_keywords": [
+        "completed",
+        "successfully"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 54
+    },
+    {
+      "category_code": "closing",
+      "topic": "ปิดเคส 2",
+      "question": "ปิดเคส 2",
+      "answer": "แอดมินยินดีให้บริการด้วยใจตลอด 24 ชั่วโมงนะคะ\nหากมีข้อสงสัยสอบถามได้ตลอดเวลาเลยค่ะ ขอบคุณค่ะ",
+      "intent": "closing",
+      "keywords": [
+        "ปิดเคส"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 55
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดเคสถอน",
+      "question": "ปิดเคสถอน",
+      "answer": "ทำการถอนเรียบร้อยค่ะ, The withdrawal is done.",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดเคสถอน"
+      ],
+      "required_keywords": [
+        "withdrawal",
+        "done"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 56
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "รอถอน",
+      "question": "รอถอน",
+      "answer": "รอถอนสักครู่นะคะ, Wait for withdrawing, please",
+      "intent": "withdraw",
+      "keywords": [
+        "รอถอน"
+      ],
+      "required_keywords": [
+        "withdrawing",
+        "รอถอน"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 57
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ขอลิงก์ถอนเงิน",
+      "question": "ขอลิงก์ถอนเงิน",
+      "answer": "ถอนเงินระบบ AUTO เช็คที่เมนูหรือคลิก 🔗 https://bit.ly/4ail259\n\nชื่อบัญชีและชื่อผู้สมัคร ต้องตรงที่ลงทะเบียนกับเราไว้ค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ขอลิงก์ถอนเงิน"
+      ],
+      "required_keywords": [
+        "https://bit.ly/4ail259",
+        "auto",
+        "bit",
+        "ail259"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 58
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ขอลิงก์ฝากเงิน",
+      "question": "ขอลิงก์ฝากเงิน",
+      "answer": "วิธีเติมเงิน Auto \nหรือเช็คที่เมนูฝากทุกครั้ง\n\nลิงก์ฝาก 🔗\nhttps://bit.ly/46YHltM\n\nขั้นต่ำ ฝาก 100 บาท\nขั้นต่ำ ถอน 200 บาท\n(ถอนไม่จำกัดวงเงิน 5 ครั้ง/วันค่ะ)\n\nชื่อบัญชีและชื่อผู้สมัคร ต้องตรงที่ลงทะเบียนกับเราไว้เท่านั้นค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ขอลิงก์ฝากเงิน"
+      ],
+      "required_keywords": [
+        "https://bit.ly/46YHltM",
+        "auto",
+        "bit",
+        "yhltm"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 59
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ขอสลิปลูกค้า",
+      "question": "ขอสลิปลูกค้า",
+      "answer": "รบกวนลูกค้าแจ้งสลิปให้แอดมินตรวจสอบค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ขอสลิปลูกค้า"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 60
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "ปิดปรับปรุงระบบหลังบ้านทุกวันจันทร์",
+      "question": "ปิดปรับปรุงระบบหลังบ้านทุกวันจันทร์",
+      "answer": "เรียนผู้ใช้บริการ #Natural8Thailand\n\nทุกวันจันทร์ ระบบหลังบ้านของ Natural8 จะมีการปิดปรับปรุงตั้งแต่เวลา 11.50 - 13.00 น. หรือจนกว่าจะแล้วเสร็จ ทั้งนี้เพื่อเพิ่มประสิทธิภาพในการทำงานให้ดียิ่งขึ้น ส่งผลให้ไม่สามารถใช้บริการฝาก-ถอน ในเวลาดังกล่าวได้ค่ะ\n\nผู้เล่นสามารถเข้าเล่นภายในแอปฯ Natural8 ได้ตามปกติ และแนะนำให้ทำธุรกรรมฝากถอนไว้ล่วงหน้า เพื่อการเล่นอย่างต่อเนื่องค่ะ\n\nหากผู้ที่ทำรายการเข้ามาภายในเวลาที่ปิดปรับปรุง เมื่อระบบเปิดให้ใช้บริการแล้ว แอดมินจะทยอยทำรายการให้ลูกค้าตามลำดับ ขอบคุณค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "ปิดปรับปรุงระบบหลังบ้านทุกวันจันทร์"
+      ],
+      "required_keywords": [
+        "natural8thailand",
+        "natural8"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 61
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "ปุ่มลัดที่ปรับแต่งได้",
+      "question": "ปุ่มลัดที่ปรับแต่งได้",
+      "answer": "สำหรับการตั้งค่าปุ่มลัดใน PC เพื่อการเล่นที่สะดวกต่อผู้เล่นมากขึ้น\nสามารถดูรายละเอียดการตั้งค่าได้ที่นี่ค่ะ 🔗 https://bit.ly/3PGRYMk",
+      "intent": "technical_issue",
+      "keywords": [
+        "ปุ่มลัดที่ปรับแต่งได้"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PGRYMk",
+        "bit",
+        "pgrymk"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 62
+    },
+    {
+      "category_code": "technical_issue",
+      "topic": "รูปโปรไฟล์ NFT",
+      "question": "รูปโปรไฟล์ NFT",
+      "answer": "วิธีตั้งค่า Avatar ด้วยการใช้รูป NFT\nสามารถดูรายละเอียดการตั้งค่าได้ที่นี่ค่ะ 🔗 https://bit.ly/3W07x5N\n\n(NFT เป็นวัตถุดิจิทัลที่คุณเป็นเจ้าของ จะแสดงเป็นรูปทรงหกเหลี่ยมพิเศษ)",
+      "intent": "technical_issue",
+      "keywords": [
+        "nft",
+        "รูปโปรไฟล์"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3W07x5N",
+        "avatar",
+        "nft",
+        "bit",
+        "w07x5n"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 63
+    },
+    {
+      "category_code": "deposit",
+      "topic": "ไม่พบบัญชีในระบบ",
+      "question": "ไม่พบบัญชีในระบบ",
+      "answer": "ไม่พบบัญชีนี้ในระบบ\nแอดมินขอเรียนแจ้งว่า หากไม่ใช่บัญชีที่ลงทะเบียนไว้ จะต้องใช้เวลานานกว่าปกติ\n\nโปรดใช้บัญชีที่ลงทะเบียน\nเลขบัญชี ...... ธนาคาร .......\nในการโอนฝากเข้ามานะคะ เพื่อความปลอดภัยสูงสุดของลูกค้า\n\nโปรดตอบว่า \"รับทราบ\"\nและทางเราจะดำเนินการให้ต่อไปค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "ไม่พบบัญชีในระบบ"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 64
+    },
+    {
+      "category_code": "register",
+      "topic": "ยืนยันข้อมูลหลังการสมัคร",
+      "question": "ยืนยันข้อมูลหลังการสมัคร",
+      "answer": "เมื่อเพิ่มเบอร์เสร็จเรียบร้อยแล้ว รบกวนแคปหน้าจอให้แอดมินด้วยนะคะ\n*เพื่อยืนยันข้อมูลในระบบ* จึงจะสามารถใช้บริการฝาก-ถอน AUTO และเข้าเล่นกับ N8 ได้ค่ะ",
+      "intent": "register",
+      "keywords": [
+        "ยืนยันข้อมูลหลังการสมัคร"
+      ],
+      "required_keywords": [
+        "auto"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 65
+    },
+    {
+      "category_code": "closing",
+      "topic": "ลูกค้าเป็นสมาชิกแล้ว",
+      "question": "ลูกค้าเป็นสมาชิกแล้ว",
+      "answer": "เป็นสมาชิกเรียบร้อยค่ะ\nYou're a member.",
+      "intent": "closing",
+      "keywords": [
+        "ลูกค้าเป็นสมาชิกแล้ว"
+      ],
+      "required_keywords": [
+        "member"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 66
+    },
+    {
+      "category_code": "register",
+      "topic": "สมัครสมาชิก ขั้นที่ 1",
+      "question": "สมัครสมาชิก ขั้นที่ 1",
+      "answer": "รับเครดิตฟรี 150 บาท (ไม่ต้องฝากก่อน)\r\n\r\n1. ลงทะเบียนผ่านเว็บไซต์ด้วย E-mail ที่ลิงก์นี้เท่านั้นค่ะ\r\nhttps://www.natural8.com/th/sign-up?ref=N8Thailand\r\n\r\n เปิด Browser นอกแอป LINE เช่น Chrome, Safari หรืออื่นๆ\r\n\r\nเมื่อสมัครเสร็จแล้ว รบกวนแจ้งแอดมินอีกครั้งนะคะ",
+      "intent": "register",
+      "keywords": [
+        "สมัครสมาชิก",
+        "ขั้นที่"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/th/sign-up?ref=N8Thailand",
+        "mail",
+        "natural8",
+        "sign",
+        "ref",
+        "n8thailand"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 67
+    },
+    {
+      "category_code": "register",
+      "topic": "สมัครสมาชิก ขั้นที่ 2",
+      "question": "สมัครสมาชิก ขั้นที่ 2",
+      "answer": "2. กรอกข้อมูลเพื่อลงทะเบียน\r\n\r\n• ชื่อ - นามสกุล(ไทย) :\r\n• ชื่อ - นามสกุล(อังกฤษ) :\r\n• Nickname (ในเกม) :\r\n• ธนาคาร :\r\n• เลขบัญชี :  \r\n• เบอร์โทร :\r\n• E-mail :\r\n• ช่องทางที่รู้จักเรา\r\n\r\n⚠️ชื่อผู้สมัครและชื่อบัญชี จะต้องตรงกัน เพื่อให้การฝาก-ถอนเป็นไปอย่างราบรื่นค่ะ\r\n\r\nและเพื่อเป็นการป้องกันการแอบอ้างข้อมูลของลูกค้าด้วยเช่นกัน โดยข้อมูลทั้งหมดจะถูกเก็บรักษาเป็นความลับบนฐานข้อมูลของทาง N8 ค่ะ",
+      "intent": "register",
+      "keywords": [
+        "สมัครสมาชิก",
+        "ขั้นที่"
+      ],
+      "required_keywords": [
+        "nickname",
+        "mail"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 68
+    },
+    {
+      "category_code": "register",
+      "topic": "สมัครสมาชิก ขั้นที่ 3",
+      "question": "สมัครสมาชิก ขั้นที่ 3",
+      "answer": "ขั้นตอนสุดท้ายค่ะ\n\n- ดาวน์โหลดแอปฯ N8 คลิกที่นี่ https://www.natural8.com/download\n\n- กรุณา Login ในแอปด้วย E-mail อีกครั้ง >\nเข้าไปเพิ่มเบอร์โทร ตามวิธีในภาพ > เมื่อเพิ่มเบอร์เสร็จ\nรบกวนแคปหน้าจอให้แอดมินด้วยนะคะ\n\nเพื่อยืนยันข้อมูลในระบบ* จึงจะสามารถใช้บริการฝาก-ถอน AUTO และเข้าเล่นกับ N8 ได้ค่ะ",
+      "intent": "register",
+      "keywords": [
+        "สมัครสมาชิก",
+        "ขั้นที่"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/download",
+        "natural8",
+        "download",
+        "login",
+        "mail",
+        "auto"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 69
+    },
+    {
+      "category_code": "kyc",
+      "topic": "สมาชิกเก่า แต่ยังไม่มีข้อมูลในไลน์ใหม่",
+      "question": "สมาชิกเก่า แต่ยังไม่มีข้อมูลในไลน์ใหม่",
+      "answer": "เนื่องจากในไลน์นี้ยังไม่มีข้อมูลลูกค้าบันทึกไว้ หากลูกค้าเป็นสมาชิกกับทางเราอยู่แล้ว แอดมินขอรบกวนเวลาลูกค้าสักครู่นะคะ ขอข้อมูลเพื่อยืนยันตัวตนบางส่วนดังนี้ค่ะ\n\nชื่อ - นามสกุล(ไทย) :\nชื่อ - นามสกุล(อังกฤษ) :\nธนาคาร :\nเลขบัญชี :  \nเบอร์โทร :\nE-mail :\nNickname ในเกม :\nช่องทางที่รู้จักเรา :",
+      "intent": "kyc",
+      "keywords": [
+        "สมาชิกเก่า",
+        "แต่ยังไม่มีข้อมูลในไลน์ใหม่"
+      ],
+      "required_keywords": [
+        "mail",
+        "nickname"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 70
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "วิธีเล่น AoF",
+      "question": "วิธีเล่น AoF",
+      "answer": "All-in or Fold โหมดยอดนิยมประจำแอป Natural8 ที่สนุก เร้าใจ และน่าตื่นเต้น\n\nเลือกเพียง 2 แอคชั่นเท่านั้น เทหมดหน้าตัก(All-in) หรือ หมอบ(Fold) \nพร้อมลุ้น Jackpot Straight flish หรือ Bad beat ได้ทุกวินาทีที่โหมดนี้\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3vIqCOP",
+      "intent": "jackpot",
+      "keywords": [
+        "aof",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3vIqCOP",
+        "all",
+        "fold",
+        "natural8",
+        "jackpot",
+        "straight"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 71
+    },
+    {
+      "category_code": "tournament",
+      "topic": "วิธีเล่น Mystery battle royale",
+      "question": "วิธีเล่น Mystery battle royale",
+      "answer": "Mystery battle royale ทัวร์นาเมนต์ที่พิเศษ และรวดเร็วกว่าเดิม เริ่มต้นด้วยผู้เล่น 18 คน กับอีก 2 ด่านที่น่าระทึก และผู้เล่นที่เหลือ 9 คนสุดท้าย มีโอกาสที่จะเป็นผู้ชนะและได้รับรางวัล Mystery jackpot bounty\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3PKkXyP",
+      "intent": "tournament",
+      "keywords": [
+        "mystery",
+        "battle",
+        "royale",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PKkXyP",
+        "mystery",
+        "battle",
+        "royale",
+        "jackpot",
+        "bounty"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 72
+    },
+    {
+      "category_code": "poker",
+      "topic": "วิธีเล่น NLH",
+      "question": "วิธีเล่น NLH",
+      "answer": "วิธีการเล่นโป๊กเกอร์ ในประเภทยอดนิยมอย่าง No limit holde'm โดยผู้เล่นแต่ละคนจะได้รับไพ่คนละ 2 ใบ และบนบอร์ดจะถูกเปิดสูงสุด 5 ใบ โดยนำไพ่บนมือ มารวมกับไพ่บนบอร์ด ใครได้ไพ่อันดับสูงสุด จะชนะในแฮนด์นั้นค่ะ\n\nรายละเอียดในการเล่นโป๊กเกอร์ ควรศึกษาเพิ่มเติมให้มากขึ้น สามารถอ่านวิธีเล่นได้ที่นี่ค่ะ https://bit.ly/4cD17PL",
+      "intent": "poker",
+      "keywords": [
+        "nlh",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/4cD17PL",
+        "limit",
+        "holde",
+        "bit",
+        "cd17pl",
+        "วิธีเล่น"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 73
+    },
+    {
+      "category_code": "poker",
+      "topic": "วิธีเล่น Rush & Cash",
+      "question": "วิธีเล่น Rush & Cash",
+      "answer": "Rush & Cash รูปแบบการเล่นโป๊กเกอร์แบบ Hold'em และ Omaha ที่แตกต่างออกไป หากผู้เล่น Fold ในแฮนด์นั้น ผู้เล่นจะถูกพาไปที่โต๊ะใหม่และเริ่มเล่นได้ทันทีค่ะ\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3VLD6Qr",
+      "intent": "poker",
+      "keywords": [
+        "rush",
+        "cash",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3VLD6Qr",
+        "rush",
+        "cash",
+        "hold",
+        "omaha",
+        "fold"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 74
+    },
+    {
+      "category_code": "tournament",
+      "topic": "วิธีเล่น Spin&Gold",
+      "question": "วิธีเล่น Spin&Gold",
+      "answer": "รับรางวัลใหญ่ด้วย Spin&Gold ทัวร์นาเมนต์สไตล์ Sit&Go โหมดที่สนุก รวดเร็ว และน่าตื่นเต้นกว่าเดิม\nวิธีการเล่น\n1. เลือกบายอินที่ต้องการ มีเก้าระดับให้เลือก : $0.25, $1, $3, $5, $10, $20, $50, $100 และ $200\n2. เลือกจำนวนเกมที่ต้องการเข้าร่วมพร้อมกัน\n3. เลือกปุ่ม \"เล่นเลย(Play now)\" ! ซึ่งสามารถเลือกเล่นแบบมีประกันหรือไม่มีก็ได้\n4. สปินวงล้อเพื่อกำหนดเงินรางวัลรวม วงล้อจะแสดงตัวคูณตั้งแต่ 2x ไปจนถึง 100,000x (สำหรับเกม 3-Max) และ 200,000x (สำหรับเกม 6-Max)\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3PPNMd1",
+      "intent": "tournament",
+      "keywords": [
+        "spin&gold",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PPNMd1",
+        "spin&gold",
+        "sit&go",
+        "play",
+        "now",
+        "max"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 75
+    },
+    {
+      "category_code": "poker",
+      "topic": "วิธีเล่น PLO",
+      "question": "วิธีเล่น PLO",
+      "answer": "🎴 PLO (Pot Limit Omaha) คือเกมโป๊กเกอร์ที่คล้ายกับ Texas Hold’em (NLH)  แต่จะแจกไพ่ในมือให้ผู้เล่น 4 ใบค่ะ\n\n🔹 ผู้เล่นต้องใช้ ไพ่ในมือตัวเอง 2 ใบ + ไพ่กองกลาง 3 ใบ เพื่อรวมเป็นไพ่ 5 ใบที่ดีที่สุด\n🔹 จำกัดการวางเดิมพันตามจำนวนเงินใน pot (เรียกว่า \"Pot Limit\")\n🔹 ไพ่กองกลางเปิด 5 ใบ เหมือน Hold'em: Flop (3 ใบ), Turn (1 ใบ), River (1 ใบ)\n\n📌 กติกาสำคัญ: ใช้ไพ่ในมือได้แค่ 2 ใบเท่านั้น ต้องไม่มากหรือน้อยกว่านี้นะคะ",
+      "intent": "poker",
+      "keywords": [
+        "plo",
+        "วิธีเล่น"
+      ],
+      "required_keywords": [
+        "plo",
+        "pot",
+        "limit",
+        "omaha",
+        "texas",
+        "hold"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 76
+    },
+    {
+      "category_code": "bonus",
+      "topic": "โปรโมชั่นลูกค้าใหม่ หน้าเว็บหลัก",
+      "question": "โปรโมชั่นลูกค้าใหม่ หน้าเว็บหลัก",
+      "answer": "สำหรับโปรโมชั่นลูกค้าใหม่จากเว็บหลัก Natural8\n\nโบนัสการฝากเงินครั้งแรก \"Match Bonus\" หรือ \"Free Bonus\"\nรบกวนผู้เล่น Login เข้าระบบ และติดต่อทาง Live chat support ที่หน้าเว็บ Natural8 หรือคลิกที่ลิงก์นี้ จะพบสัญลักษณ์แชทสีม่วง ที่มุมล่างซ้ายมือค่ะ 🔗 https://bit.ly/3xhB4xk",
+      "intent": "bonus",
+      "keywords": [
+        "โปรโมชั่นลูกค้าใหม่",
+        "หน้าเว็บหลัก"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3xhB4xk",
+        "natural8",
+        "match",
+        "bonus",
+        "free",
+        "login"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 77
+    },
+    {
+      "category_code": "promotion",
+      "topic": "โปรโมชั่น N8TH และ N8",
+      "question": "โปรโมชั่น N8TH และ N8",
+      "answer": "ผู้เล่นสามารถติดตามข่าวสารและโปรโมชั่น Natural8 Thailand\n\nได้ที่ Facebook page : https://www.facebook.com/natural8thai/\nและจาก Natural8 ได้ที่ Website https://natural8thpoker.com/",
+      "intent": "promotion",
+      "keywords": [
+        "n8th",
+        "โปรโมชั่น"
+      ],
+      "required_keywords": [
+        "https://www.facebook.com/natural8thai/",
+        "https://natural8thpoker.com/",
+        "natural8",
+        "thailand",
+        "facebook",
+        "page"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 78
+    },
+    {
+      "category_code": "promotion",
+      "topic": "ฮันนีมูนสำหรับผู้มาใหม่",
+      "question": "ฮันนีมูนสำหรับผู้มาใหม่",
+      "answer": "Honeymoon สำหรับผู้เล่นใหม่เท่านั้น เป็นทำ 30 ภารกิจ ให้ครบ 30 วัน จะได้รับรางวัลสูงสุดถึง $350 โดยมีพิชิตภารกิจทั้งในรูปแบบ Cash game และ Tournament ค่ะ\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/49ABHjb",
+      "intent": "promotion",
+      "keywords": [
+        "ฮันนีมูนสำหรับผู้มาใหม่"
+      ],
+      "required_keywords": [
+        "https://bit.ly/49ABHjb",
+        "honeymoon",
+        "cash",
+        "game",
+        "tournament",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 79
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "AOF Jackpot",
+      "question": "AOF Jackpot",
+      "answer": "AOF Jackpot ทุกการเล่นในโหมดนี้ มีสิทธิ์ที่ผู้เล่นจะได้ลุ้นรับแจ็คพ็อตได้ทุกวินาทีค่ะ โดยจะได้รับแจ็คพ็อตได้ก็ต่อเมื่อ\n\n- Straight Flush ในประเภทเกม Hold'em และ Showdown เท่านั้น\n- Royal Flush ในประเภทเกม Omaha ไม่จำเป็นต้องไปถึง Showdown\n\nศึกษารายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗 https://bit.ly/3IZQNnt",
+      "intent": "jackpot",
+      "keywords": [
+        "aof",
+        "jackpot"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3IZQNnt",
+        "aof",
+        "jackpot",
+        "straight",
+        "flush",
+        "hold"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 80
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "กระดาน Leader board จะทำการรีช่วงกี่โมงแจกรางวัลกี่โมง",
+      "question": "กระดาน Leader board จะทำการรีช่วงกี่โมงแจกรางวัลกี่โมง",
+      "answer": "กระดาน LeaderBoard แจกเงินรางวัลทุกวัน ตามลำดับที่ได้ ของแต่ละโหมดเกม จะตัดรอบเวลา 14.59 น. และ Reset ใหม่ในเวลา 15.00 น. ของทุกวันค่ะ",
+      "intent": "jackpot",
+      "keywords": [
+        "leader",
+        "board",
+        "กระดาน",
+        "จะทำการรีช่วงกี่โมงแจกรางวัลกี่โมง"
+      ],
+      "required_keywords": [
+        "leaderboard",
+        "reset",
+        "กระดาน"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 82
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "LeaderBoard AoF",
+      "question": "LeaderBoard AoF",
+      "answer": "กิจกรรม Leaderboard ในโหมด AoF เทหน้าตักหรือหมอบ ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน พร้อมลุ้น JACKPOT เงินรางวัลก้อนใหญ่ได้ที่โหมดนี้ด้วยค่ะ\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/3vLckgp",
+      "intent": "jackpot",
+      "keywords": [
+        "leaderboard",
+        "aof"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3vLckgp",
+        "leaderboard",
+        "aof",
+        "jackpot",
+        "happy",
+        "hour"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 83
+    },
+    {
+      "category_code": "bonus",
+      "topic": "LeaderBoard Filp&go",
+      "question": "LeaderBoard Filp&go",
+      "answer": "กิจกรรม Leaderboard ในโหมด Flip&Go โบนัสฟลิป ดวลออลอินสุดมันส์ ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/4aiHr27",
+      "intent": "bonus",
+      "keywords": [
+        "leaderboard",
+        "filp&go"
+      ],
+      "required_keywords": [
+        "https://bit.ly/4aiHr27",
+        "leaderboard",
+        "flip&go",
+        "happy",
+        "hour",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 84
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "LeaderBoard Mystery battle royale",
+      "question": "LeaderBoard Mystery battle royale",
+      "answer": "กิจกรรม Leaderboard ในโหมด Mystery battle royale ลุ้น Mystery Bounty Jackpot สูงสุด 20,000 เท่า ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/3VCaoS5",
+      "intent": "jackpot",
+      "keywords": [
+        "leaderboard",
+        "mystery",
+        "battle",
+        "royale"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3VCaoS5",
+        "leaderboard",
+        "mystery",
+        "battle",
+        "royale",
+        "bounty"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 85
+    },
+    {
+      "category_code": "poker",
+      "topic": "LeaderBoard  NLH",
+      "question": "LeaderBoard  NLH",
+      "answer": "กิจกรรม Leaderboard ในโหมด Hold'em โหมดยอดนิยมในเกมโป๊กเกอร์ ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ 🔗\nhttps://bit.ly/3xrkniU",
+      "intent": "poker",
+      "keywords": [
+        "leaderboard",
+        "nlh"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3xrkniU",
+        "leaderboard",
+        "hold",
+        "happy",
+        "hour",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 86
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "LeaderBoard PLO 5",
+      "question": "LeaderBoard PLO 5",
+      "answer": "กิจกรรม Leaderboard ในโหมด PLO/PLO5/PLO6 ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/3J6WFLm",
+      "intent": "jackpot",
+      "keywords": [
+        "leaderboard",
+        "plo"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3J6WFLm",
+        "leaderboard",
+        "plo",
+        "plo5",
+        "plo6",
+        "happy"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 87
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "LeaderBoard Rush&Cash",
+      "question": "LeaderBoard Rush&Cash",
+      "answer": "กิจกรรม Leaderboard ในโหมด Rush&Cash เป็นโหมดที่รวดเร็วและน่าตื่นเต้น ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 2 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/3PNWOaC",
+      "intent": "jackpot",
+      "keywords": [
+        "leaderboard",
+        "rush&cash"
+      ],
+      "required_keywords": [
+        "https://bit.ly/3PNWOaC",
+        "leaderboard",
+        "rush&cash",
+        "happy",
+        "hour",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 88
+    },
+    {
+      "category_code": "jackpot",
+      "topic": "LeaderBoard Short-deck +6",
+      "question": "LeaderBoard Short-deck +6",
+      "answer": "กิจกรรม Leaderboard ในโหมด Short deck 6+ ที่เล่นไพ่เพียง 36 ใบ ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/43JG4qG",
+      "intent": "jackpot",
+      "keywords": [
+        "leaderboard",
+        "short",
+        "deck"
+      ],
+      "required_keywords": [
+        "https://bit.ly/43JG4qG",
+        "leaderboard",
+        "short",
+        "deck",
+        "happy",
+        "hour"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 89
+    },
+    {
+      "category_code": "tournament",
+      "topic": "LeaderBoard Spin&Gold",
+      "question": "LeaderBoard Spin&Gold",
+      "answer": "กิจกรรม Leaderboard ในโหมด Spin&Gold ลุ้นรางวัลได้สูงสุด 200,000 เท่าของบายอิน ทุกการเล่นในโหมดนี้ ระบบจะคำนวณและสะสมเป็นคะแนนเพื่อขึ้นอันดับรายวันประจำโหมด และรับส่วนแบ่งเงินรางวัลได้ในทุกวัน\n\nHappy hour รับคะแนนพิเศษเพิ่ม 1.5 เท่า ในเวลา 19.00-19.59 น. ของทุกวัน\n\nสามารถอ่านรายละเอียดเพิ่มเติมได้ที่นี่ค่ะ 🔗\nhttps://bit.ly/43Y7F7P",
+      "intent": "tournament",
+      "keywords": [
+        "leaderboard",
+        "spin&gold"
+      ],
+      "required_keywords": [
+        "https://bit.ly/43Y7F7P",
+        "leaderboard",
+        "spin&gold",
+        "happy",
+        "hour",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 90
+    },
+    {
+      "category_code": "escalation",
+      "topic": "10.คาสิโนถ้าเป็นข้อมูลลึก (ต้องติดต่อซัพพอร์ต) เราดูได้แค่ ชิพตัดไหม กับ รายการที่เล่น",
+      "question": "10.คาสิโนถ้าเป็นข้อมูลลึก (ต้องติดต่อซัพพอร์ต) เราดูได้แค่ ชิพตัดไหม กับ รายการที่เล่น",
+      "answer": "สำหรับคำถามในส่วนของคาสิโน รบกวนลูกค้าติดต่อที่ Live chat support ทางหน้าเว็บได้ที่ 🔗 https://bit.ly/N8Contact ได้เลยนะคะ\n\nหากเป็นในส่วนของโป๊กเกอร์ ลูกค้าสามารถสอบถามแอดมินเข้ามาได้ พร้อมให้บริการตลอด 24 ชม. เช่นเดิมค่ะ\n\n📌 รบกวนลูกค้าเตรียมข้อมูลก่อนติดต่อ:\n\n1.อีเมลที่ใช้สมัคร (GGPass / N8)\n2.ชื่อเล่นในเกม",
+      "intent": "escalation",
+      "keywords": [
+        "คาสิโนถ้าเป็นข้อมูลลึก",
+        "ต้องติดต่อซัพพอร์ต",
+        "เราดูได้แค่",
+        "ชิพตัดไหม",
+        "รายการที่เล่น"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "live",
+        "chat",
+        "support",
+        "bit",
+        "n8contact"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 91
+    },
+    {
+      "category_code": "kyc",
+      "topic": "การติดต่อกรณียืนยัน KYC นาน",
+      "question": "การติดต่อกรณียืนยัน KYC นาน",
+      "answer": "สำหรับลูกค้าที่รอการยืนยันตัวตน (KYC) เกิน 3 วัน สามารถติดต่อผ่าน N8 Live Chat Support\nได้ที่ 🔗 https://bit.ly/N8Contact\nพร้อมระบุความประสงค์ให้เร่งดำเนินการตรวจสอบ\n\nกรุณาแนบข้อมูลดังนี้\n\n1. อีเมลที่ใช้สมัคร (GGPass / Natural8)\n2. Nickname (ชื่อในเกม)\n\nหลังจากดำเนินการแล้ว รบกวนแจ้งกลับมายังทีมงานอีกครั้ง\nเพื่อให้สามารถดูแลท่านได้อย่างต่อเนื่อง\n\nขอบคุณค่ะ",
+      "intent": "kyc",
+      "keywords": [
+        "kyc",
+        "การติดต่อกรณียืนยัน",
+        "นาน"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "kyc",
+        "live",
+        "chat",
+        "support",
+        "bit"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 92
+    },
+    {
+      "category_code": "escalation",
+      "topic": "เชื่อมโยงหมายเลขโทรศัพท์มือถือ",
+      "question": "เชื่อมโยงหมายเลขโทรศัพท์มือถือ",
+      "answer": "แจ้งเกี่ยวกับการใช้งานหมายเลขโทรศัพท์\n\nลูกค้าที่เคยเชื่อมโยงหมายเลขโทรศัพท์ไว้กับบัญชี GG\nจะไม่สามารถใช้หมายเลขเดียวกันกับบัญชี N8 ได้ค่ะ\n\nหากต้องการใช้หมายเลขเดิมกับ N8\nสามารถติดต่อ Live Chat Support เพื่อยื่นคำร้องและดำเนินการแก้ไขได้ที่ลิงก์นี้ค่ะ\n🔗 https://bit.ly/N8Contact",
+      "intent": "escalation",
+      "keywords": [
+        "เชื่อมโยงหมายเลขโทรศัพท์มือถือ"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "live",
+        "chat",
+        "support",
+        "bit",
+        "n8contact"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 93
+    },
+    {
+      "category_code": "general",
+      "topic": "ปิดอีกไอดี",
+      "question": "ปิดอีกไอดี",
+      "answer": "ขอปิดไอดี เพื่อใช้งานไอดีเดียว\n\nลูกค้าสามารถส่งคำขอไปที่\n🔗 https://bit.ly/N8Contact\nพร้อมระบุ อีเมล + Nickname ของไอดีที่ต้องการใช้ต่อ และไอดีที่ต้องการปิดนะคะ\n\nหลังดำเนินการเสร็จ รบกวนแจ้งกลับทีมงานอีกครั้ง\nเพื่อให้เราดูแลคุณลูกค้าได้อย่างต่อเนื่องค่ะ ขอบคุณค่ะ",
+      "intent": "general",
+      "keywords": [
+        "ปิดอีกไอดี"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "bit",
+        "n8contact",
+        "nickname"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 94
+    },
+    {
+      "category_code": "register",
+      "topic": "เปลี่ยนชื่อเล่น (มีในแพทเทิร์นแล้ว)",
+      "question": "เปลี่ยนชื่อเล่น (มีในแพทเทิร์นแล้ว)",
+      "answer": "📢 แจ้งเรื่องชื่อเล่นในระบบ\n\nชื่อเล่นเดิมในระบบ GGPass จะถูกใช้เป็นชื่อหลักบนทุกแพลตฟอร์มโดยอัตโนมัติค่ะ\nหากต้องการเปลี่ยนชื่อเล่นได้ที่นี้\n🔗 https://bit.ly/N8Contact\nพร้อมระบุ ชื่อใหม่ ที่ต้องการใช้งานนะคะ\n\nกรุณาแนบข้อมูลเพิ่มเติม:\n\n1.อีเมลที่ใช้สมัคร (GGPass / Natural8)\n2.Nickname (ชื่อเดิมในเกม)\n\nเมื่อดำเนินการเสร็จแล้ว\nรบกวนแจ้งกลับมายังทีมงานอีกครั้ง เพื่อให้เราดูแลได้อย่างต่อเนื่องค่ะ ขอบคุณค่ะ",
+      "intent": "register",
+      "keywords": [
+        "เปลี่ยนชื่อเล่น",
+        "มีในแพทเทิร์นแล้ว"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "ggpass",
+        "bit",
+        "n8contact",
+        "natural8",
+        "nickname"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 95
+    },
+    {
+      "category_code": "escalation",
+      "topic": "เปลี่ยนเมล",
+      "question": "เปลี่ยนเมล",
+      "answer": "📢 เปลี่ยนอีเมลบัญชี\n\nลูกค้าสามารถติดต่อ N8 Live Chat Support\nเพื่อขอเปลี่ยนอีเมลได้ที่นี่ค่ะ\n🔗 https://bit.ly/N8Contact\n\nกรุณาแนบข้อมูลเพิ่มเติม:\n\n1.อีเมลที่ใช้สมัคร (GGPass / Natural8)\n2.Nickname (ชื่อเดิมในเกม)\n\nเมื่อดำเนินการเสร็จแล้ว รบกวนแจ้งกลับมาอีกครั้งนะคะ ขอบคุณค่ะ",
+      "intent": "escalation",
+      "keywords": [
+        "เปลี่ยนเมล"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "live",
+        "chat",
+        "support",
+        "bit",
+        "n8contact"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 96
+    },
+    {
+      "category_code": "escalation",
+      "topic": "รวมไอดี",
+      "question": "รวมไอดี",
+      "answer": "📢 แจ้งรวมไอดี\n\nหากลูกค้าต้องการรวมบัญชี สามารถติดต่อผ่าน N8 Live Chat Support\n ได้ที่ 🔗 https://bit.ly/N8Contact\nพร้อมแจ้ง อีเมลและไอดีของทั้ง 2 บัญชี\n\n📌 กรุณาเตรียมข้อมูล:\n1.อีเมลที่ใช้สมัคร (GGPass / Natural8)\n2.Nickname (ชื่อในเกม) ของทั้ง 2 ไอดี\n\nเมื่อดำเนินการเสร็จแล้ว\nรบกวนแจ้งกลับมายังทีมงานอีกครั้ง เพื่อให้เราดูแลได้อย่างต่อเนื่องค่ะ ขอบคุณค่ะ",
+      "intent": "escalation",
+      "keywords": [
+        "รวมไอดี"
+      ],
+      "required_keywords": [
+        "https://bit.ly/N8Contact",
+        "live",
+        "chat",
+        "support",
+        "bit",
+        "n8contact"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 97
+    },
+    {
+      "category_code": "escalation",
+      "topic": "วิธีเปลี่ยนชื่อ",
+      "question": "วิธีเปลี่ยนชื่อ",
+      "answer": "สามารถเปลี่ยนชื่อได้ค่ะ แอดมินรบกวนลูกค้า Login ที่เว็บ Natural8 และติดต่อผ่าน Live chat support โดยคลิกที่ลิงก์นี้ https://www.natural8.com/th จะพบสัญลักษณ์แชทสีม่วง ที่มุมล่างซ้ายมือค่ะ\n\nเพื่อให้ทาง Natural8 ส่งข้อความอนุมัติไปที่แอปฯ ภายใน ID ของลูกค้า และทำการเปลี่ยนชื่อได้ค่ะ\n*สามารถเปลี่ยนชื่อได้เพียง 1 ครั้งเท่านั้น",
+      "intent": "escalation",
+      "keywords": [
+        "วิธีเปลี่ยนชื่อ"
+      ],
+      "required_keywords": [
+        "https://www.natural8.com/th",
+        "login",
+        "natural8",
+        "live",
+        "chat",
+        "support"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": true,
+      "source_sheet": "Sheet3",
+      "source_row": 98
+    },
+    {
+      "category_code": "register",
+      "topic": "ข้อความติดตาม หลังส่งวิธีสมัครแล้ว",
+      "question": "ข้อความติดตาม หลังส่งวิธีสมัครแล้ว",
+      "answer": "- สมัครเรียบร้อยหรือยังคะ ติดตรงไหนแจ้งได้เลยนะคะ\r\n\r\n- ต้องการให้แอดมินช่วยแนะนำ แจ้งได้นะคะ ใช้เวลาไม่นานค่ะ\r\n\r\n- มีขั้นตอนไหนสงสัยไหมคะ เดี๋ยวช่วยแนะนำให้ค่ะ\r\n\r\n- ให้แอดมินช่วยดูให้ไหมคะ ว่าติดปัญหาตรงไหน\r\n\r\n- สมัครได้เลยนะคะ ถ้ามีปัญหาแอดมินช่วยได้ทันทีค่ะ",
+      "intent": "register",
+      "keywords": [
+        "ข้อความติดตาม",
+        "หลังส่งวิธีสมัครแล้ว"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 103
+    },
+    {
+      "category_code": "withdraw",
+      "topic": "สคริปส์สำหรับฝากถอน N8TH ที่มีปัญหาตอนนี้อยู่นะคะ",
+      "question": "สคริปส์สำหรับฝากถอน N8TH ที่มีปัญหาตอนนี้อยู่นะคะ",
+      "answer": "ขณะนี้เรากำลังเร่งดำเนินการแก้ไขระบบฝาก-ถอน ออโต้ เพื่อให้กลับมาใช้งานได้โดยเร็วที่สุดค่ะ \n\nหากลูกค้าต้องการฝาก-ถอนเงิน สามารถแจ้งความประสงค์กับแอดมินได้ ซึ่งอาจใช้เวลาดำเนินการกว่า 15-30 นาที ขออภัยในความไม่สะดวกมา ณ ที่นี้ค่ะ",
+      "intent": "withdraw",
+      "keywords": [
+        "n8th",
+        "สคริปส์สำหรับฝากถอน",
+        "ที่มีปัญหาตอนนี้อยู่นะคะ"
+      ],
+      "required_keywords": [],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 104
+    },
+    {
+      "category_code": "deposit",
+      "topic": "(กรณีที่ลูกค้า ต้องการทันที ต้องการเดี๋ยวนี้ ค่อยใช้ตัวนี้เสริมค่ะ)",
+      "question": "(กรณีที่ลูกค้า ต้องการทันที ต้องการเดี๋ยวนี้ ค่อยใช้ตัวนี้เสริมค่ะ)",
+      "answer": "หากลูกค้ามีความจำเป็นที่ต้องการฝากเงินโดยเร็วที่สุด สามารถเลือกใช้บริการ N8 cashier ภายในแอปฯ ซึ่งเป็นการฝากผ่านระบบ N8 โดยตรง ทั้งนี้ความรวดเร็ว จะขึ้นอยู่กับระบบกลางเช่นเดียวกันค่ะ",
+      "intent": "deposit",
+      "keywords": [
+        "กรณีที่ลูกค้า",
+        "ต้องการทันที",
+        "ต้องการเดี๋ยวนี้",
+        "ค่อยใช้ตัวนี้เสริมค่ะ"
+      ],
+      "required_keywords": [
+        "cashier"
+      ],
+      "forbidden_keywords": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ไม่รู้",
+        "ไม่ทราบ",
+        "ช่างมัน"
+      ],
+      "escalation": false,
+      "source_sheet": "Sheet3",
+      "source_row": 105
+    }
+  ],
+  "intent_patterns": [
+    {
+      "intent": "register",
+      "pattern": "สมัครสมาชิก",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "register",
+      "pattern": "สมัคร",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "ลงทะเบียน",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "สมาชิก",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "register",
+      "pattern": "เครดิตฟรี",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "เพิ่มเบอร์",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "ยืนยันข้อมูล",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "register",
+      "pattern": "สมัคร id",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "register",
+      "pattern": "register",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "sign up",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "register",
+      "pattern": "signup",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "ฝากเงิน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "deposit",
+      "pattern": "ฝาก",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "เติมเงิน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "deposit",
+      "pattern": "เติม",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "deposit",
+      "pattern": "โอนเงิน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "deposit",
+      "pattern": "โอน",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "deposit",
+      "pattern": "สลิป",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "qr code",
+      "lang": "mixed",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "ลิงก์ฝาก",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "deposit",
+      "pattern": "bitpay",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "deposit",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "deposit",
+      "pattern": "top up",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "deposit",
+      "pattern": "topup",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "ถอนเงิน",
+      "lang": "th",
+      "weight": 3.5
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "ถอน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "ลิงก์ถอน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "รอถอน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "ลิมิตการถอน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "ปิดเคสถอน",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "withdraw",
+      "lang": "en",
+      "weight": 3.5
+    },
+    {
+      "intent": "withdraw",
+      "pattern": "withdrawal",
+      "lang": "en",
+      "weight": 3.5
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ยืนยันตัวตน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "kyc",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "โดนล็อค",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ล็อค id",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ล็อก",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ปลดล็อค",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ลืมรหัส",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "เปลี่ยนบัญชี",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "kyc",
+      "pattern": "ไม่พบบัญชี",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "kyc",
+      "pattern": "dump chip",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "kyc",
+      "pattern": "สมัคร id ใหม่",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "kyc",
+      "pattern": "verify",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "kyc",
+      "pattern": "locked",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "promotion",
+      "pattern": "โปรโมชั่น",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "promotion",
+      "pattern": "โปรโมชัน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "promotion",
+      "pattern": "โปร",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "promotion",
+      "pattern": "ฮันนีมูน",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "promotion",
+      "pattern": "honeymoon",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "promotion",
+      "pattern": "แคมเปญ",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "promotion",
+      "pattern": "promotion",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "promotion",
+      "pattern": "promo",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "promotion",
+      "pattern": "campaign",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "bonus",
+      "pattern": "โบนัส",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "bonus",
+      "pattern": "bonus",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "bonus",
+      "pattern": "รับเงินคืน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "bonus",
+      "pattern": "เงินคืน",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "bonus",
+      "pattern": "cashback",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "bonus",
+      "pattern": "cash out",
+      "lang": "en",
+      "weight": 1.5
+    },
+    {
+      "intent": "bonus",
+      "pattern": "เครดิต",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "jackpot",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "แจ็คพอต",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "แจ๊คพอต",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "leaderboard",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "leader board",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "bad beat",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "jackpot",
+      "pattern": "กระดาน",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "โป๊กเกอร์",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "poker",
+      "pattern": "poker",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "poker",
+      "pattern": "nlh",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "plo",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "aof",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "all-in or fold",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "poker",
+      "pattern": "rush & cash",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "poker",
+      "pattern": "rush and cash",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "poker",
+      "pattern": "cash game",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "ev cashout",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "pokercraft",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "คำศัพ",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "smart hud",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "prop bet",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "poker",
+      "pattern": "c$",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "poker",
+      "pattern": "t$",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "tournament",
+      "pattern": "ทัวร์นาเมนต์",
+      "lang": "th",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "ทัวร์",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "tournament",
+      "pattern": "tournament",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "final table",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "pick and go",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "pick & go",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "mystery battle",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "bubble",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "tournament",
+      "pattern": "บายอิน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "tournament",
+      "pattern": "buy-in",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "tournament",
+      "pattern": "buyin",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "tournament",
+      "pattern": "ตั๋ว",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "tournament",
+      "pattern": "spin&gold",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "spin & gold",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "spin and gold",
+      "lang": "mixed",
+      "weight": 3
+    },
+    {
+      "intent": "tournament",
+      "pattern": "fish buffet",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ดาวน์โหลด",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "download",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "สเปค",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ปุ่มลัด",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "nft",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ปิดระบบ",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ปิดปรับปรุง",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ดีเลย์",
+      "lang": "th",
+      "weight": 1.8
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "delay",
+      "lang": "en",
+      "weight": 1.8
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ขัดข้อง",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ทัวร์ล่ม",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ล่ม",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "เข้าเกมไม่ได้",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "error",
+      "lang": "en",
+      "weight": 1.8
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ระบบล่ม",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "บันทึก qr",
+      "lang": "mixed",
+      "weight": 2.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "ios",
+      "lang": "en",
+      "weight": 1.5
+    },
+    {
+      "intent": "technical_issue",
+      "pattern": "android",
+      "lang": "en",
+      "weight": 1.5
+    },
+    {
+      "intent": "escalation",
+      "pattern": "live chat",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "escalation",
+      "pattern": "livechat",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "escalation",
+      "pattern": "ติดต่อทีมงาน",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "escalation",
+      "pattern": "ประสานงาน",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "escalation",
+      "pattern": "escalate",
+      "lang": "en",
+      "weight": 3
+    },
+    {
+      "intent": "escalation",
+      "pattern": "support team",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "escalation",
+      "pattern": "ติดต่อซัพพอร์ต",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "closing",
+      "pattern": "ปิดเคส",
+      "lang": "th",
+      "weight": 2.5
+    },
+    {
+      "intent": "closing",
+      "pattern": "เรียบร้อยค่ะ",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "closing",
+      "pattern": "completed",
+      "lang": "en",
+      "weight": 2
+    },
+    {
+      "intent": "closing",
+      "pattern": "รอสักครู่",
+      "lang": "th",
+      "weight": 1.5
+    },
+    {
+      "intent": "closing",
+      "pattern": "แจ้งรอ",
+      "lang": "th",
+      "weight": 2
+    },
+    {
+      "intent": "closing",
+      "pattern": "waiting for the system",
+      "lang": "en",
+      "weight": 2.5
+    },
+    {
+      "intent": "closing",
+      "pattern": "done",
+      "lang": "en",
+      "weight": 1.2
+    }
+  ],
+  "fatal_rules": [
+    {
+      "code": "FATAL-RUDE",
+      "name": "ใช้คำหยาบ/ดูถูกลูกค้า",
+      "description": "แอดมินใช้คำไม่สุภาพหรือดูถูกลูกค้า",
+      "patterns": [
+        "โง่",
+        "บ้า",
+        "เรื่องมาก",
+        "รำคาญ",
+        "หัดอ่าน",
+        "ทำไมไม่อ่าน",
+        "ปัญญาอ่อน"
+      ],
+      "applies_to": null
+    },
+    {
+      "code": "FATAL-BLAME",
+      "name": "โทษ/ตำหนิลูกค้า",
+      "description": "โยนความผิดให้ลูกค้า",
+      "patterns": [
+        "เป็นความผิดของลูกค้า",
+        "ลูกค้าผิดเอง",
+        "ก็บอกแล้ว",
+        "ไม่ใช่ความผิดเรา"
+      ],
+      "applies_to": null
+    },
+    {
+      "code": "FATAL-GUARANTEE",
+      "name": "รับประกันผลการพนัน/เกินจริง",
+      "description": "การันตีว่าจะได้เงิน/ชนะแน่นอน (ผิดนโยบาย)",
+      "patterns": [
+        "การันตีได้เงิน",
+        "รับประกันได้เงิน",
+        "ชนะแน่นอน",
+        "ได้เงินแน่นอน100",
+        "การันตีกำไร"
+      ],
+      "applies_to": null
+    },
+    {
+      "code": "FATAL-DISMISS",
+      "name": "ปฏิเสธ/ไม่ช่วยเหลือ",
+      "description": "บอกปัดว่าไม่รู้/ไม่ช่วย โดยไม่ส่งต่อ",
+      "patterns": [
+        "ไม่รู้",
+        "ไม่ทราบเหมือนกัน",
+        "ช่วยไม่ได้",
+        "ไปถามที่อื่น",
+        "ไม่ใช่หน้าที่"
+      ],
+      "applies_to": null
+    }
+  ],
+  "stats": {
+    "total": 99,
+    "intents": {
+      "bonus": 4,
+      "tournament": 8,
+      "escalation": 7,
+      "technical_issue": 8,
+      "promotion": 4,
+      "poker": 11,
+      "withdraw": 16,
+      "kyc": 6,
+      "deposit": 13,
+      "register": 7,
+      "closing": 6,
+      "jackpot": 8,
+      "general": 1
+    }
+  }
+}
