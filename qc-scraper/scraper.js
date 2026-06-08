@@ -8,6 +8,7 @@ const API_URL   = (process.env.QC_API_URL || '').replace(/\/$/, '');
 const API_KEY   = process.env.QC_API_KEY  || '';
 const WATCH     = process.argv.includes('--watch');
 const HEADLESS  = !process.argv.includes('--headed');
+const ONCE      = process.argv.includes('--once'); // สร้าง Yesterday job → ทำจนจบ → ออก (สำหรับ Task Scheduler)
 const POLL_MS   = 10000;
 
 const scheduleArg  = process.argv.find(a => a.startsWith('--schedule='));
@@ -1393,6 +1394,20 @@ async function loop() {
   console.log(`👥 Limit: ${LIMIT_LABEL === 'ทั้งหมด' ? 'ทั้งหมดของ Yesterday' : LIMIT_LABEL + ' ลูกค้า'}`);
   console.log('='.repeat(50));
   console.log();
+
+  // โหมด --once: สร้าง Yesterday job → ทำทุก job ที่ค้าง → ออก (สำหรับ Windows Task Scheduler)
+  if (ONCE) {
+    console.log('🟢 โหมด --once: เก็บ Yesterday แล้วออก\n');
+    await createAutoJob();
+    while (true) {
+      const job = await pollJob().catch(() => null);
+      if (!job?.id) break;
+      console.log(`รับงาน (${job.date_from} → ${job.date_to})`);
+      await runJob(job);
+    }
+    console.log('\n🏁 --once เสร็จสิ้น — ออกจากโปรแกรม');
+    process.exit(0);
+  }
 
   if (SCHEDULE_MIN > 0) {
     await createAutoJob();
