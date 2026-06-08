@@ -8,5 +8,7 @@ qc-scraper/auth.json
 qc-scraper/test_output.txt
 qc-scraper/test_error.txt
 qc-scraper/.last_job.txt
+qc-scraper/once_test.txt
+qc-scraper/once_err.txt
 qc-scraper/debug/
 .claude/

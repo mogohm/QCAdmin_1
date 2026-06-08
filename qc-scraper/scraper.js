@@ -789,16 +789,24 @@ async function runJob(job) {
 
   try {
     await page.goto('https://chat.line.biz/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(3000);
 
-    if (page.url().includes('signin') || page.url().includes('login')) {
-      await updateJob(job.id, { status: 'error', error_text: 'Session หมดอายุ — รัน: node login.js' });
-      await browser.close().catch(() => {});
-      console.error('\n🔐 Session หมดอายุ — ต้อง login ใหม่');
-      process.exit(2);
+    // รอ chat list สูงสุด 30s = source of truth ว่า session ใช้ได้
+    // (เลิกใช้ waitForTimeout(3000)+url check ที่ false-positive ตอน LINE OA โหลดช้า)
+    const listAppeared = await page.waitForSelector('.list-group-item-chat', { timeout: 30000 })
+      .then(() => true).catch(() => false);
+
+    if (!listAppeared) {
+      const url = page.url();
+      if (url.includes('signin') || url.includes('login')) {
+        // หมดอายุจริง — redirect ไปหน้า login
+        await updateJob(job.id, { status: 'error', error_text: 'Session หมดอายุ — รัน: node login.js' });
+        await browser.close().catch(() => {});
+        console.error('\n🔐 Session หมดอายุ — ต้อง login ใหม่');
+        process.exit(2);
+      }
+      // ไม่เจอ list แต่ไม่ใช่ signin = โหลดไม่สำเร็จด้วยเหตุอื่น (ลองใหม่รอบหน้า ไม่ใช่ session)
+      throw new Error('โหลด chat list ไม่สำเร็จ (ไม่ใช่ session หมดอายุ)');
     }
-
-    await page.waitForSelector('.list-group-item-chat', { timeout: 15000 });
 
     // Yesterday = historical เสมอ — ข้าม filter real-time ทั้งหมด
     const isHistorical = true;
