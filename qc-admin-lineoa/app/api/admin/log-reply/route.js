@@ -1,8 +1,25 @@
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
 import { scoreReply } from '@/lib/qc-engine';
+import { generateCoaching } from '@/lib/coaching';
+import { matchSOP } from '@/lib/sop-matcher';
 import { sendTelegram } from '@/lib/telegram';
 import { getLineProfile } from '@/lib/line';
+
+// ดึง SOP knowledge base + fatal rules (ถ้ายังไม่ import ตาราง → คืน [] เงียบๆ)
+async function loadKnowledge() {
+  try {
+    const [sops, fatals] = await Promise.all([
+      query`SELECT id, topic, question, answer, intent, category_code,
+                   keywords, required_keywords, forbidden_keywords, escalation
+            FROM sop_scripts`,
+      query`SELECT code, name, patterns, applies_to, is_active FROM fatal_rules WHERE is_active = true`,
+    ]);
+    return { sops, fatalRules: fatals };
+  } catch {
+    return { sops: [], fatalRules: [] };
+  }
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -193,9 +210,9 @@ export async function POST(req) {
     UPDATE conversations SET assigned_admin_id = ${resolvedAdminId} WHERE id = ${convId}
   `;
 
-  // คำนวณ QC score
+  // คำนวณ QC score (engine v2: 8 มิติ + SOP + fatal + coaching)
   const settings = await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
-  const rules = await query`SELECT rule_code, rule_name, category, question_keywords, answer_keywords FROM knowledge_rules WHERE is_active = true`;
+  const { sops, fatalRules } = await loadKnowledge();
 
   let responseSeconds = null;
   if (customerMsgCreatedAt) {
@@ -208,27 +225,42 @@ export async function POST(req) {
   const qc = scoreReply({
     customerText: customerMsgText || '',
     adminText: text,
-    responseSeconds: responseSeconds ?? 0,
+    responseSeconds,
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
-    rules,
+    sops,
+    fatalRules,
+  });
+
+  // หา SOP record เต็มเพื่อ coaching + matched_sop_id
+  const sopMatch = matchSOP(customerMsgText || text, sops);
+  const matchedSopId = sopMatch.sop?.id || null;
+  const coaching = generateCoaching({
+    customerText: customerMsgText || '',
+    adminText: text,
+    scoreResult: qc,
+    sop: sopMatch.sop || null,
   });
 
   const scoreRow = await query`
     INSERT INTO qc_scores (
       conversation_id, customer_message_id, admin_message_id, admin_id,
       response_seconds, speed_score, correctness_score, sentiment_score,
-      final_score, fail_reasons, matched_rules, created_at
+      final_score, fail_reasons, matched_rules, created_at,
+      intent, matched_sop_id, sop_confidence, dimension_scores, is_fatal, fatal_reasons, coaching
     ) VALUES (
       ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId},
       ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
       ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
-      ${adminMsg[0].created_at}
+      ${adminMsg[0].created_at},
+      ${qc.intent}, ${matchedSopId}, ${qc.sopConfidence}, ${JSON.stringify(qc.dimensions)},
+      ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)}, ${coaching ? JSON.stringify(coaching) : null}
     ) RETURNING *
   `;
   qc.id = scoreRow[0].id;
+  qc.coaching = coaching;
 
-  if (qc.finalScore < 70 || qc.failReasons.length)
-    await sendTelegram(`QC FAIL: score ${qc.finalScore}\n${qc.failReasons.join(', ')}\nAdmin: ${admin_name || admin_id}`).catch(() => {});
+  if (qc.isFatal || qc.finalScore < 70 || qc.failReasons.length)
+    await sendTelegram(`QC ${qc.isFatal ? 'FATAL' : 'FAIL'}: score ${qc.finalScore} (${qc.intent})\n${qc.failReasons.join(', ')}\nAdmin: ${admin_name || admin_id}`).catch(() => {});
 
   // ---- Auto-detect customer events ----
   const allText = [text, customer_text || ''].join(' ');
