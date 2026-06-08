@@ -42,8 +42,14 @@ export async function POST(req) {
     return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
 
   // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา หรือสร้างใหม่อัตโนมัติ
+  // กฎ: admin จริงทุกคนขึ้นต้นด้วย "PK" — ชื่อที่ไม่ขึ้นต้น PK = scraper ดึงผิด → ไม่สร้าง/ไม่บันทึก
+  const isPkName = (s) => /^\s*pk\b/i.test(String(s || ''));
   let resolvedAdminId = admin_id;
   if (!resolvedAdminId && admin_name) {
+    if (!isPkName(admin_name)) {
+      // ชื่อไม่ใช่ admin จริง (เช่น Download, ชื่อลูกค้า, badge) — ข้าม ไม่บันทึกกันข้อมูลมั่ว
+      return Response.json({ ok: true, skipped: 'non-PK admin name', admin_name }, { headers: CORS });
+    }
     const found = await query`
       SELECT id FROM qc_admins
       WHERE lower(member_name) LIKE ${'%' + admin_name.toLowerCase() + '%'} AND is_active = true
@@ -52,7 +58,6 @@ export async function POST(req) {
     if (found[0]) {
       resolvedAdminId = found[0].id;
     } else {
-      // สร้าง admin ใหม่อัตโนมัติจากชื่อที่ scraper ดึงมา
       const norm = admin_name.toLowerCase().replace(/[^a-z0-9ก-๙]/g, '_').slice(0, 80);
       const created = await query`
         INSERT INTO qc_admins (member_name, normalized_name, is_active, source)
