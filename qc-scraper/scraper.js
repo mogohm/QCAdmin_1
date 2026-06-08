@@ -574,21 +574,38 @@ async function extractAdminMessages(page, dateFrom, dateTo) {
     }
 
     function extractTs(node, currentDate) {
-      const timeEl  = node.querySelector('time, [class*="chat-time"], .chat-secondary time');
-      const rawTime = timeEl?.getAttribute('datetime') || timeEl?.innerText?.trim() || '';
+      let rawTime = '';
+      // 1) <time datetime> ถ้ามี
+      const timeEl = node.querySelector('time[datetime]');
+      if (timeEl) rawTime = timeEl.getAttribute('datetime') || '';
+      // 2) LINE OA จริง: เวลาอยู่ใน <span> ไม่มี class, text = "HH:MM"
+      //    หา leaf element ที่ text เป็น HH:MM ล้วน — เอาตัวท้ายสุด (เวลาส่งอยู่ท้าย bubble)
+      if (!rawTime) {
+        let last = '';
+        for (const el of node.querySelectorAll('span, small, time, div')) {
+          if (el.children.length) continue;
+          const t = (el.textContent || '').trim();
+          if (/^\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?$/i.test(t)) last = t;
+        }
+        rawTime = last;
+      }
       if (!rawTime) return null;
 
       // Full datetime (ISO / RFC2822)
-      if (rawTime.length > 5) {
+      if (rawTime.length > 8 && /[-T]/.test(rawTime)) {
         const fullDate = new Date(rawTime);
         if (!isNaN(fullDate)) return fullDate.toISOString();
       }
 
-      // HH:MM + currentDate
-      const parts = rawTime.match(/^(\d{1,2}):(\d{2})$/);
+      // HH:MM (+AM/PM) + currentDate
+      const parts = rawTime.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?$/i);
       if (parts && currentDate) {
+        let h = parseInt(parts[1]);
+        const mi = parseInt(parts[2]), se = parts[3] ? parseInt(parts[3]) : 0;
+        const ap = parts[4];
+        if (ap) { if (/pm/i.test(ap) && h < 12) h += 12; if (/am/i.test(ap) && h === 12) h = 0; }
         const d = new Date(currentDate);
-        d.setHours(parseInt(parts[1]), parseInt(parts[2]), 0, 0);
+        d.setHours(h, mi, se, 0);
         return isNaN(d) ? null : d.toISOString();
       }
       return null;
