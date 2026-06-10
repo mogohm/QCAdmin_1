@@ -13,13 +13,18 @@ export async function GET(req) {
   try {
     const rows = await query`
       SELECT id, category_code, topic, question, answer, intent, keywords, required_keywords,
-             forbidden_keywords, escalation, is_active, updated_at
+             forbidden_keywords, escalation, is_active, COALESCE(used_count,0) AS used_count, updated_at
       FROM sop_scripts
       WHERE (${q}::text = '' OR topic ILIKE ${'%' + q + '%'} OR answer ILIKE ${'%' + q + '%'})
         AND (${intent}::text IS NULL OR intent = ${intent})
-      ORDER BY is_active DESC, intent, topic LIMIT 500`;
+      ORDER BY is_active DESC, intent, topic LIMIT 1000`;
     const cats = await query`SELECT code, name FROM sop_categories ORDER BY code`.catch(() => []);
-    return Response.json({ sops: rows, categories: cats, total: rows.length });
+    const summary = await query`SELECT count(*)::int total,
+        sum(CASE WHEN is_active THEN 1 ELSE 0 END)::int active,
+        sum(CASE WHEN escalation THEN 1 ELSE 0 END)::int escalation,
+        sum(CASE WHEN jsonb_array_length(COALESCE(required_keywords,'[]'::jsonb))=0 THEN 1 ELSE 0 END)::int missing_required
+      FROM sop_scripts`.catch(() => [{}]);
+    return Response.json({ sops: rows, categories: cats, total: rows.length, summary: summary[0] || {} });
   } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
 }
 

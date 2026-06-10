@@ -187,8 +187,53 @@ export async function GET(req) {
     const cov = sopCoverage[0] || { total: 0, matched: 0 };
     const dispMap = Object.fromEntries((disputeSummary || []).map(r => [r.status, r.n]));
 
+    // เพิ่ม: fail reasons ซ้ำ + intent ที่ไม่ match SOP + commission ต่อ admin
+    const [repeatedFails, unmatchedIntents] = await Promise.all([
+      safe(() => query`SELECT category_code, fail_reason, count(*)::int n FROM qc_score_details d
+                       JOIN qc_scores q ON q.id=d.qc_score_id
+                       WHERE d.pass=false AND d.fail_reason IS NOT NULL AND d.category_code NOT IN ('minorError','fatalError')
+                         AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       GROUP BY 1,2 ORDER BY n DESC LIMIT 10`, []),
+      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n FROM qc_scores
+                       WHERE matched_sop_id IS NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       GROUP BY 1 ORDER BY n DESC LIMIT 8`, []),
+    ]);
+
+    const counts = await safe(() => query`SELECT
+        (SELECT count(*)::int FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS qc_cases,
+        (SELECT count(*)::int FROM messages WHERE direction='admin' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS admin_msgs,
+        (SELECT count(*)::int FROM messages WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS total_msgs`, [{}]);
+    const cnt = counts[0] || {};
+
+    // commission ต่อ admin (tier multiplier ตาม Excel) — rate = 1% ของยอด upsell (deposit)
+    const MULT = s => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
+    const TIER = s => (s >= 90 ? 'Excellent' : s >= 80 ? 'Standard' : s >= 70 ? 'Warning' : 'Critical');
+    const RATE = 0.01;
+    const commissionPerAdmin = (rankingAll || []).filter(a => a.cases > 0).map(a => {
+      const mult = MULT(a.avg_score), upsell = Number(a.deposit_sum || 0);
+      return { admin: a.member_name, admin_id: a.id, avg_score: a.avg_score, tier: TIER(a.avg_score),
+        multiplier: mult, upsell_amount: upsell, fatal_penalty: a.bad || 0,
+        estimated_commission: Math.round(upsell * RATE * mult) };
+    });
+
+    const estCommissionTotal = commissionPerAdmin.reduce((s, a) => s + (a.estimated_commission || 0), 0);
+    const kpiExt = {
+      totalChats: cnt.total_msgs || 0,
+      totalQcCases: cnt.qc_cases || 0,
+      avgQaScore: kpiRows[0]?.avg_score || 0,
+      qaCoveragePercent: cnt.admin_msgs ? Math.round((cnt.qc_cases || 0) / cnt.admin_msgs * 100) : 0,
+      sopCoveragePercent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0,
+      avgResponseSec: kpiRows[0]?.avg_response_sec || 0,
+      slaPassPercent: slaExceptionSummary[0]?.sla_pass_pct ?? 0,
+      fatalCount: (fatalCases || []).length,
+      minorCount: minorCases[0]?.n || 0,
+      pendingDisputes: dispMap.pending || 0,
+      estimatedCommission: estCommissionTotal,
+    };
+
     return Response.json({
       kpi: kpiRows[0] || {},
+      kpiExt,
       ranking: rankingAll,
       weeklySummary,
       promos,
@@ -200,10 +245,18 @@ export async function GET(req) {
       intentDistribution,
       fatalCases,
       minorCases: minorCases[0]?.n || 0,
-      sopCoverage: { total: cov.total, matched: cov.matched, percent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0 },
-      coachingSummary,
+      sopCoverage: {
+        total: cov.total, matched: cov.matched, unmatched: cov.total - cov.matched,
+        percent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0,
+        top_unmatched_intents: unmatchedIntents,
+      },
+      coachingSummary: {
+        recent: coachingSummary,
+        lowest_categories: [...(categorySummary || [])].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3),
+        repeated_fail_reasons: repeatedFails,
+      },
       disputeSummary: { pending: dispMap.pending || 0, approved: dispMap.approved || 0, rejected: dispMap.rejected || 0 },
-      commissionSummary: commissionSummary[0] || {},
+      commissionSummary: { tiers: commissionSummary[0] || {}, per_admin: commissionPerAdmin },
       adminCategoryRanking,
       slaExceptionSummary: slaExceptionSummary[0] || {},
     });

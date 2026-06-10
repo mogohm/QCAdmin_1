@@ -13,6 +13,8 @@ const keep = [
   '𝙿𝙺-Mng',           // math monospace
   'ℙ𝕂 - X',           // double-struck
   '꧁PK - Game꧂',      // decorative
+  '꧁✮𝓟𝓚 - 𝓕𝓸𝓾𝓻✮꧂',  // bold-script + decorative
+  'PK_HMON',           // underscore
   'PK-Mos🐻❤️🔥',       // มี emoji ต่อท้าย
 ];
 for (const n of keep) ok(`KEEP "${n}"`, isPkName(n), `norm=${normalizeAdminName(n).slice(0, 10)}`);

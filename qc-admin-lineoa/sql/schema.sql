@@ -263,3 +263,10 @@ CREATE TABLE IF NOT EXISTS app_users (
 );
 
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS line_user_id TEXT;
+
+-- Phase 3: qc_scores เพิ่ม columns สำหรับ SOP/coaching/commission แบบเต็ม
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS matched_sop_topic TEXT;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS expected_sop_answer TEXT;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS minor_issues JSONB DEFAULT '[]';
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS commission_tier JSONB;
+ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0;

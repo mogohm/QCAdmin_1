@@ -34,8 +34,13 @@ export async function POST(req) {
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS sla_exception BOOLEAN DEFAULT false`;
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS evidence JSONB DEFAULT '{}'`;
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS line_user_id TEXT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS matched_sop_topic TEXT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS expected_sop_answer TEXT`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS minor_issues JSONB DEFAULT '[]'`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS commission_tier JSONB`;
   await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
   await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()`;
+  await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0`;
 
   // ---- Phase 2 tables ----
   await query`CREATE TABLE IF NOT EXISTS qc_score_details (

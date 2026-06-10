@@ -29,9 +29,14 @@ export async function GET(req, { params }) {
         q.final_score, q.speed_score, q.correctness_score, q.sentiment_score,
         q.response_seconds, q.fail_reasons, q.matched_rules,
         q.intent, q.is_fatal, q.sla_exception, q.dimension_scores, q.coaching,
-        q.matched_sop_id, q.sop_confidence, q.evidence,
-        sop.topic           AS matched_sop_topic,
-        sop.answer          AS expected_sop_answer,
+        q.matched_sop_id, q.sop_confidence, q.evidence, q.minor_issues,
+        COALESCE(q.matched_sop_topic, sop.topic)   AS matched_sop_topic,
+        COALESCE(q.expected_sop_answer, sop.answer) AS expected_sop_answer,
+        (SELECT json_agg(json_build_object('category_code',category_code,'raw_score',raw_score,
+           'weighted_score',weighted_score,'max_score',max_score,'pass',pass,'fail_reason',fail_reason,
+           'suggestion',suggestion,'evidence',evidence) ORDER BY id)
+         FROM qc_score_details WHERE qc_score_id = q.id) AS score_details,
+        (SELECT status FROM qc_disputes WHERE qc_score_id = q.id ORDER BY created_at DESC LIMIT 1) AS dispute_status,
         cust.message_text   AS paired_customer_text
       FROM deduped d
       LEFT JOIN qc_admins a   ON a.id = d.admin_id

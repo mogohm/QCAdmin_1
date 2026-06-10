@@ -1,27 +1,8 @@
 import { query } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
-import { scoreReply } from '@/lib/qc-engine';
-import { generateCoaching } from '@/lib/coaching';
-import { matchSOP } from '@/lib/sop-matcher';
 import { isPkName } from '@/lib/admin-name';
-import { sendTelegram, qcAlert } from '@/lib/telegram';
-import { isSlaException } from '@/lib/qc-shared';
+import { runQc } from '@/lib/qc-runner';
 import { getLineProfile } from '@/lib/line';
-
-// ดึง SOP knowledge base + fatal rules (ถ้ายังไม่ import ตาราง → คืน [] เงียบๆ)
-async function loadKnowledge() {
-  try {
-    const [sops, fatals] = await Promise.all([
-      query`SELECT id, topic, question, answer, intent, category_code,
-                   keywords, required_keywords, forbidden_keywords, escalation
-            FROM sop_scripts`,
-      query`SELECT code, name, patterns, applies_to, is_active FROM fatal_rules WHERE is_active = true`,
-    ]);
-    return { sops, fatalRules: fatals };
-  } catch {
-    return { sops: [], fatalRules: [] };
-  }
-}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -216,9 +197,8 @@ export async function POST(req) {
     UPDATE conversations SET assigned_admin_id = ${resolvedAdminId} WHERE id = ${convId}
   `;
 
-  // คำนวณ QC score (engine v2: 8 มิติ + SOP + fatal + coaching)
+  // คำนวณ QC score ผ่าน qc-runner (SOP + fatal + SLA + details + telegram)
   const settings = await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
-  const { sops, fatalRules } = await loadKnowledge();
 
   let responseSeconds = null;
   if (customerMsgCreatedAt) {
@@ -228,69 +208,13 @@ export async function POST(req) {
     responseSeconds = diff[0].sec;
   }
 
-  // SLA exception — ถ้ามี system event ครอบเวลาที่ตอบ
-  const sla = await isSlaException(adminMsg[0].created_at);
-
-  const qc = scoreReply({
-    customerText: customerMsgText || '',
-    adminText: text,
-    responseSeconds,
+  const qc = await runQc({
+    conversationId: convId, customerMessageId: customerMsgId, adminMessageId: adminMsg[0].id,
+    adminId: resolvedAdminId, lineUserId: line_user_id,
+    customerText: customerMsgText || '', adminText: text, responseSeconds,
+    createdAt: adminMsg[0].created_at, adminName: admin_name, customerName: customer_name,
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
-    sops,
-    fatalRules,
-    slaException: sla.active,
   });
-
-  // หา SOP record เต็มเพื่อ coaching + matched_sop_id
-  const sopMatch = matchSOP(customerMsgText || text, sops);
-  const matchedSopId = sopMatch.sop?.id || null;
-  const coaching = generateCoaching({
-    customerText: customerMsgText || '',
-    adminText: text,
-    scoreResult: qc,
-    sop: sopMatch.sop || null,
-  });
-
-  const scoreRow = await query`
-    INSERT INTO qc_scores (
-      conversation_id, customer_message_id, admin_message_id, admin_id, line_user_id,
-      response_seconds, speed_score, correctness_score, sentiment_score,
-      final_score, fail_reasons, matched_rules, created_at,
-      intent, matched_sop_id, sop_confidence, dimension_scores, is_fatal, fatal_reasons, coaching,
-      sla_exception, evidence
-    ) VALUES (
-      ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId}, ${line_user_id},
-      ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
-      ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
-      ${adminMsg[0].created_at},
-      ${qc.intent}, ${matchedSopId}, ${qc.sopConfidence}, ${JSON.stringify(qc.dimensions)},
-      ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)}, ${coaching ? JSON.stringify(coaching) : null},
-      ${qc.slaException}, ${JSON.stringify(qc.evidence)}
-    ) RETURNING *
-  `;
-  qc.id = scoreRow[0].id;
-  qc.coaching = coaching;
-
-  // qc_score_details — รายมิติพร้อม evidence
-  for (const d of qc.details || []) {
-    await query`
-      INSERT INTO qc_score_details (qc_score_id, category_code, raw_score, weighted_score, max_score, pass, evidence, fail_reason, suggestion)
-      VALUES (${qc.id}, ${d.category_code}, ${d.raw_score}, ${d.weighted_score}, ${d.max_score}, ${d.pass},
-              ${JSON.stringify(d.evidence || {})}, ${d.fail_reason || null}, ${d.suggestion || null})
-    `.catch(() => {});
-  }
-
-  // Telegram alert (T11): score<70 / fatal / SLA fail
-  const slaFail = !sla.active && qc.dimensions?.responseTime != null && qc.dimensions.responseTime < 60;
-  if (qc.isFatal || qc.finalScore < 70 || slaFail) {
-    const failedCats = (qc.details || []).filter(x => x.applicable && x.pass === false).map(x => x.category_code);
-    qcAlert({
-      kind: qc.isFatal ? 'FATAL' : (slaFail ? 'SLA FAIL' : 'FAIL'),
-      admin: admin_name || resolvedAdminId, customer: customer_name || line_user_id, score: qc.finalScore, intent: qc.intent,
-      sop: qc.matchedSop?.topic, failedCats, reason: qc.failReasons.join(' · '),
-      suggestion: coaching?.suggested_reply, lineUserId: line_user_id, slaException: qc.slaException,
-    }).catch(() => {});
-  }
 
   // ---- Auto-detect customer events ----
   const allText = [text, customer_text || ''].join(' ');

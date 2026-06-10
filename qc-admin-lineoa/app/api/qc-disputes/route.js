@@ -12,10 +12,15 @@ export async function GET(req) {
   const af = s?.role === 'admin' ? (s.adminId || '00000000-0000-0000-0000-000000000000') : null;
   try {
     const rows = await query`
-      SELECT d.*, a.member_name AS admin_name, q.final_score AS current_score, q.intent
+      SELECT d.*, a.member_name AS admin_name, q.final_score AS current_score, q.intent,
+             q.matched_sop_topic, q.expected_sop_answer, q.fail_reasons AS ai_reason,
+             q.is_fatal, q.dimension_scores,
+             cm.message_text AS customer_question, am.message_text AS admin_answer
       FROM qc_disputes d
       LEFT JOIN qc_admins a ON a.id = d.admin_id
       LEFT JOIN qc_scores q ON q.id = d.qc_score_id
+      LEFT JOIN messages cm ON cm.id = q.customer_message_id
+      LEFT JOIN messages am ON am.id = q.admin_message_id
       WHERE (${status}::text IS NULL OR d.status = ${status})
         AND (${af}::uuid IS NULL OR d.admin_id = ${af}::uuid)
       ORDER BY d.status='pending' DESC, d.created_at DESC LIMIT 100`;

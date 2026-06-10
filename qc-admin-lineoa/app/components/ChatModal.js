@@ -299,7 +299,9 @@ export default function ChatModal({ user, onClose }) {
                     )}
 
                     {/* Dispute */}
-                    {msg.qc_score_id && (disputeFor === msg.qc_score_id ? (
+                    {msg.dispute_status ? (
+                      <div style={{ marginTop: 8, fontSize: 11 }}>⚖️ โต้แย้งแล้ว: <span style={{ fontWeight: 700, color: msg.dispute_status === 'approved' ? '#16a34a' : msg.dispute_status === 'rejected' ? '#dc2626' : '#f59e0b' }}>{msg.dispute_status}</span></div>
+                    ) : msg.qc_score_id && (disputeFor === msg.qc_score_id ? (
                       <div style={{ marginTop: 8, borderTop: '1px dashed #ddd', paddingTop: 8 }}>
                         <textarea value={disputeReason} onChange={e => setDisputeReason(e.target.value)} placeholder="เหตุผลที่โต้แย้งผล AI..." rows={2} style={{ width: '100%', fontSize: 12, padding: 6, borderRadius: 6, border: '1px solid #ddd' }} />
                         {disputeMsg && <div style={{ fontSize: 11, color: disputeMsg[0] === '⚠' ? '#dc2626' : '#16a34a' }}>{disputeMsg}</div>}
