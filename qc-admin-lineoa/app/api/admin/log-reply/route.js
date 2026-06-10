@@ -4,7 +4,8 @@ import { scoreReply } from '@/lib/qc-engine';
 import { generateCoaching } from '@/lib/coaching';
 import { matchSOP } from '@/lib/sop-matcher';
 import { isPkName } from '@/lib/admin-name';
-import { sendTelegram } from '@/lib/telegram';
+import { sendTelegram, qcAlert } from '@/lib/telegram';
+import { isSlaException } from '@/lib/qc-shared';
 import { getLineProfile } from '@/lib/line';
 
 // ดึง SOP knowledge base + fatal rules (ถ้ายังไม่ import ตาราง → คืน [] เงียบๆ)
@@ -227,6 +228,9 @@ export async function POST(req) {
     responseSeconds = diff[0].sec;
   }
 
+  // SLA exception — ถ้ามี system event ครอบเวลาที่ตอบ
+  const sla = await isSlaException(adminMsg[0].created_at);
+
   const qc = scoreReply({
     customerText: customerMsgText || '',
     adminText: text,
@@ -234,6 +238,7 @@ export async function POST(req) {
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
     sops,
     fatalRules,
+    slaException: sla.active,
   });
 
   // หา SOP record เต็มเพื่อ coaching + matched_sop_id
@@ -248,24 +253,44 @@ export async function POST(req) {
 
   const scoreRow = await query`
     INSERT INTO qc_scores (
-      conversation_id, customer_message_id, admin_message_id, admin_id,
+      conversation_id, customer_message_id, admin_message_id, admin_id, line_user_id,
       response_seconds, speed_score, correctness_score, sentiment_score,
       final_score, fail_reasons, matched_rules, created_at,
-      intent, matched_sop_id, sop_confidence, dimension_scores, is_fatal, fatal_reasons, coaching
+      intent, matched_sop_id, sop_confidence, dimension_scores, is_fatal, fatal_reasons, coaching,
+      sla_exception, evidence
     ) VALUES (
-      ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId},
+      ${convId}, ${customerMsgId}, ${adminMsg[0].id}, ${resolvedAdminId}, ${line_user_id},
       ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
       ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
       ${adminMsg[0].created_at},
       ${qc.intent}, ${matchedSopId}, ${qc.sopConfidence}, ${JSON.stringify(qc.dimensions)},
-      ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)}, ${coaching ? JSON.stringify(coaching) : null}
+      ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)}, ${coaching ? JSON.stringify(coaching) : null},
+      ${qc.slaException}, ${JSON.stringify(qc.evidence)}
     ) RETURNING *
   `;
   qc.id = scoreRow[0].id;
   qc.coaching = coaching;
 
-  if (qc.isFatal || qc.finalScore < 70 || qc.failReasons.length)
-    await sendTelegram(`QC ${qc.isFatal ? 'FATAL' : 'FAIL'}: score ${qc.finalScore} (${qc.intent})\n${qc.failReasons.join(', ')}\nAdmin: ${admin_name || admin_id}`).catch(() => {});
+  // qc_score_details — รายมิติพร้อม evidence
+  for (const d of qc.details || []) {
+    await query`
+      INSERT INTO qc_score_details (qc_score_id, category_code, raw_score, weighted_score, max_score, pass, evidence, fail_reason, suggestion)
+      VALUES (${qc.id}, ${d.category_code}, ${d.raw_score}, ${d.weighted_score}, ${d.max_score}, ${d.pass},
+              ${JSON.stringify(d.evidence || {})}, ${d.fail_reason || null}, ${d.suggestion || null})
+    `.catch(() => {});
+  }
+
+  // Telegram alert (T11): score<70 / fatal / SLA fail
+  const slaFail = !sla.active && qc.dimensions?.responseTime != null && qc.dimensions.responseTime < 60;
+  if (qc.isFatal || qc.finalScore < 70 || slaFail) {
+    const failedCats = (qc.details || []).filter(x => x.applicable && x.pass === false).map(x => x.category_code);
+    qcAlert({
+      kind: qc.isFatal ? 'FATAL' : (slaFail ? 'SLA FAIL' : 'FAIL'),
+      admin: admin_name || resolvedAdminId, customer: customer_name || line_user_id, score: qc.finalScore, intent: qc.intent,
+      sop: qc.matchedSop?.topic, failedCats, reason: qc.failReasons.join(' · '),
+      suggestion: coaching?.suggested_reply, lineUserId: line_user_id, slaException: qc.slaException,
+    }).catch(() => {});
+  }
 
   // ---- Auto-detect customer events ----
   const allText = [text, customer_text || ''].join(' ');

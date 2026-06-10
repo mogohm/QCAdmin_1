@@ -2,15 +2,16 @@
 // (small-caps ᴘᴋ, math 𝙿𝙺, decorative ꧁꧂ ฯลฯ) ที่ admin ชอบใช้
 // CommonJS
 
-// map ตัวอักษร P/K สไตล์ที่ NFKC ไม่ fold (small caps + เผื่อ)
-const P_VARIANTS = /[ᴘᵽ҆]/g;
-const K_VARIANTS = /[ᴋⓀκ]/g;
+// map ตัวอักษร P/K สไตล์ที่ NFKC ไม่ fold:
+//   small caps ᴘᴋ · enclosed/squared 🅿🅺 🄿🄺 ⓅⓀ ⓟⓚ · เผื่อ greek/ตัวคล้าย
+const P_VARIANTS = /[ᴘᵽ҆Ⓟⓟ\u{1F17F}\u{1F13F}]/gu;
+const K_VARIANTS = /[ᴋⓀⓚ\u{1F17A}\u{1F13A}Κκ]/gu;
 
 function normalizeAdminName(s) {
   let t = String(s || '').normalize('NFKC');     // fold math/fullwidth fonts → ASCII
   t = t.replace(P_VARIANTS, 'P').replace(K_VARIANTS, 'K');
-  // ตัด decoration/ช่องว่าง/สัญลักษณ์นำหน้า (꧁ ✦ ★ ฯลฯ)
-  t = t.replace(/^[^0-9A-Za-z฀-๿]+/, '');
+  // ตัด decoration/ช่องว่าง/สัญลักษณ์นำหน้า (꧁ ✦ ★ emoji ฯลฯ) — unicode-aware
+  t = t.replace(/^[^0-9A-Za-z฀-๿]+/u, '');
   return t;
 }
 

@@ -141,6 +141,52 @@ export async function GET(req) {
           now() AS server_time`, [{}]),
     ]);
 
+    // ---- Phase 2 summaries ----
+    const [categorySummary, intentDistribution, fatalCases, minorCases, sopCoverage,
+           coachingSummary, disputeSummary, commissionSummary, adminCategoryRanking, slaExceptionSummary] = await Promise.all([
+      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n, round(avg(final_score))::int avg_score,
+                              sum(CASE WHEN is_fatal THEN 1 ELSE 0 END)::int fatal
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       GROUP BY 1 ORDER BY n DESC`, []),
+      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY 1 ORDER BY n DESC`, []),
+      safe(() => query`SELECT q.id, q.final_score, q.intent, q.fatal_reasons, q.created_at, a.member_name admin, q.line_user_id
+                       FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
+                       WHERE q.is_fatal=true AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       ORDER BY q.created_at DESC LIMIT 20`, []),
+      safe(() => query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal=false AND final_score BETWEEN 50 AND 69
+                       AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{ n: 0 }]),
+      safe(() => query`SELECT count(*)::int total, sum(CASE WHEN matched_sop_id IS NOT NULL THEN 1 ELSE 0 END)::int matched
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{ total: 0, matched: 0 }]),
+      safe(() => query`SELECT q.id, q.final_score, q.intent, q.coaching, a.member_name admin, q.line_user_id, q.created_at
+                       FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
+                       WHERE q.coaching IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       ORDER BY q.created_at DESC LIMIT 25`, []),
+      safe(() => query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`, []),
+      safe(() => query`SELECT
+                         sum(CASE WHEN final_score>=90 THEN 1 ELSE 0 END)::int tier1,
+                         sum(CASE WHEN final_score BETWEEN 80 AND 89 THEN 1 ELSE 0 END)::int tier2,
+                         sum(CASE WHEN final_score BETWEEN 70 AND 79 THEN 1 ELSE 0 END)::int tier3,
+                         sum(CASE WHEN final_score<70 THEN 1 ELSE 0 END)::int tier4
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{}]),
+      safe(() => query`SELECT a.member_name admin, a.id admin_id,
+                         round(avg((q.dimension_scores->>'greetingClosing')::numeric))::int greeting_closing,
+                         round(avg((q.dimension_scores->>'problemSolving')::numeric))::int problem_solving,
+                         round(avg((q.dimension_scores->>'communicationTone')::numeric))::int communication_tone,
+                         round(avg((q.dimension_scores->>'responseTime')::numeric))::int response_time
+                       FROM qc_scores q JOIN qc_admins a ON a.id=q.admin_id
+                       WHERE q.dimension_scores IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       GROUP BY a.member_name, a.id HAVING count(*)>0 ORDER BY problem_solving DESC NULLS LAST LIMIT 30`, []),
+      safe(() => query`SELECT
+                         (SELECT count(*)::int FROM qc_scores WHERE sla_exception=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_exception_count,
+                         (SELECT count(*)::int FROM system_events WHERE is_active=true AND (ends_at IS NULL OR ends_at>=now())) AS active_events,
+                         (SELECT round(100.0 * sum(CASE WHEN (dimension_scores->>'responseTime')::numeric >= 80 OR sla_exception THEN 1 ELSE 0 END) / NULLIF(count(*),0))::int
+                          FROM qc_scores WHERE dimension_scores IS NOT NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_pass_pct`, [{}]),
+    ]);
+
+    const cov = sopCoverage[0] || { total: 0, matched: 0 };
+    const dispMap = Object.fromEntries((disputeSummary || []).map(r => [r.status, r.n]));
+
     return Response.json({
       kpi: kpiRows[0] || {},
       ranking: rankingAll,
@@ -149,6 +195,17 @@ export async function GET(req) {
       pendingReply,
       replyLog,
       lastActivity: lastActivity[0] || {},
+      // Phase 2
+      categorySummary,
+      intentDistribution,
+      fatalCases,
+      minorCases: minorCases[0]?.n || 0,
+      sopCoverage: { total: cov.total, matched: cov.matched, percent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0 },
+      coachingSummary,
+      disputeSummary: { pending: dispMap.pending || 0, approved: dispMap.approved || 0, rejected: dispMap.rejected || 0 },
+      commissionSummary: commissionSummary[0] || {},
+      adminCategoryRanking,
+      slaExceptionSummary: slaExceptionSummary[0] || {},
     });
   } catch (err) {
     console.error('Dashboard fatal:', err);

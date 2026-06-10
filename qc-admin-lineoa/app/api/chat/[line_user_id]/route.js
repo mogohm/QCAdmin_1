@@ -25,12 +25,18 @@ export async function GET(req, { params }) {
       SELECT
         d.id, d.direction, d.message_text, d.created_at,
         a.member_name       AS admin_name,
+        q.id                AS qc_score_id,
         q.final_score, q.speed_score, q.correctness_score, q.sentiment_score,
         q.response_seconds, q.fail_reasons, q.matched_rules,
+        q.intent, q.is_fatal, q.sla_exception, q.dimension_scores, q.coaching,
+        q.matched_sop_id, q.sop_confidence, q.evidence,
+        sop.topic           AS matched_sop_topic,
+        sop.answer          AS expected_sop_answer,
         cust.message_text   AS paired_customer_text
       FROM deduped d
       LEFT JOIN qc_admins a   ON a.id = d.admin_id
       LEFT JOIN qc_scores q   ON q.admin_message_id = d.id
+      LEFT JOIN sop_scripts sop ON sop.id = q.matched_sop_id
       LEFT JOIN messages cust ON cust.id = q.customer_message_id
       ORDER BY d.created_at ASC
       LIMIT 500

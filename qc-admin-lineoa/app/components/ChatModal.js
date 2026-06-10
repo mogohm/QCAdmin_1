@@ -15,6 +15,7 @@ function fmtSec(s) {
 }
 function scoreColor(v) { return v >= 85 ? '#22c55e' : v >= 70 ? '#f59e0b' : '#ef4444'; }
 function tryParse(v) { try { return Array.isArray(v) ? v : (JSON.parse(v) || []); } catch { return []; } }
+function tryParseObj(v) { try { return typeof v === 'object' ? v : (JSON.parse(v) || null); } catch { return null; } }
 function sameDay(a, b) {
   const da = new Date(a), db = new Date(b);
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
@@ -25,7 +26,18 @@ export default function ChatModal({ user, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const [activeId, setActiveId] = useState(null);
+  const [disputeFor, setDisputeFor] = useState(null); // qc_score_id
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeMsg, setDisputeMsg] = useState('');
   const bottomRef = useRef(null);
+
+  const submitDispute = async (qcScoreId) => {
+    if (!disputeReason.trim()) { setDisputeMsg('กรอกเหตุผล'); return; }
+    const r = await fetch('/api/qc-disputes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qc_score_id: qcScoreId, reason: disputeReason }) });
+    const j = await r.json();
+    setDisputeMsg(j.ok ? '✅ ส่งคำโต้แย้งแล้ว รอ Manager ตรวจ' : '⚠️ ' + (j.error || 'error'));
+    if (j.ok) { setDisputeReason(''); setTimeout(() => { setDisputeFor(null); setDisputeMsg(''); }, 1800); }
+  };
 
   useEffect(() => {
     if (!user?.line_user_id) { setData(null); setError(null); return; }
@@ -221,62 +233,87 @@ export default function ChatModal({ user, onClose }) {
                   </div>
                 </div>
 
-                {/* QC Detail card */}
-                {isAdmin && isActive && msg.final_score != null && (
-                  <div style={{
-                    margin: '3px 0 8px auto', maxWidth: 340,
-                    background: '#fff', borderRadius: 10, padding: '12px 14px',
-                    border: `1.5px solid ${scoreColor(msg.final_score)}`,
-                    fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  }}>
-                    {/* Score bars */}
-                    <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
-                      {[['⚡', 'เร็ว', msg.speed_score], ['✅', 'ถูกต้อง', msg.correctness_score], ['😊', 'น้ำเสียง', msg.sentiment_score]].map(([icon, label, val]) => (
-                        <div key={label} style={{ textAlign: 'center', flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: scoreColor(val) }}>{val}</div>
-                          <div style={{ fontSize: 9, color: '#888' }}>{icon} {label}</div>
-                        </div>
-                      ))}
-                      <div style={{ textAlign: 'center', borderLeft: '1px solid #eee', paddingLeft: 14 }}>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: scoreColor(msg.final_score) }}>{msg.final_score}</div>
-                        <div style={{ fontSize: 9, color: '#888' }}>Final</div>
-                      </div>
+                {/* QC Detail card (Phase 2) */}
+                {isAdmin && isActive && msg.final_score != null && (() => {
+                  const dims = (typeof msg.dimension_scores === 'object' ? msg.dimension_scores : tryParseObj(msg.dimension_scores)) || {};
+                  const coaching = (typeof msg.coaching === 'object' ? msg.coaching : tryParseObj(msg.coaching)) || null;
+                  const ev = (typeof msg.evidence === 'object' ? msg.evidence : tryParseObj(msg.evidence)) || {};
+                  const DIM_LABELS = { greetingClosing: 'Greeting/Closing', problemSolving: 'Problem Solving', communicationTone: 'Tone', responseTime: 'Response', upsellPromotion: 'Upsell', creditDepositWithdraw: 'Deposit/WD', kycProcess: 'KYC' };
+                  return (
+                  <div style={{ margin: '3px 0 8px auto', maxWidth: 360, background: '#fff', borderRadius: 10, padding: '12px 14px', border: `1.5px solid ${scoreColor(msg.final_score)}`, fontSize: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                    {/* header flags */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(msg.final_score) }}>{msg.final_score}</div>
+                      <span style={{ fontSize: 10, color: '#666' }}>Final</span>
+                      {msg.intent && <span style={{ background: '#eef2ff', color: '#4338ca', borderRadius: 100, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>{msg.intent}</span>}
+                      {msg.is_fatal && <span style={{ background: '#fee2e2', color: '#dc2626', borderRadius: 100, padding: '1px 8px', fontSize: 10, fontWeight: 800 }}>FATAL</span>}
+                      {msg.sla_exception && <span style={{ background: '#fef9c3', color: '#a16207', borderRadius: 100, padding: '1px 8px', fontSize: 10, fontWeight: 700 }}>SLA exception</span>}
                     </div>
 
-                    {fmtSec(msg.response_seconds) && (
-                      <div style={{ color: '#555', marginBottom: 6, fontSize: 11 }}>
-                        🕐 ตอบใน <b>{fmtSec(msg.response_seconds)}</b>
-                      </div>
-                    )}
+                    {/* dimension bars */}
+                    <div style={{ marginBottom: 8 }}>
+                      {Object.keys(DIM_LABELS).filter(k => dims[k] != null).map(k => (
+                        <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0' }}>
+                          <span style={{ width: 92, fontSize: 10, color: '#666' }}>{DIM_LABELS[k]}</span>
+                          <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 5, height: 7 }}><div style={{ width: dims[k] + '%', height: 7, borderRadius: 5, background: scoreColor(dims[k]) }} /></div>
+                          <b style={{ width: 22, textAlign: 'right', fontSize: 10, color: scoreColor(dims[k]) }}>{dims[k]}</b>
+                        </div>
+                      ))}
+                    </div>
+
+                    {fmtSec(msg.response_seconds) && <div style={{ color: '#555', marginBottom: 6, fontSize: 11 }}>🕐 ตอบใน <b>{fmtSec(msg.response_seconds)}</b></div>}
 
                     {msg.paired_customer_text && (
                       <div style={{ background: '#eff6ff', borderLeft: '3px solid #3b82f6', borderRadius: '0 6px 6px 0', padding: '6px 10px', marginBottom: 6 }}>
-                        <div style={{ fontSize: 9, color: '#1d4ed8', fontWeight: 700, marginBottom: 2 }}>🔗 คำถามที่จับคู่</div>
+                        <div style={{ fontSize: 9, color: '#1d4ed8', fontWeight: 700, marginBottom: 2 }}>❓ คำถามลูกค้า</div>
                         <div style={{ color: '#1e3a8a', fontSize: 12 }}>{msg.paired_customer_text}</div>
+                      </div>
+                    )}
+
+                    {msg.matched_sop_topic && (
+                      <div style={{ marginBottom: 6 }}>
+                        <div style={{ fontSize: 10, color: '#0369a1', fontWeight: 700 }}>📋 SOP: {msg.matched_sop_topic} {msg.sop_confidence != null && <span style={{ color: '#888' }}>({msg.sop_confidence}%)</span>}</div>
+                        {msg.expected_sop_answer && <div style={{ fontSize: 11, color: '#555', background: '#f8fafc', borderRadius: 6, padding: '5px 8px', marginTop: 3 }}>ควรตอบ: {String(msg.expected_sop_answer).slice(0, 160)}…</div>}
+                      </div>
+                    )}
+
+                    {/* evidence */}
+                    {(ev.missing_required_keywords?.length > 0 || ev.forbidden_keyword_hit?.length > 0) && (
+                      <div style={{ fontSize: 10, marginBottom: 6 }}>
+                        {ev.missing_required_keywords?.length > 0 && <div style={{ color: '#b45309' }}>ขาดคำสำคัญ: {ev.missing_required_keywords.join(', ')}</div>}
+                        {ev.forbidden_keyword_hit?.length > 0 && <div style={{ color: '#dc2626' }}>คำต้องห้าม: {ev.forbidden_keyword_hit.join(', ')}</div>}
                       </div>
                     )}
 
                     {tryParse(msg.fail_reasons).length > 0 && (
                       <div style={{ marginBottom: 4 }}>
-                        {tryParse(msg.fail_reasons).map((r, j) => (
-                          <div key={j} style={{ color: '#dc2626', fontSize: 11 }}>⚠️ {r}</div>
-                        ))}
+                        {tryParse(msg.fail_reasons).slice(0, 5).map((r, j) => <div key={j} style={{ color: '#dc2626', fontSize: 11 }}>⚠️ {r}</div>)}
                       </div>
                     )}
 
-                    {tryParse(msg.matched_rules).length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
-                        {tryParse(msg.matched_rules).map((r, j) => (
-                          <span key={j} style={{
-                            padding: '1px 7px', borderRadius: 100, fontSize: 10, fontWeight: 600,
-                            background: r.pass ? '#dcfce7' : '#fee2e2',
-                            color: r.pass ? '#16a34a' : '#dc2626',
-                          }}>{r.pass ? '✓' : '✗'} {r.name}</span>
-                        ))}
+                    {coaching?.suggested_reply && (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '6px 9px', marginTop: 4 }}>
+                        <div style={{ fontSize: 9, color: '#16a34a', fontWeight: 800 }}>✅ ตัวอย่างที่ดีกว่า</div>
+                        <div style={{ fontSize: 11, color: '#166534' }}>{String(coaching.suggested_reply).slice(0, 220)}</div>
                       </div>
                     )}
+
+                    {/* Dispute */}
+                    {msg.qc_score_id && (disputeFor === msg.qc_score_id ? (
+                      <div style={{ marginTop: 8, borderTop: '1px dashed #ddd', paddingTop: 8 }}>
+                        <textarea value={disputeReason} onChange={e => setDisputeReason(e.target.value)} placeholder="เหตุผลที่โต้แย้งผล AI..." rows={2} style={{ width: '100%', fontSize: 12, padding: 6, borderRadius: 6, border: '1px solid #ddd' }} />
+                        {disputeMsg && <div style={{ fontSize: 11, color: disputeMsg[0] === '⚠' ? '#dc2626' : '#16a34a' }}>{disputeMsg}</div>}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                          <button onClick={() => submitDispute(msg.qc_score_id)} style={{ background: '#f59e0b', color: '#fff', border: 0, borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>ส่งโต้แย้ง</button>
+                          <button onClick={() => { setDisputeFor(null); setDisputeMsg(''); }} style={{ background: '#e5e7eb', border: 0, borderRadius: 6, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}>ยกเลิก</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setDisputeFor(msg.qc_score_id); setDisputeReason(''); setDisputeMsg(''); }} style={{ marginTop: 8, background: 'transparent', color: '#f59e0b', border: '1px solid #f59e0b', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>⚖️ โต้แย้งผล AI</button>
+                    ))}
                   </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}

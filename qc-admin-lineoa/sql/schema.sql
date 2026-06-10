@@ -120,3 +120,146 @@ INSERT INTO knowledge_rules(rule_code,rule_name,category,question_keywords,answe
 ('DEP-001','ตอบคำถามเติมเงิน','deposit','["เติมเงิน","ฝากเงิน","โอน"]','["ยอด","สลิป","ตรวจสอบ","บัญชี"]'),
 ('PRO-001','ตอบโปรโมชั่น','promotion','["โปร","โปรโมชั่น","โบนัส"]','["เงื่อนไข","ยอด","โบนัส","ระยะเวลา"]')
 ON CONFLICT(rule_code) DO NOTHING;
+
+-- ============================================================
+-- Phase 2: SOP knowledge base + QC v3 + Dispute/SLA/Commission
+-- ปลอดภัยต่อข้อมูลเดิม: CREATE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS sop_categories (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sop_scripts (
+  id SERIAL PRIMARY KEY,
+  category_code TEXT,
+  topic TEXT NOT NULL,
+  question TEXT,
+  answer TEXT NOT NULL,
+  intent TEXT,
+  keywords JSONB NOT NULL DEFAULT '[]',
+  required_keywords JSONB NOT NULL DEFAULT '[]',
+  forbidden_keywords JSONB NOT NULL DEFAULT '[]',
+  escalation BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+  source_sheet TEXT,
+  source_row INT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(topic)
+);
+CREATE INDEX IF NOT EXISTS idx_sop_scripts_intent ON sop_scripts(intent);
+CREATE INDEX IF NOT EXISTS idx_sop_scripts_category ON sop_scripts(category_code);
+
+CREATE TABLE IF NOT EXISTS intent_patterns (
+  id SERIAL PRIMARY KEY,
+  intent TEXT NOT NULL,
+  pattern TEXT NOT NULL,
+  lang TEXT DEFAULT 'th',
+  weight NUMERIC(5,2) DEFAULT 1,
+  UNIQUE(intent, pattern)
+);
+CREATE INDEX IF NOT EXISTS idx_intent_patterns_intent ON intent_patterns(intent);
+
+CREATE TABLE IF NOT EXISTS fatal_rules (
+  id SERIAL PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  patterns JSONB NOT NULL DEFAULT '[]',
+  applies_to TEXT,
+  severity TEXT DEFAULT 'fatal',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- qc_scores: upgrade columns
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS intent TEXT;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS matched_sop_id INT;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS sop_confidence INT;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS dimension_scores JSONB DEFAULT '{}';
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS is_fatal BOOLEAN DEFAULT false;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS fatal_reasons JSONB DEFAULT '[]';
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS coaching JSONB;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS sla_exception BOOLEAN DEFAULT false;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS evidence JSONB DEFAULT '{}';
+
+-- รายมิติของแต่ละ qc_score
+CREATE TABLE IF NOT EXISTS qc_score_details (
+  id SERIAL PRIMARY KEY,
+  qc_score_id UUID REFERENCES qc_scores(id) ON DELETE CASCADE,
+  category_code TEXT NOT NULL,
+  raw_score INT,
+  weighted_score NUMERIC(6,2),
+  max_score NUMERIC(6,2),
+  pass BOOLEAN,
+  evidence JSONB DEFAULT '{}',
+  fail_reason TEXT,
+  suggestion TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_qc_score_details_score ON qc_score_details(qc_score_id);
+
+-- โต้แย้งผล AI
+CREATE TABLE IF NOT EXISTS qc_disputes (
+  id SERIAL PRIMARY KEY,
+  qc_score_id UUID REFERENCES qc_scores(id) ON DELETE CASCADE,
+  admin_id UUID REFERENCES qc_admins(id),
+  line_user_id TEXT,
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  reviewer_note TEXT,
+  reviewed_by TEXT,
+  old_score INT,
+  new_score INT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  reviewed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_qc_disputes_status ON qc_disputes(status);
+
+-- System events (SLA exception ช่วงธนาคารล่ม/ระบบปิด)
+CREATE TABLE IF NOT EXISTS system_events (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  event_type TEXT DEFAULT 'system',
+  affects_sla BOOLEAN DEFAULT true,
+  starts_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ends_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_system_events_active ON system_events(is_active, starts_at, ends_at);
+
+-- ค่าคอมมิชชั่นรายแอดมิน/รอบ
+CREATE TABLE IF NOT EXISTS admin_commissions (
+  id SERIAL PRIMARY KEY,
+  admin_id UUID REFERENCES qc_admins(id),
+  period_start DATE,
+  period_end DATE,
+  avg_score INT,
+  tier INT,
+  tier_name TEXT,
+  base_salary NUMERIC(12,2) DEFAULT 0,
+  upsell_amount NUMERIC(12,2) DEFAULT 0,
+  commission NUMERIC(12,2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ผู้ใช้ระบบ (login + role)
+CREATE TABLE IF NOT EXISTS app_users (
+  id SERIAL PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  display_name TEXT,
+  qc_admin_id UUID,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS line_user_id TEXT;

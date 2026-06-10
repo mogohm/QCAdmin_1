@@ -8,8 +8,9 @@ const COACH_THRESHOLD = 70; // คะแนนต่ำกว่านี้ →
 function reasonFrom(scoreResult, sop, adminText) {
   const r = [];
   const d = scoreResult.dimensions || {};
+  if (scoreResult.slaException) r.push('ℹ️ อยู่ในช่วง System Event — Response time ไม่ถูกหักเต็ม');
   if (scoreResult.isFatal) r.push('พบข้อผิดพลาดร้ายแรง (Fatal): ' + (scoreResult.fatalReasons || []).map(x => x.name).join(', '));
-  if (d.responseTime != null && d.responseTime < 80) r.push('ตอบกลับช้ากว่ามาตรฐาน ควรตอบให้เร็วขึ้น (Response time)');
+  if (d.responseTime != null && d.responseTime < 80 && !scoreResult.slaException) r.push('ตอบกลับช้ากว่ามาตรฐาน ควรตอบให้เร็วขึ้น (Response time)');
   if (d.problemSolving != null && d.problemSolving < 70) r.push(sop ? `คำตอบไม่ตรงกับ SOP "${sop.topic}" ควรอ้างอิงสคริปต์มาตรฐาน (Problem Solving)` : 'ไม่พบ SOP ที่ตรง คำตอบอาจไม่ครบถ้วน');
   if (d.communicationTone != null && d.communicationTone < 70) r.push('น้ำเสียงควรสุภาพและแสดงความเข้าใจลูกค้ามากขึ้น เติมคำว่า ค่ะ/ขออภัย/เข้าใจ (Communication & Tone)');
   if (d.greetingClosing != null && d.greetingClosing < 65) r.push('ควรทักทาย/ปิดการสนทนาให้เรียบร้อย เช่น ยืนยันว่าดำเนินการแล้ว/สอบถามเพิ่มเติม (Greeting & Closing)');

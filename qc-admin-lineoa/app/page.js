@@ -12,6 +12,8 @@ function fmtSec(s) {
   return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 function scoreClass(v) { return v >= 85 ? 'good' : v >= 70 ? 'warn' : 'bad'; }
+function tryParseA(v) { try { return Array.isArray(v) ? v : (JSON.parse(v) || []); } catch { return []; } }
+function tryParseO(v) { try { return typeof v === 'object' ? v : (JSON.parse(v) || null); } catch { return null; } }
 function scoreLabel(v) { return v >= 85 ? '✅ ดี' : v >= 70 ? '⚠️ พอใช้' : '❌ ต่ำ'; }
 function timeAgo(iso) {
   if (!iso) return '—';
@@ -351,6 +353,72 @@ export default function Dashboard() {
           <K title="ยอดเติม" v={Number(k.deposit_total || 0).toLocaleString()} />
           <K title="ตอบเฉลี่ย" v={fmtSec(k.avg_response_sec)} />
           <K title="คะแนนเฉลี่ย" v={k.avg_score || 0} />
+        </section>
+
+        {/* ===== Phase 2: QC Professional ===== */}
+        <section className="grid kpis" style={{ marginTop: 16 }}>
+          <K title="Avg QA Score" v={k.avg_score || 0} />
+          <K title="SOP Coverage" v={(d?.sopCoverage?.percent ?? 0) + '%'} />
+          <K title="SLA Pass" v={(d?.slaExceptionSummary?.sla_pass_pct ?? 0) + '%'} />
+          <K title="Fatal Errors" v={(d?.fatalCases || []).length} />
+          <K title="Minor Errors" v={d?.minorCases ?? 0} />
+          <K title="Pending Disputes" v={d?.disputeSummary?.pending ?? 0} />
+          <K title="Est. Commission" v={'$' + (k.avg_score >= 90 ? 100 : k.avg_score >= 80 ? 70 : k.avg_score >= 70 ? 40 : 0)} />
+          <K title="SLA Exceptions" v={d?.slaExceptionSummary?.sla_exception_count ?? 0} />
+        </section>
+
+        <section className="grid split" style={{ marginTop: 16 }}>
+          {/* Category Breakdown */}
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Category Breakdown <a href="/qc-dashboard" style={{ fontSize: 12, float: 'right' }}>เปิด QC Dashboard →</a></h2>
+            <table className="table"><thead><tr><th>หมวด (intent)</th><th>จำนวน</th><th>คะแนน</th><th>Fatal</th></tr></thead>
+              <tbody>{(d?.categorySummary || []).map(c => <tr key={c.intent}><td>{c.intent}</td><td>{c.n}</td><td className={`score ${scoreClass(c.avg_score)}`}>{c.avg_score}</td><td className="score bad">{c.fatal || 0}</td></tr>)}
+                {!d?.categorySummary?.length && <tr><td colSpan="4" className="muted">ยังไม่มีข้อมูล</td></tr>}</tbody></table>
+          </section>
+          {/* Intent Distribution */}
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Intent Distribution</h2>
+            {(() => { const mx = Math.max(1, ...(d?.intentDistribution || []).map(x => x.n)); return (d?.intentDistribution || []).map(x => (
+              <div key={x.intent} style={{ margin: '6px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}><span>{x.intent}</span><b>{x.n}</b></div>
+                <div style={{ background: '#eef3f8', borderRadius: 6, height: 8 }}><div style={{ width: (x.n / mx * 100) + '%', height: 8, borderRadius: 6, background: 'linear-gradient(90deg,#0b5cab,#09a8d8)' }} /></div>
+              </div>)); })()}
+          </section>
+        </section>
+
+        <section className="grid split" style={{ marginTop: 16 }}>
+          {/* Fatal Cases */}
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>🔴 Fatal Case List</h2>
+            <table className="table"><thead><tr><th>Admin</th><th>Intent</th><th>เหตุผล</th><th></th></tr></thead>
+              <tbody>{(d?.fatalCases || []).slice(0, 12).map(c => <tr key={c.id}><td>{c.admin || '—'}</td><td>{c.intent}</td><td style={{ fontSize: 11, color: '#dc2626' }}>{(tryParseA(c.fatal_reasons).map(x => x.name || x).join(', ')) || '—'}</td><td>{c.line_user_id && <a href={`/customer/${c.line_user_id}`} style={{ fontSize: 11 }}>ดู</a>}</td></tr>)}
+                {!d?.fatalCases?.length && <tr><td colSpan="4" className="muted">ไม่มี Fatal 🎉</td></tr>}</tbody></table>
+          </section>
+          {/* Dispute Queue */}
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>⚖️ Dispute Queue <a href="/disputes" style={{ fontSize: 12, float: 'right' }}>จัดการ →</a></h2>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+              <div style={{ flex: 1, textAlign: 'center', padding: 10, background: '#fff7ed', borderRadius: 10 }}><div style={{ fontSize: 22, fontWeight: 900, color: '#f59e0b' }}>{d?.disputeSummary?.pending ?? 0}</div><div className="muted" style={{ fontSize: 11 }}>Pending</div></div>
+              <div style={{ flex: 1, textAlign: 'center', padding: 10, background: '#f0fdf4', borderRadius: 10 }}><div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{d?.disputeSummary?.approved ?? 0}</div><div className="muted" style={{ fontSize: 11 }}>Approved</div></div>
+              <div style={{ flex: 1, textAlign: 'center', padding: 10, background: '#fef2f2', borderRadius: 10 }}><div style={{ fontSize: 22, fontWeight: 900, color: '#ef4444' }}>{d?.disputeSummary?.rejected ?? 0}</div><div className="muted" style={{ fontSize: 11 }}>Rejected</div></div>
+            </div>
+            <h2 style={{ fontSize: 15 }}>🎓 AI Coaching</h2>
+            {(d?.coachingSummary || []).slice(0, 5).map(c => { const co = tryParseO(c.coaching) || {}; return (
+              <div key={c.id} className="case" style={{ padding: 8 }}>
+                <b className={`score ${scoreClass(c.final_score)}`}>{c.final_score}</b> <span className="muted">{c.admin} · {c.intent}</span>
+                <div style={{ fontSize: 11, color: '#b45309' }}>{(co.reasons || []).slice(0, 2).join(' · ')}</div>
+              </div>); })}
+            {!d?.coachingSummary?.length && <div className="muted">—</div>}
+          </section>
+        </section>
+
+        {/* Admin Skill Table */}
+        <section className="card" style={{ marginTop: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Admin Skill Breakdown</h2>
+          <table className="table"><thead><tr><th>Admin</th><th>Greeting/Closing</th><th>Problem Solving</th><th>Tone</th><th>Response</th></tr></thead>
+            <tbody>{(d?.adminCategoryRanking || []).map(a => <tr key={a.admin_id}><td>{a.admin}</td>
+              {['greeting_closing', 'problem_solving', 'communication_tone', 'response_time'].map(k2 => <td key={k2} className={`score ${a[k2] != null ? scoreClass(a[k2]) : ''}`}>{a[k2] ?? '—'}</td>)}</tr>)}
+              {!d?.adminCategoryRanking?.length && <tr><td colSpan="5" className="muted">ยังไม่มีข้อมูลรายมิติ (จะมีเมื่อ scrape รอบใหม่)</td></tr>}</tbody></table>
         </section>
 
         {/* Daily summary */}

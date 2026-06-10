@@ -31,6 +31,29 @@ export async function POST(req) {
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS is_fatal BOOLEAN DEFAULT false`;
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS fatal_reasons JSONB DEFAULT '[]'`;
   await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS coaching JSONB`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS sla_exception BOOLEAN DEFAULT false`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS evidence JSONB DEFAULT '{}'`;
+  await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS line_user_id TEXT`;
+  await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
+  await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()`;
+
+  // ---- Phase 2 tables ----
+  await query`CREATE TABLE IF NOT EXISTS qc_score_details (
+    id SERIAL PRIMARY KEY, qc_score_id UUID REFERENCES qc_scores(id) ON DELETE CASCADE,
+    category_code TEXT NOT NULL, raw_score INT, weighted_score NUMERIC(6,2), max_score NUMERIC(6,2),
+    pass BOOLEAN, evidence JSONB DEFAULT '{}', fail_reason TEXT, suggestion TEXT, created_at TIMESTAMPTZ DEFAULT now())`;
+  await query`CREATE TABLE IF NOT EXISTS qc_disputes (
+    id SERIAL PRIMARY KEY, qc_score_id UUID REFERENCES qc_scores(id) ON DELETE CASCADE,
+    admin_id UUID REFERENCES qc_admins(id), line_user_id TEXT, reason TEXT NOT NULL, status TEXT DEFAULT 'pending',
+    reviewer_note TEXT, reviewed_by TEXT, old_score INT, new_score INT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ)`;
+  await query`CREATE TABLE IF NOT EXISTS system_events (
+    id SERIAL PRIMARY KEY, title TEXT NOT NULL, description TEXT, event_type TEXT DEFAULT 'system',
+    affects_sla BOOLEAN DEFAULT true, starts_at TIMESTAMPTZ NOT NULL DEFAULT now(), ends_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now())`;
+  await query`CREATE TABLE IF NOT EXISTS admin_commissions (
+    id SERIAL PRIMARY KEY, admin_id UUID REFERENCES qc_admins(id), period_start DATE, period_end DATE,
+    avg_score INT, tier INT, tier_name TEXT, base_salary NUMERIC(12,2) DEFAULT 0, upsell_amount NUMERIC(12,2) DEFAULT 0,
+    commission NUMERIC(12,2) DEFAULT 0, created_at TIMESTAMPTZ DEFAULT now())`;
 
   // ---- insert จาก JSON ----
   for (const c of sopData.categories)
