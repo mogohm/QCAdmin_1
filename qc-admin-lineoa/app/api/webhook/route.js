@@ -107,6 +107,6 @@ export async function POST(req) {
 export async function GET() {
   return NextResponse.json(
     { ok: true, message: "LINE webhook endpoint is running. Use POST from LINE." },
-    { status: 200 }
+    { status: 200 },
   );
 }

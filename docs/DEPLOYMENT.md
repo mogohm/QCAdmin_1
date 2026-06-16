@@ -9,17 +9,17 @@ Production: https://qc-admin-1.vercel.app
 
 ตั้งค่าใน **Vercel → Project → Settings → Environment Variables** (Production + Preview)
 
-| ตัวแปร | จำเป็น | ใช้ทำอะไร |
-|---|---|---|
-| `DATABASE_URL` | ✅ | Neon Postgres connection string (`postgres://…?sslmode=require`) |
-| `ADMIN_API_KEY` | ✅ | auth ของ scraper + admin endpoints + guard ของ read API (เช่น `PKQC2026SUPERADMIN`) |
-| `SESSION_SECRET` | แนะนำ | ใช้เซ็น session cookie (ถ้าไม่ตั้ง จะ fallback ไป `ADMIN_API_KEY`) |
-| `LINE_CHANNEL_ACCESS_TOKEN` | ✅* | ส่งข้อความตอบกลับ + ดึงโปรไฟล์ลูกค้า (*ต้องมีถ้าใช้ reply/webhook) |
-| `LINE_CHANNEL_SECRET` | ✅* | ตรวจ signature ของ LINE webhook |
-| `TELEGRAM_BOT_TOKEN` | ทางเลือก | แจ้งเตือน QC fail/fatal/dispute (ถ้าไม่ตั้ง = ปิดเงียบ) |
-| `TELEGRAM_CHAT_ID` | ทางเลือก | ปลายทางแจ้งเตือน Telegram |
-| `APP_BASE_URL` | แนะนำ | ใช้สร้างลิงก์ในข้อความ Telegram (default `https://qc-admin-1.vercel.app`) |
-| `QC_RESPONSE_LIMIT_MINUTES` | ทางเลือก | เกณฑ์ SLA response time (default 5 นาที; override ได้ที่ตาราง `app_settings`) |
+| ตัวแปร                      | จำเป็น   | ใช้ทำอะไร                                                                           |
+| --------------------------- | -------- | ----------------------------------------------------------------------------------- |
+| `DATABASE_URL`              | ✅       | Neon Postgres connection string (`postgres://…?sslmode=require`)                    |
+| `ADMIN_API_KEY`             | ✅       | auth ของ scraper + admin endpoints + guard ของ read API (เช่น `PKQC2026SUPERADMIN`) |
+| `SESSION_SECRET`            | แนะนำ    | ใช้เซ็น session cookie (ถ้าไม่ตั้ง จะ fallback ไป `ADMIN_API_KEY`)                  |
+| `LINE_CHANNEL_ACCESS_TOKEN` | ✅\*     | ส่งข้อความตอบกลับ + ดึงโปรไฟล์ลูกค้า (\*ต้องมีถ้าใช้ reply/webhook)                 |
+| `LINE_CHANNEL_SECRET`       | ✅\*     | ตรวจ signature ของ LINE webhook                                                     |
+| `TELEGRAM_BOT_TOKEN`        | ทางเลือก | แจ้งเตือน QC fail/fatal/dispute (ถ้าไม่ตั้ง = ปิดเงียบ)                             |
+| `TELEGRAM_CHAT_ID`          | ทางเลือก | ปลายทางแจ้งเตือน Telegram                                                           |
+| `APP_BASE_URL`              | แนะนำ    | ใช้สร้างลิงก์ในข้อความ Telegram (default `https://qc-admin-1.vercel.app`)           |
+| `QC_RESPONSE_LIMIT_MINUTES` | ทางเลือก | เกณฑ์ SLA response time (default 5 นาที; override ได้ที่ตาราง `app_settings`)       |
 
 > ⚠️ **ห้าม** commit ค่าจริงของตัวแปรเหล่านี้ลง git และห้าม commit `qc-scraper/auth.json` (มี session token ของ LINE OA)
 

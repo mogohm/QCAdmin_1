@@ -1,13 +1,13 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
-import { isPkName } from '@/lib/admin-name';
-import { runQc } from '@/lib/qc-runner';
-import { getLineProfile } from '@/lib/line';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
+import { isPkName } from "@/lib/admin-name";
+import { runQc } from "@/lib/qc-runner";
+import { getLineProfile } from "@/lib/line";
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
 export async function OPTIONS() {
@@ -17,12 +17,24 @@ export async function OPTIONS() {
 // เรียกจาก Browser Extension — รับ line_user_id แทน conversation_id
 // send_line = false เสมอ (ส่งไปแล้วจาก LINE OA Manager)
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
 
-  const { line_user_id, admin_id, admin_name, text, customer_text, admin_ts, customer_ts, customer_name,
-          assigned_admin, phone, email, message_type } = await req.json();
+  const {
+    line_user_id,
+    admin_id,
+    admin_name,
+    text,
+    customer_text,
+    admin_ts,
+    customer_ts,
+    customer_name,
+    assigned_admin,
+    phone,
+    email,
+    message_type,
+  } = await req.json();
   if (!line_user_id || !text)
-    return Response.json({ error: 'line_user_id, text required' }, { status: 400, headers: CORS });
+    return Response.json({ error: "line_user_id, text required" }, { status: 400, headers: CORS });
 
   // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา หรือสร้างใหม่อัตโนมัติ
   // กฎ: admin จริงทุกคนขึ้นต้นด้วย "PK" (รองรับฟอนต์ Unicode แปลก) — ไม่ใช่ = scraper ดึงผิด → ไม่บันทึก
@@ -30,27 +42,30 @@ export async function POST(req) {
   if (!resolvedAdminId && admin_name) {
     if (!isPkName(admin_name)) {
       // ชื่อไม่ใช่ admin จริง (เช่น Download, ชื่อลูกค้า, badge) — ข้าม ไม่บันทึกกันข้อมูลมั่ว
-      return Response.json({ ok: true, skipped: 'non-PK admin name', admin_name }, { headers: CORS });
+      return Response.json({ ok: true, skipped: "non-PK admin name", admin_name }, { headers: CORS });
     }
     const found = await query`
       SELECT id FROM qc_admins
-      WHERE lower(member_name) LIKE ${'%' + admin_name.toLowerCase() + '%'} AND is_active = true
+      WHERE lower(member_name) LIKE ${"%" + admin_name.toLowerCase() + "%"} AND is_active = true
       LIMIT 1
     `;
     if (found[0]) {
       resolvedAdminId = found[0].id;
     } else {
-      const norm = admin_name.toLowerCase().replace(/[^a-z0-9ก-๙]/g, '_').slice(0, 80);
+      const norm = admin_name
+        .toLowerCase()
+        .replace(/[^a-z0-9ก-๙]/g, "_")
+        .slice(0, 80);
       const created = await query`
         INSERT INTO qc_admins (member_name, normalized_name, is_active, source)
-        VALUES (${admin_name}, ${norm + '_' + Date.now()}, true, 'scraper')
+        VALUES (${admin_name}, ${norm + "_" + Date.now()}, true, 'scraper')
         RETURNING id
       `;
       resolvedAdminId = created[0].id;
     }
   }
   if (!resolvedAdminId)
-    return Response.json({ error: 'ระบุ admin_id หรือ admin_name' }, { status: 400, headers: CORS });
+    return Response.json({ error: "ระบุ admin_id หรือ admin_name" }, { status: 400, headers: CORS });
 
   // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
   // ถ้ามี customer_name จาก scraper (ชื่อที่เห็นใน LINE OA) ให้อัปเดตด้วย
@@ -65,17 +80,19 @@ export async function POST(req) {
       email          = COALESCE(EXCLUDED.email,          line_customers.email)
   `;
   // ดึงชื่อจาก LINE API (fire-and-forget) — override เฉพาะถ้า display_name ยังเป็น null
-  getLineProfile(line_user_id).then(profile => {
-    if (profile?.displayName) {
-      return query`
+  getLineProfile(line_user_id)
+    .then((profile) => {
+      if (profile?.displayName) {
+        return query`
         UPDATE line_customers
         SET display_name = ${profile.displayName},
             picture_url  = COALESCE(${profile.pictureUrl || null}, picture_url)
         WHERE line_user_id = ${line_user_id}
           AND display_name IS NULL
       `;
-    }
-  }).catch(() => {});
+      }
+    })
+    .catch(() => {});
 
   // ป้องกัน duplicate — ข้อความเดียวกัน admin คนเดียว ภายใน 7 วัน
   const dup = await query`
@@ -146,11 +163,13 @@ export async function POST(req) {
     `;
     if (!existCust[0]) {
       const custAt = customer_ts || null;
-      const custRow = custAt ? await query`
+      const custRow = custAt
+        ? await query`
         INSERT INTO messages (conversation_id, line_user_id, direction, message_text, created_at)
         VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text}, ${custAt}::timestamptz)
         RETURNING id, created_at
-      ` : await query`
+      `
+        : await query`
         INSERT INTO messages (conversation_id, line_user_id, direction, message_text)
         VALUES (${convId}, ${line_user_id}, 'customer', ${customer_text})
         RETURNING id, created_at
@@ -181,13 +200,15 @@ export async function POST(req) {
   }
 
   // บันทึก admin message พร้อม timestamp จริงจาก LINE
-  const adminAt  = admin_ts || null;
-  const msgType  = message_type || 'text';
-  const adminMsg = adminAt ? await query`
+  const adminAt = admin_ts || null;
+  const msgType = message_type || "text";
+  const adminMsg = adminAt
+    ? await query`
     INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type, created_at)
     VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType}, ${adminAt}::timestamptz)
     RETURNING *
-  ` : await query`
+  `
+    : await query`
     INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type)
     VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType})
     RETURNING *
@@ -209,15 +230,22 @@ export async function POST(req) {
   }
 
   const qc = await runQc({
-    conversationId: convId, customerMessageId: customerMsgId, adminMessageId: adminMsg[0].id,
-    adminId: resolvedAdminId, lineUserId: line_user_id,
-    customerText: customerMsgText || '', adminText: text, responseSeconds,
-    createdAt: adminMsg[0].created_at, adminName: admin_name, customerName: customer_name,
+    conversationId: convId,
+    customerMessageId: customerMsgId,
+    adminMessageId: adminMsg[0].id,
+    adminId: resolvedAdminId,
+    lineUserId: line_user_id,
+    customerText: customerMsgText || "",
+    adminText: text,
+    responseSeconds,
+    createdAt: adminMsg[0].created_at,
+    adminName: admin_name,
+    customerName: customer_name,
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
   });
 
   // ---- Auto-detect customer events ----
-  const allText = [text, customer_text || ''].join(' ');
+  const allText = [text, customer_text || ""].join(" ");
 
   // สมัครผ่าน: ค้นหาเบอร์โทร/เลขบัญชีในข้อความ admin + customer 5 ล่าสุดของ conversation
   // (scraper ส่งแค่ข้อความก่อนหน้า 1 ข้อความ ข้อมูลสมัครอาจอยู่ในข้อความก่อนหน้านั้น)
@@ -226,8 +254,8 @@ export async function POST(req) {
     WHERE conversation_id = ${convId} AND direction = 'customer'
     ORDER BY created_at DESC LIMIT 5
   `;
-  const regSearchText = [text, ...recentCust.map(r => r.message_text)].join(' ').replace(/[\s\-.()]/g, '');
-  const hasPhone   = /0[689]\d{8}/.test(regSearchText);
+  const regSearchText = [text, ...recentCust.map((r) => r.message_text)].join(" ").replace(/[\s\-.()]/g, "");
+  const hasPhone = /0[689]\d{8}/.test(regSearchText);
   const hasBankAcc = /\b\d{10,12}\b/.test(regSearchText);
   if (hasPhone || hasBankAcc) {
     const existReg = await query`
@@ -239,8 +267,9 @@ export async function POST(req) {
       await query`
         INSERT INTO customer_events (line_user_id, event_type, status, metadata)
         VALUES (${line_user_id}, 'register', 'pass', ${JSON.stringify({
-          admin_id: resolvedAdminId, admin_name: admin_name || null,
-          detected: hasPhone ? 'phone' : 'bank_account',
+          admin_id: resolvedAdminId,
+          admin_name: admin_name || null,
+          detected: hasPhone ? "phone" : "bank_account",
         })})
       `;
     }
@@ -248,16 +277,18 @@ export async function POST(req) {
 
   // ยอดเติม: ลูกค้าแจ้งยอดเงินในข้อความ
   if (customer_text) {
-    const depositRe = /(?:โอน|ฝาก|เติม|deposit)[^\d]{0,10}(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:บาท|฿)/gi;
+    const depositRe =
+      /(?:โอน|ฝาก|เติม|deposit)[^\d]{0,10}(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)|(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:บาท|฿)/gi;
     const matches = [...customer_text.matchAll(depositRe)];
     for (const m of matches) {
-      const raw = (m[1] || m[2] || '').replace(/,/g, '');
+      const raw = (m[1] || m[2] || "").replace(/,/g, "");
       const amount = parseFloat(raw);
       if (amount >= 1 && amount <= 10000000) {
         await query`
           INSERT INTO customer_events (line_user_id, event_type, amount, metadata)
           VALUES (${line_user_id}, 'deposit', ${amount}, ${JSON.stringify({
-            admin_id: resolvedAdminId, admin_name: admin_name || null,
+            admin_id: resolvedAdminId,
+            admin_name: admin_name || null,
             detected_text: customer_text.slice(0, 200),
           })})
         `;

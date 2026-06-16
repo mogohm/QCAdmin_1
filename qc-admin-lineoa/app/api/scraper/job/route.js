@@ -1,11 +1,11 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 // สร้าง job ใหม่
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { date_from, date_to } = await req.json();
-  if (!date_from || !date_to) return Response.json({ error: 'date_from, date_to required' }, { status: 400 });
+  if (!date_from || !date_to) return Response.json({ error: "date_from, date_to required" }, { status: 400 });
 
   // ยกเลิก pending/running job เก่า
   await query`UPDATE scraper_jobs SET status='cancelled' WHERE status IN ('pending','running')`;
@@ -28,7 +28,7 @@ export async function GET() {
 
 // ยกเลิก job ที่กำลังทำงาน/รออยู่
 export async function DELETE(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const result = await query`
     UPDATE scraper_jobs
     SET status = 'cancelled', finished_at = now()

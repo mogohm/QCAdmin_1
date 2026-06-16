@@ -1,9 +1,9 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 // เรียกครั้งเดียวเพื่อสร้างตาราง scraper_jobs
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   await query`
     CREATE TABLE IF NOT EXISTS scraper_jobs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,5 +36,5 @@ export async function POST(req) {
   await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS phone TEXT`;
   await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS email TEXT`;
   await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text'`;
-  return Response.json({ ok: true, message: 'tables ready (v2)' });
+  return Response.json({ ok: true, message: "tables ready (v2)" });
 }

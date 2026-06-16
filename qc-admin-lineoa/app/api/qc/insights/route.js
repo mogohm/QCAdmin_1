@@ -1,27 +1,38 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
-import { readSession } from '@/lib/session';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
+import { readSession } from "@/lib/session";
 
 // แดชบอร์ด QC — รองรับ session (แยก role) หรือ x-api-key
 //   role=admin → scope เฉพาะข้อมูลตัวเอง (qc_admin_id)
 //   GET /api/qc/insights?from=..&to=..
 export async function GET(req) {
   const session = readSession(req);
-  if (!session && !requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!session && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const to = searchParams.get('to') || new Date().toISOString().slice(0, 10);
-  const from = searchParams.get('from') || new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
-  const fromTs = `${from} 00:00:00`, toTs = `${to} 23:59:59`;
+  const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
+  const from = searchParams.get("from") || new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const fromTs = `${from} 00:00:00`,
+    toTs = `${to} 23:59:59`;
 
   // scope: role=admin บังคับดูเฉพาะตัวเอง; อื่นๆ ดูทั้งทีม (af = null)
-  const af = session?.role === 'admin' ? (session.adminId || '00000000-0000-0000-0000-000000000000') : null;
+  const af = session?.role === "admin" ? session.adminId || "00000000-0000-0000-0000-000000000000" : null;
 
   try {
     const [
-      totals, categoryScores, fatalErrors, minorErrors, sopCoverage,
-      adminRanking, intentDist, coaching, skillRadar, trend,
-      commissionDist, marketing, mostImproved,
+      totals,
+      categoryScores,
+      fatalErrors,
+      minorErrors,
+      sopCoverage,
+      adminRanking,
+      intentDist,
+      coaching,
+      skillRadar,
+      trend,
+      commissionDist,
+      marketing,
+      mostImproved,
     ] = await Promise.all([
       query`SELECT count(*)::int total, round(avg(final_score))::int avg_score,
                    round(avg(response_seconds))::int avg_response_sec
@@ -85,24 +96,40 @@ export async function GET(req) {
 
     const cov = sopCoverage[0] || { total: 0, matched: 0 };
     const improved = (mostImproved || [])
-      .map(r => ({ admin: r.admin, first_half: r.first_half, second_half: r.second_half, delta: (r.second_half ?? 0) - (r.first_half ?? 0) }))
-      .filter(r => r.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 10);
+      .map((r) => ({
+        admin: r.admin,
+        first_half: r.first_half,
+        second_half: r.second_half,
+        delta: (r.second_half ?? 0) - (r.first_half ?? 0),
+      }))
+      .filter((r) => r.delta > 0)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 10);
 
     return Response.json({
-      range: { from, to }, role: session?.role || 'apikey', scoped_admin: af,
+      range: { from, to },
+      role: session?.role || "apikey",
+      scoped_admin: af,
       totals: totals[0] || { total: 0, avg_score: 0, avg_response_sec: 0 },
       skill_radar: skillRadar[0] || {},
-      trend, commission_distribution: commissionDist[0] || {},
+      trend,
+      commission_distribution: commissionDist[0] || {},
       category_scores: categoryScores,
       bottleneck: [...categoryScores].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3),
-      sop_coverage: { total: cov.total, matched: cov.matched, percent: cov.total ? Math.round((cov.matched / cov.total) * 100) : 0 },
-      fatal_errors: fatalErrors[0]?.n || 0, minor_errors: minorErrors[0]?.n || 0,
+      sop_coverage: {
+        total: cov.total,
+        matched: cov.matched,
+        percent: cov.total ? Math.round((cov.matched / cov.total) * 100) : 0,
+      },
+      fatal_errors: fatalErrors[0]?.n || 0,
+      minor_errors: minorErrors[0]?.n || 0,
       intent_distribution: intentDist,
-      admin_ranking: adminRanking, most_improved: improved,
+      admin_ranking: adminRanking,
+      most_improved: improved,
       coaching_recommendations: coaching,
       marketing: { events: marketing },
     });
   } catch (e) {
-    return Response.json({ error: e.message, hint: 'อาจยังไม่ได้รัน POST /api/admin/import-sop' }, { status: 500 });
+    return Response.json({ error: e.message, hint: "อาจยังไม่ได้รัน POST /api/admin/import-sop" }, { status: 500 });
   }
 }

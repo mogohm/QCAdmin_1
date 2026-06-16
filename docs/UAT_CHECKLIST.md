@@ -6,15 +6,15 @@
 
 ## A. Automated Gate (ต้องผ่านทั้งหมด)
 
-| # | คำสั่ง | เกณฑ์ผ่าน |
-|---|---|---|
-| A1 | `npm run build` | Compiled successfully, 46 routes |
-| A2 | `npm run test:qc` | ผ่าน 31/0 |
-| A3 | `npm run test:qc-accuracy` | Intent ≥ 80%, Outcome ≥ 80% (ปัจจุบัน 97% / 100%) |
-| A4 | `npm run test:admin-import` | ผ่าน 32/0 (เฉพาะ PK admin) |
-| A5 | `npm run test:admin-reply` | ผ่าน 24/0 (runQc + qc_score_details) |
-| A6 | `npm run audit:sop` | ไม่มี critical issue (dup/empty answer/bad category) |
-| A7 | `ADMIN_API_KEY=… npm run test:dashboard-api` | ผ่าน 29/0 (รวม SOP CRUD live) |
+| #   | คำสั่ง                                       | เกณฑ์ผ่าน                                            |
+| --- | -------------------------------------------- | ---------------------------------------------------- |
+| A1  | `npm run build`                              | Compiled successfully, 46 routes                     |
+| A2  | `npm run test:qc`                            | ผ่าน 31/0                                            |
+| A3  | `npm run test:qc-accuracy`                   | Intent ≥ 80%, Outcome ≥ 80% (ปัจจุบัน 97% / 100%)    |
+| A4  | `npm run test:admin-import`                  | ผ่าน 32/0 (เฉพาะ PK admin)                           |
+| A5  | `npm run test:admin-reply`                   | ผ่าน 24/0 (runQc + qc_score_details)                 |
+| A6  | `npm run audit:sop`                          | ไม่มี critical issue (dup/empty answer/bad category) |
+| A7  | `ADMIN_API_KEY=… npm run test:dashboard-api` | ผ่าน 29/0 (รวม SOP CRUD live)                        |
 
 ---
 

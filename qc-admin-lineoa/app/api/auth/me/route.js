@@ -1,4 +1,4 @@
-import { readSession } from '@/lib/session';
+import { readSession } from "@/lib/session";
 
 export async function GET(req) {
   const s = readSession(req);

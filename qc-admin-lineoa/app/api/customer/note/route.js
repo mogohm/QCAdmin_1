@@ -1,10 +1,10 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
 export async function OPTIONS() {
@@ -13,11 +13,11 @@ export async function OPTIONS() {
 
 // POST — บันทึก Note ที่ scraper ดึงมาจาก LINE OA
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
 
   const { line_user_id, note_text, noted_at, noted_by } = await req.json();
   if (!line_user_id || !note_text)
-    return Response.json({ error: 'line_user_id, note_text required' }, { status: 400, headers: CORS });
+    return Response.json({ error: "line_user_id, note_text required" }, { status: 400, headers: CORS });
 
   // ตรวจสอบ/สร้าง customer ก่อน
   await query`
@@ -30,7 +30,7 @@ export async function POST(req) {
   if (noted_by) {
     const found = await query`
       SELECT id FROM qc_admins
-      WHERE lower(member_name) LIKE ${'%' + noted_by.toLowerCase() + '%'} AND is_active = true
+      WHERE lower(member_name) LIKE ${"%" + noted_by.toLowerCase() + "%"} AND is_active = true
       LIMIT 1
     `;
     adminId = found[0]?.id || null;
@@ -61,8 +61,8 @@ export async function POST(req) {
 // GET — ดึง notes ทั้งหมดของ user
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const uid = searchParams.get('line_user_id');
-  if (!uid) return Response.json({ error: 'line_user_id required' }, { status: 400, headers: CORS });
+  const uid = searchParams.get("line_user_id");
+  if (!uid) return Response.json({ error: "line_user_id required" }, { status: 400, headers: CORS });
 
   const notes = await query`
     SELECT cn.id, cn.note_text, cn.noted_at, cn.noted_by, cn.scraped_at,

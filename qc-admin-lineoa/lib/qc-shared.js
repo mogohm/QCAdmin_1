@@ -1,5 +1,5 @@
 // helpers ที่ใช้ร่วมกันฝั่ง server (CommonJS-safe ผ่าน import ใน Next)
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
 
 // โหลด SOP scripts + fatal rules (เงียบถ้าตารางยังไม่มี)
 export async function loadKnowledge() {
@@ -11,7 +11,9 @@ export async function loadKnowledge() {
       query`SELECT code, name, patterns, applies_to, is_active FROM fatal_rules WHERE is_active = true`,
     ]);
     return { sops, fatalRules: fatals };
-  } catch { return { sops: [], fatalRules: [] }; }
+  } catch {
+    return { sops: [], fatalRules: [] };
+  }
 }
 
 // มี system event ที่ affects_sla active ครอบเวลา at ไหม
@@ -25,5 +27,7 @@ export async function isSlaException(at = null) {
         AND (ends_at IS NULL OR ends_at >= ${t}::timestamptz)
       LIMIT 1`;
     return rows[0] ? { active: true, event: rows[0] } : { active: false, event: null };
-  } catch { return { active: false, event: null }; }
+  } catch {
+    return { active: false, event: null };
+  }
 }

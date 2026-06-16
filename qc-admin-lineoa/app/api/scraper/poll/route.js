@@ -1,10 +1,10 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, PATCH, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
 export async function OPTIONS() {
@@ -13,7 +13,7 @@ export async function OPTIONS() {
 
 // Scraper เรียกเพื่อรับ job pending
 export async function GET(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
   const rows = await query`
     SELECT * FROM scraper_jobs WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1
   `;
@@ -22,11 +22,12 @@ export async function GET(req) {
 
 // Scraper อัพเดตสถานะ job — return { ok, cancelled } เพื่อให้ scraper รู้ว่าถูกยกเลิก
 export async function PATCH(req) {
-  if (!requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401, headers: CORS });
+  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
   const { id, status, total_chats, logged_count, current_chat, error_text } = await req.json();
 
-  const started_at  = status === 'running' ? new Date().toISOString() : null;
-  const finished_at = (status === 'done' || status === 'error' || status === 'cancelled') ? new Date().toISOString() : null;
+  const started_at = status === "running" ? new Date().toISOString() : null;
+  const finished_at =
+    status === "done" || status === "error" || status === "cancelled" ? new Date().toISOString() : null;
 
   // COALESCE ป้องกัน NULL overwrite status — 'cancelled' ถูก overwrite ได้เฉพาะ 'error'
   const result = await query`
@@ -45,5 +46,5 @@ export async function PATCH(req) {
     RETURNING status
   `;
   const currentStatus = result[0]?.status;
-  return Response.json({ ok: true, cancelled: currentStatus === 'cancelled' }, { headers: CORS });
+  return Response.json({ ok: true, cancelled: currentStatus === "cancelled" }, { headers: CORS });
 }
