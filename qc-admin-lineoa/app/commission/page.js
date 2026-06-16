@@ -31,8 +31,9 @@ export default function Commission() {
   const exportCSV = () => downloadCSV(`commission_${from}_${to}.csv`,
     [['Admin', 'AvgScore', 'Tier', 'Multiplier', 'Upsell', 'FatalPenalty', 'DisputeAdj', 'Estimated', 'Override', 'Final'],
     ...per.map(a => [a.admin, a.avg_score, a.tier, a.multiplier, a.upsell_amount, a.fatal_penalty, a.dispute_adjustment, a.estimated_commission, override[a.admin_id] ?? '', finalOf(a)])]);
+  const tierNum = t => (t === 'Excellent' ? 1 : t === 'Standard' ? 2 : t === 'Warning' ? 3 : 4);
   const saveDB = async () => {
-    const rows = per.map(a => ({ admin_id: a.admin_id, avg_score: a.avg_score, tier: a.multiplier, tier_name: a.tier, upsell_amount: a.upsell_amount, commission: finalOf(a) }));
+    const rows = per.map(a => ({ admin_id: a.admin_id, avg_score: a.avg_score, tier: tierNum(a.tier), tier_name: a.tier, upsell_amount: a.upsell_amount, commission: finalOf(a) }));
     const r = await fetch('/api/commission', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ period_start: from, period_end: to, rows }) });
     const j = await r.json();
     setSaveMsg(j.ok ? `✓ บันทึก ${j.saved} รายการลง admin_commissions` : '⚠️ ' + (j.error || 'error'));
