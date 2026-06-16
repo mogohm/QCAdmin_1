@@ -64,21 +64,39 @@ export default function Docs() {
           เพื่อใช้ใน dashboard และ dispute
         </p>
 
-        {/* SOP */}
-        <h2>2. SOP Knowledge Base</h2>
+        {/* SOP Import */}
+        <h2>2. SOP Import (จาก Excel)</h2>
         <ol>
           <li>
-            import SOP จาก Excel: {code("POST /api/admin/import-sop")} (x-api-key) หรือ {code("npm run import:sop")}
+            import จาก Excel เข้า {code("sop_scripts")}: {code("POST /api/admin/import-sop")} (x-api-key) หรือ{" "}
+            {code("npm run import:sop")}
           </li>
-          <li>จัดการที่หน้า {code("/sop")} — ค้นหา, แก้ไข keyword/required/forbidden, ดู used_count + coverage</li>
-          <li>ปิดใช้งานชั่วคราว = ปุ่ม ON/off (soft) · ลบถาวร = ปุ่มลบ ({code("?hard=true")})</li>
           <li>
-            ตรวจคุณภาพข้อมูล: {code("npm run audit:sop")} (duplicate / empty answer / missing keyword / never-matched)
+            แต่ละ SOP มี: topic, question, answer, intent, keywords, required_keywords, forbidden_keywords, escalation
+          </li>
+          <li>
+            ตรวจคุณภาพข้อมูลหลัง import: {code("npm run audit:sop")} (duplicate topics / empty answer / missing keyword
+            / category mismatch / never-matched)
+          </li>
+        </ol>
+
+        {/* SOP Manager */}
+        <h2>3. SOP Manager</h2>
+        <ol>
+          <li>จัดการที่หน้า {code("/sop")} — ค้นหา, filter ตาม intent, แก้ไข keyword/required/forbidden ผ่าน drawer</li>
+          <li>
+            ดู {code("used_count")} + {code("last_matched_at")} + coverage badge + คำเตือน missing required keyword
+          </li>
+          <li>
+            ปิดใช้งานชั่วคราว = ปุ่ม ON/off (soft, {code("is_active=false")}) · ลบถาวร = ปุ่มลบ ({code("?hard=true")})
+          </li>
+          <li>
+            สิทธิ์แก้ไข/ลบ: admin/manager เท่านั้น ({code("/api/sop")}, {code("/api/sop/:id")})
           </li>
         </ol>
 
         {/* Dispute */}
-        <h2>3. Dispute (โต้แย้งผล AI)</h2>
+        <h2>4. Dispute Review (โต้แย้งผล AI)</h2>
         <ol>
           <li>แอดมินกดโต้แย้งเคส → สร้าง {code("qc_disputes")} (status pending) + Telegram แจ้ง</li>
           <li>เข้า {code("/disputes")} → Manager ดูคำถาม/คำตอบ/เหตุผล AI/มิติที่ตก → ใส่คะแนนใหม่</li>
@@ -87,14 +105,24 @@ export default function Docs() {
         <p style={{ color: "#6b7280" }}>เฉพาะ manager/admin เท่านั้นที่ approve/reject ได้</p>
 
         {/* System Events */}
-        <h2>4. System Events (SLA exception)</h2>
+        <h2>5. System Events / SLA Exception</h2>
         <p>
           บันทึกช่วงระบบ/ธนาคารล่มที่ {code("/system-events")} — ติ๊ก affects_sla + ระบุช่วงเวลา →
-          เคสที่ตอบช้าในช่วงนั้นจะไม่ถูกหัก response time เต็ม
+          เคสที่ตอบช้าในช่วงนั้น response time จะไม่ถูกหักเต็ม (floor 80) ผ่าน {code("isSlaException()")} ใน qc-runner
         </p>
 
+        {/* Admin Performance */}
+        <h2>6. Admin Performance</h2>
+        <p>หน้า {code("/admin-performance")} แสดงผลงานรายแอดมิน:</p>
+        <ul>
+          <li>Category Heatmap — คะแนนเฉลี่ยรายมิติต่อแอดมิน (เขียว→แดงตามคะแนน)</li>
+          <li>Ranking — เรียงตามคะแนนเฉลี่ย + จำนวนเคส + เวลาตอบ + จำนวน bad</li>
+          <li>Coaching Needed — แอดมินที่มีมิติต่ำกว่า 70 (ระบุมิติที่ต้องโค้ช)</li>
+          <li>คลิกแถวเพื่อ drilldown + export CSV</li>
+        </ul>
+
         {/* Commission */}
-        <h2>5. Commission</h2>
+        <h2>7. Commission</h2>
         <ul>
           <li>Tier ตามคะแนน: 90–100 ×1.2 Excellent · 80–89 ×1.0 Standard · 70–79 ×0.5 Warning · &lt;70 ×0 Critical</li>
           <li>commission = upsell × 1% × multiplier (รวม dispute adjustment + fatal penalty)</li>
@@ -104,7 +132,7 @@ export default function Docs() {
         </ul>
 
         {/* Dashboard */}
-        <h2>6. Dashboard ใหม่</h2>
+        <h2>8. Dashboard</h2>
         <p>
           Executive Dashboard ({code("/")}) ดึงจาก API เดียว ({code("/api/dashboard")}) แบบ parallel:
         </p>
@@ -115,7 +143,7 @@ export default function Docs() {
         </ul>
 
         {/* Roles */}
-        <h2>7. บทบาทผู้ใช้ &amp; Login</h2>
+        <h2>9. บทบาทผู้ใช้ &amp; Login</h2>
         <p>เข้าที่ {code("/login")} (session HMAC cookie อายุ 7 วัน — หมดอายุเด้งกลับ login อัตโนมัติ)</p>
         <ul>
           <li>
@@ -133,8 +161,8 @@ export default function Docs() {
           (เปลี่ยนรหัสก่อนใช้จริง)
         </p>
 
-        {/* Tests */}
-        <h2>8. Test Commands (ล่าสุด)</h2>
+        {/* UAT Commands */}
+        <h2>10. UAT Commands</h2>
         {pre(`npm run build              # build (46 routes)
 npm run test:qc            # QC engine 31 checks (offline)
 npm run test:qc-accuracy   # ชุดเคสจริง 34 cases
