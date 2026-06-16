@@ -38,7 +38,7 @@ export async function GET(req) {
     const baseParams = [dateFrom, dateTo, custPat, adminPat];
 
     const [rows, countRows] = await Promise.all([
-      db(
+      db.query(
         `SELECT
           m.id, m.created_at,
           a.member_name     AS admin_name,
@@ -59,7 +59,7 @@ export async function GET(req) {
         LIMIT $5 OFFSET $6`,
         [...baseParams, limit, offset],
       ),
-      db(
+      db.query(
         `SELECT count(*)::int AS total
         FROM messages m
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
