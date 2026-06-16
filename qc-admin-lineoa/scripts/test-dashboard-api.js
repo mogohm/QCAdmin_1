@@ -1,6 +1,8 @@
 // test-dashboard-api.js — ตรวจว่า /api/dashboard ส่ง field ครบตาม Phase 3
 //   npm run test:dashboard-api   (ยิงไปที่ deployed URL หรือ DASHBOARD_URL)
 const BASE = process.env.DASHBOARD_URL || process.env.APP_BASE_URL || 'https://qc-admin-1.vercel.app';
+// dashboard ถูกป้องกันด้วย guard (session หรือ api-key) — ส่ง x-api-key ถ้ามี
+const AUTH = process.env.ADMIN_API_KEY ? { 'x-api-key': process.env.ADMIN_API_KEY } : {};
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { (cond ? pass++ : fail++); console.log(`${cond ? '✅' : '❌'} ${name}${extra ? ' — ' + extra : ''}`); };
@@ -9,7 +11,7 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 (async () => {
   let d;
   try {
-    const r = await fetch(`${BASE}/api/dashboard?from=2026-06-01&to=2026-06-30`);
+    const r = await fetch(`${BASE}/api/dashboard?from=2026-06-01&to=2026-06-30`, { headers: AUTH });
     d = await r.json();
   } catch (e) { console.error('❌ fetch failed:', e.message); process.exit(1); }
 
