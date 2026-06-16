@@ -15,7 +15,7 @@
     "test:admin-reply": "node scripts/test-admin-reply.js",
     "test:dashboard-api": "node scripts/test-dashboard-api.js",
     "audit:sop": "node scripts/audit-sop-data.js",
-    "uat:check": "npm run build && npm run test:qc && npm run test:admin-import && npm run test:admin-reply && npm run test:dashboard-api && npm run audit:sop && npm run test:qc-accuracy"
+    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:dashboard-api"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",

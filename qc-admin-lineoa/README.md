@@ -118,7 +118,7 @@ npm run dev
 npm run build
 ```
 
-ดู **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** · **[docs/UAT_CHECKLIST.md](../docs/UAT_CHECKLIST.md)** · **[docs/OPERATION_MANUAL.md](../docs/OPERATION_MANUAL.md)**
+ดู **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** · **[docs/UAT_CHECKLIST.md](docs/UAT_CHECKLIST.md)** · **[docs/OPERATION_MANUAL.md](docs/OPERATION_MANUAL.md)**
 
 ---
 
