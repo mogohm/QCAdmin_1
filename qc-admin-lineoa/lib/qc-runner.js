@@ -1,23 +1,37 @@
 // qc-runner — รวม pipeline การให้คะแนน 1 ที่ (ใช้ทั้ง log-reply และ admin/reply)
 //   score → insert qc_scores (เต็ม) → insert qc_score_details → telegram alert
-import { query } from '@/lib/db';
-import { scoreReply } from '@/lib/qc-engine';
-import { generateCoaching } from '@/lib/coaching';
-import { matchSOP } from '@/lib/sop-matcher';
-import { loadKnowledge, isSlaException } from '@/lib/qc-shared';
-import { qcAlert } from '@/lib/telegram';
+import { query } from "@/lib/db";
+import { scoreReply } from "@/lib/qc-engine";
+import { generateCoaching } from "@/lib/coaching";
+import { matchSOP } from "@/lib/sop-matcher";
+import { loadKnowledge, isSlaException } from "@/lib/qc-shared";
+import { qcAlert } from "@/lib/telegram";
 
 export async function runQc({
-  conversationId, customerMessageId, adminMessageId, adminId, lineUserId,
-  customerText = '', adminText = '', responseSeconds = null, createdAt = null,
-  adminName = null, customerName = null, responseLimitMinutes = 5,
+  conversationId,
+  customerMessageId,
+  adminMessageId,
+  adminId,
+  lineUserId,
+  customerText = "",
+  adminText = "",
+  responseSeconds = null,
+  createdAt = null,
+  adminName = null,
+  customerName = null,
+  responseLimitMinutes = 5,
 }) {
   const { sops, fatalRules } = await loadKnowledge();
   const sla = await isSlaException(createdAt || new Date());
 
   const qc = scoreReply({
-    customerText, adminText, responseSeconds, responseLimitMinutes,
-    sops, fatalRules, slaException: sla.active,
+    customerText,
+    adminText,
+    responseSeconds,
+    responseLimitMinutes,
+    sops,
+    fatalRules,
+    slaException: sla.active,
   });
 
   const sopMatch = matchSOP(customerText || adminText, sops);
@@ -53,17 +67,27 @@ export async function runQc({
   }
 
   // นับ used_count ของ SOP
-  if (sop?.id) await query`UPDATE sop_scripts SET used_count = COALESCE(used_count,0) + 1 WHERE id = ${sop.id}`.catch(() => {});
+  if (sop?.id)
+    await query`UPDATE sop_scripts SET used_count = COALESCE(used_count,0) + 1 WHERE id = ${sop.id}`.catch(() => {});
 
   // Telegram
   const slaFail = !sla.active && qc.dimensions?.responseTime != null && qc.dimensions.responseTime < 60;
   if (qc.isFatal || qc.finalScore < 70 || slaFail) {
-    const failedCats = (qc.details || []).filter(x => x.applicable && x.pass === false && !['minorError', 'fatalError'].includes(x.category_code)).map(x => x.category_code);
+    const failedCats = (qc.details || [])
+      .filter((x) => x.applicable && x.pass === false && !["minorError", "fatalError"].includes(x.category_code))
+      .map((x) => x.category_code);
     qcAlert({
-      kind: qc.isFatal ? 'FATAL' : (slaFail ? 'SLA FAIL' : 'FAIL'),
-      admin: adminName || adminId, customer: customerName || lineUserId, score: qc.finalScore, intent: qc.intent,
-      sop: qc.matchedSop?.topic, failedCats, reason: qc.failReasons.join(' · '),
-      suggestion: coaching?.suggested_reply, lineUserId, slaException: qc.slaException,
+      kind: qc.isFatal ? "FATAL" : slaFail ? "SLA FAIL" : "FAIL",
+      admin: adminName || adminId,
+      customer: customerName || lineUserId,
+      score: qc.finalScore,
+      intent: qc.intent,
+      sop: qc.matchedSop?.topic,
+      failedCats,
+      reason: qc.failReasons.join(" · "),
+      suggestion: coaching?.suggested_reply,
+      lineUserId,
+      slaException: qc.slaException,
     }).catch(() => {});
   }
 

@@ -1,15 +1,15 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
-import { readSession } from '@/lib/session';
-import { sendTelegram } from '@/lib/telegram';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
+import { readSession } from "@/lib/session";
+import { sendTelegram } from "@/lib/telegram";
 
 // GET /api/qc-disputes?status=pending — list (manager เห็นทั้งหมด, admin เห็นของตัวเอง)
 export async function GET(req) {
   const s = readSession(req);
-  if (!s && !requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!s && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status');
-  const af = s?.role === 'admin' ? (s.adminId || '00000000-0000-0000-0000-000000000000') : null;
+  const status = searchParams.get("status");
+  const af = s?.role === "admin" ? s.adminId || "00000000-0000-0000-0000-000000000000" : null;
   try {
     const rows = await query`
       SELECT d.*, a.member_name AS admin_name, q.final_score AS current_score, q.intent,
@@ -29,28 +29,35 @@ export async function GET(req) {
       ORDER BY d.status='pending' DESC, d.created_at DESC LIMIT 100`;
     const counts = await query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`;
     return Response.json({ disputes: rows, counts });
-  } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }
 
 // POST — admin โต้แย้งผล AI
 export async function POST(req) {
   const s = readSession(req);
-  if (!s && !requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!s && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const b = await req.json().catch(() => ({}));
-  if (!b.qc_score_id || !b.reason) return Response.json({ error: 'qc_score_id, reason required' }, { status: 400 });
+  if (!b.qc_score_id || !b.reason) return Response.json({ error: "qc_score_id, reason required" }, { status: 400 });
   try {
     const sc = await query`SELECT id, admin_id, final_score, line_user_id FROM qc_scores WHERE id = ${b.qc_score_id}`;
-    if (!sc[0]) return Response.json({ error: 'qc_score not found' }, { status: 404 });
+    if (!sc[0]) return Response.json({ error: "qc_score not found" }, { status: 404 });
     const adminId = b.admin_id || s?.adminId || sc[0].admin_id;
-    const dup = await query`SELECT id FROM qc_disputes WHERE qc_score_id = ${b.qc_score_id} AND status='pending' LIMIT 1`;
-    if (dup[0]) return Response.json({ error: 'มี dispute pending อยู่แล้ว', id: dup[0].id }, { status: 409 });
+    const dup =
+      await query`SELECT id FROM qc_disputes WHERE qc_score_id = ${b.qc_score_id} AND status='pending' LIMIT 1`;
+    if (dup[0]) return Response.json({ error: "มี dispute pending อยู่แล้ว", id: dup[0].id }, { status: 409 });
 
     const rows = await query`
       INSERT INTO qc_disputes (qc_score_id, admin_id, line_user_id, reason, old_score, status)
       VALUES (${b.qc_score_id}, ${adminId}, ${sc[0].line_user_id || null}, ${b.reason}, ${sc[0].final_score}, 'pending')
       RETURNING *`;
     const an = await query`SELECT member_name FROM qc_admins WHERE id = ${adminId}`;
-    sendTelegram(`[DISPUTE CREATED]\nAdmin: ${an[0]?.member_name || adminId}\nScore: ${sc[0].final_score}\nReason: ${b.reason}`).catch(() => {});
+    sendTelegram(
+      `[DISPUTE CREATED]\nAdmin: ${an[0]?.member_name || adminId}\nScore: ${sc[0].final_score}\nReason: ${b.reason}`,
+    ).catch(() => {});
     return Response.json({ ok: true, dispute: rows[0] });
-  } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }

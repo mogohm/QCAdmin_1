@@ -1,15 +1,23 @@
-import { query } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
-import { readSession } from '@/lib/session';
+import { query } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
+import { readSession } from "@/lib/session";
 
-const arr = (v) => Array.isArray(v) ? v : (typeof v === 'string' ? v.split(',').map(s => s.trim()).filter(Boolean) : []);
+const arr = (v) =>
+  Array.isArray(v)
+    ? v
+    : typeof v === "string"
+      ? v
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
 
 // GET /api/sop?q=&intent=&active= — ค้นหา SOP
 export async function GET(req) {
-  if (!readSession(req) && !requireAdmin(req)) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!readSession(req) && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
-  const q = (searchParams.get('q') || '').trim();
-  const intent = searchParams.get('intent');
+  const q = (searchParams.get("q") || "").trim();
+  const intent = searchParams.get("intent");
   try {
     const rows = await query`
       SELECT s.id, s.category_code, s.topic, s.question, s.answer, s.intent, s.keywords, s.required_keywords,
@@ -18,7 +26,7 @@ export async function GET(req) {
              (SELECT max(q.created_at) FROM qc_scores q WHERE q.matched_sop_id = s.id) AS last_matched_at,
              (jsonb_array_length(COALESCE(s.required_keywords,'[]'::jsonb)) = 0) AS missing_required
       FROM sop_scripts s
-      WHERE (${q}::text = '' OR s.topic ILIKE ${'%' + q + '%'} OR s.answer ILIKE ${'%' + q + '%'})
+      WHERE (${q}::text = '' OR s.topic ILIKE ${"%" + q + "%"} OR s.answer ILIKE ${"%" + q + "%"})
         AND (${intent}::text IS NULL OR s.intent = ${intent})
       ORDER BY s.is_active DESC, s.intent, s.topic LIMIT 1000`;
     const cats = await query`SELECT code, name FROM sop_categories ORDER BY code`.catch(() => []);
@@ -28,14 +36,17 @@ export async function GET(req) {
         sum(CASE WHEN jsonb_array_length(COALESCE(required_keywords,'[]'::jsonb))=0 THEN 1 ELSE 0 END)::int missing_required
       FROM sop_scripts`.catch(() => [{}]);
     return Response.json({ sops: rows, categories: cats, total: rows.length, summary: summary[0] || {} });
-  } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }
 
 // POST — create SOP
 export async function POST(req) {
-  if (!requireAdmin(req) && !(readSession(req)?.role === 'manager')) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  if (!requireAdmin(req) && !(readSession(req)?.role === "manager"))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const b = await req.json().catch(() => ({}));
-  if (!b.topic || !b.answer) return Response.json({ error: 'topic, answer required' }, { status: 400 });
+  if (!b.topic || !b.answer) return Response.json({ error: "topic, answer required" }, { status: 400 });
   try {
     const rows = await query`
       INSERT INTO sop_scripts (category_code, topic, question, answer, intent, keywords, required_keywords, forbidden_keywords, escalation, is_active)
@@ -45,5 +56,7 @@ export async function POST(req) {
       ON CONFLICT (topic) DO UPDATE SET answer=EXCLUDED.answer, intent=EXCLUDED.intent, updated_at=now()
       RETURNING *`;
     return Response.json({ ok: true, sop: rows[0] });
-  } catch (e) { return Response.json({ error: e.message }, { status: 500 }); }
+  } catch (e) {
+    return Response.json({ error: e.message }, { status: 500 });
+  }
 }

@@ -48,7 +48,7 @@ export default function SOPManager() {
     if (j.ok) { setMsg('✓ บันทึกแล้ว'); setEdit(null); load(); } else setMsg('⚠️ ' + (j.error || 'error'));
     setTimeout(() => setMsg(''), 2500);
   };
-  const del = async id => { if (!confirm('ลบ SOP นี้?')) return; await fetch(`/api/sop/${id}`, { method: 'DELETE' }); load(); };
+  const del = async id => { if (!confirm('ลบ SOP นี้ถาวร? (หรือใช้ปุ่ม ON/off เพื่อปิดใช้งานแทน)')) return; await fetch(`/api/sop/${id}?hard=true`, { method: 'DELETE' }); load(); };
   const dup = (s) => setEdit({ ...s, id: null, topic: s.topic + ' (copy)', keywords: joinKw(s.keywords), required_keywords: joinKw(s.required_keywords), forbidden_keywords: joinKw(s.forbidden_keywords) });
   const setActive = async (id, v) => { await fetch(`/api/sop/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: v }) }); load(); };
   const bulk = async (v) => { for (const id of sel) await fetch(`/api/sop/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: v }) }); setSel(new Set()); load(); };

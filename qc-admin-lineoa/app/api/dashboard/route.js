@@ -1,19 +1,24 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
 
 async function safe(fn, fb) {
-  try { return await fn(); } catch (e) { console.error('query:', e.message); return fb; }
+  try {
+    return await fn();
+  } catch (e) {
+    console.error("query:", e.message);
+    return fb;
+  }
 }
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const dateFrom = searchParams.get('from') || '2000-01-01';
-  const dateTo   = searchParams.get('to')   || '2099-12-31';
+  const dateFrom = searchParams.get("from") || "2000-01-01";
+  const dateTo = searchParams.get("to") || "2099-12-31";
 
   try {
     const [kpiRows, rankingAll, weeklySummary, promos, pendingReply, replyLog, lastActivity] = await Promise.all([
-
       // KPI — กรองตามวันที่
-      safe(() => query`SELECT
+      safe(
+        () => query`SELECT
         (SELECT count(DISTINCT m.line_user_id) FROM messages m
          WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS customers,
         (SELECT count(*) FROM customer_events
@@ -28,10 +33,13 @@ export async function GET(req) {
         (SELECT coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int
          FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_response_sec,
         (SELECT coalesce(avg(q.final_score),0)::int
-         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_score`, [{}]),
+         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_score`,
+        [{}],
+      ),
 
       // Ranking ทั้งหมด (frontend แสดง 10 + toggle)
-      safe(() => query`
+      safe(
+        () => query`
         SELECT
           a.id, a.member_name,
           count(q.id)::int                                                              AS cases,
@@ -59,10 +67,13 @@ export async function GET(req) {
         ) q ON q.admin_id = a.id
         WHERE a.is_active = true
         GROUP BY a.id, a.member_name
-        ORDER BY avg_score DESC, cases DESC`, []),
+        ORDER BY avg_score DESC, cases DESC`,
+        [],
+      ),
 
       // Daily summary — แบ่งตามวัน 28 วันล่าสุด
-      safe(() => query`
+      safe(
+        () => query`
         SELECT
           m.created_at::date                                                             AS day,
           count(q.id)::int                                                               AS total_cases,
@@ -76,15 +87,21 @@ export async function GET(req) {
         WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
         GROUP BY m.created_at::date
         ORDER BY day DESC
-        LIMIT 28`, []),
+        LIMIT 28`,
+        [],
+      ),
 
-      safe(() => query`
+      safe(
+        () => query`
         SELECT promotion_code, count(*)::int customer_count, coalesce(sum(amount),0)::numeric total_amount
         FROM customer_events WHERE promotion_code IS NOT NULL
-        GROUP BY promotion_code ORDER BY total_amount DESC LIMIT 20`, []),
+        GROUP BY promotion_code ORDER BY total_amount DESC LIMIT 20`,
+        [],
+      ),
 
       // Pending Reply — conversations ที่ last message เป็นลูกค้าภายใน 7 วัน (admin ยังไม่ตอบ)
-      safe(() => query`
+      safe(
+        () => query`
         SELECT c.id, lc.display_name, lc.line_user_id,
           m.message_text AS last_customer_msg,
           m.created_at AS waiting_since,
@@ -99,9 +116,12 @@ export async function GET(req) {
         LEFT JOIN qc_admins qa ON qa.id = c.assigned_admin_id
         WHERE m.created_at > now() - interval '7 days'
         ORDER BY m.created_at ASC
-        LIMIT 20`, []),
+        LIMIT 20`,
+        [],
+      ),
 
-      safe(() => query`
+      safe(
+        () => query`
         WITH top_customers AS (
           SELECT line_user_id, MAX(created_at) AS last_at
           FROM messages
@@ -131,21 +151,37 @@ export async function GET(req) {
         WHERE m.direction = 'admin'
           AND m.admin_id IS NOT NULL
           AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-        ORDER BY tc.last_at DESC, m.created_at DESC`, []),
+        ORDER BY tc.last_at DESC, m.created_at DESC`,
+        [],
+      ),
 
-      safe(() => query`
+      safe(
+        () => query`
         SELECT
           (SELECT max(created_at) FROM messages WHERE direction='customer') AS last_customer_msg,
           (SELECT max(created_at) FROM messages WHERE direction='admin')    AS last_admin_reply,
           (SELECT max(first_seen_at) FROM line_customers)                   AS last_new_customer,
-          now() AS server_time`, [{}]),
+          now() AS server_time`,
+        [{}],
+      ),
     ]);
 
     // ---- Phase 2 summaries ----
-    const [categorySummary, intentDistribution, fatalCases, minorCases, sopCoverage,
-           coachingSummary, disputeSummary, commissionSummary, adminCategoryRanking, slaExceptionSummary] = await Promise.all([
+    const [
+      categorySummary,
+      intentDistribution,
+      fatalCases,
+      minorCases,
+      sopCoverage,
+      coachingSummary,
+      disputeSummary,
+      commissionSummary,
+      adminCategoryRanking,
+      slaExceptionSummary,
+    ] = await Promise.all([
       // categorySummary จาก qc_score_details จริง (รายมิติ rubric)
-      safe(() => query`
+      safe(
+        () => query`
         WITH dd AS (
           SELECT d.category_code, d.raw_score, d.weighted_score, d.pass, d.fail_reason
           FROM qc_score_details d JOIN qc_scores q ON q.id = d.qc_score_id
@@ -164,90 +200,141 @@ export async function GET(req) {
                round(100.0*sum(CASE WHEN dd.pass THEN 1 ELSE 0 END)/NULLIF(count(*),0))::int pass_rate,
                sum(CASE WHEN dd.pass=false THEN 1 ELSE 0 END)::int fail_count,
                (SELECT fail_reason FROM tf WHERE tf.category_code=dd.category_code AND rn=1) top_fail_reason
-        FROM dd GROUP BY dd.category_code ORDER BY avg_score ASC`, []),
-      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY 1 ORDER BY n DESC`, []),
-      safe(() => query`SELECT q.id, q.final_score, q.intent, q.fatal_reasons, q.created_at, a.member_name admin, q.line_user_id
+        FROM dd GROUP BY dd.category_code ORDER BY avg_score ASC`,
+        [],
+      ),
+      safe(
+        () => query`SELECT COALESCE(intent,'general') intent, count(*)::int n
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY 1 ORDER BY n DESC`,
+        [],
+      ),
+      safe(
+        () => query`SELECT q.id, q.final_score, q.intent, q.fatal_reasons, q.created_at, a.member_name admin, q.line_user_id
                        FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
                        WHERE q.is_fatal=true AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       ORDER BY q.created_at DESC LIMIT 20`, []),
-      safe(() => query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal=false AND final_score BETWEEN 50 AND 69
-                       AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{ n: 0 }]),
-      safe(() => query`SELECT count(*)::int total, sum(CASE WHEN matched_sop_id IS NOT NULL THEN 1 ELSE 0 END)::int matched
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{ total: 0, matched: 0 }]),
-      safe(() => query`SELECT q.id, q.final_score, q.intent, q.coaching, a.member_name admin, q.line_user_id, q.created_at
+                       ORDER BY q.created_at DESC LIMIT 20`,
+        [],
+      ),
+      safe(
+        () => query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal=false AND final_score BETWEEN 50 AND 69
+                       AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+        [{ n: 0 }],
+      ),
+      safe(
+        () => query`SELECT count(*)::int total, sum(CASE WHEN matched_sop_id IS NOT NULL THEN 1 ELSE 0 END)::int matched
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+        [{ total: 0, matched: 0 }],
+      ),
+      safe(
+        () => query`SELECT q.id, q.final_score, q.intent, q.coaching, a.member_name admin, q.line_user_id, q.created_at
                        FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
                        WHERE q.coaching IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       ORDER BY q.created_at DESC LIMIT 25`, []),
+                       ORDER BY q.created_at DESC LIMIT 25`,
+        [],
+      ),
       safe(() => query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`, []),
-      safe(() => query`SELECT
+      safe(
+        () => query`SELECT
                          sum(CASE WHEN final_score>=90 THEN 1 ELSE 0 END)::int tier1,
                          sum(CASE WHEN final_score BETWEEN 80 AND 89 THEN 1 ELSE 0 END)::int tier2,
                          sum(CASE WHEN final_score BETWEEN 70 AND 79 THEN 1 ELSE 0 END)::int tier3,
                          sum(CASE WHEN final_score<70 THEN 1 ELSE 0 END)::int tier4
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`, [{}]),
-      safe(() => query`SELECT a.member_name admin, a.id admin_id,
+                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+        [{}],
+      ),
+      safe(
+        () => query`SELECT a.member_name admin, a.id admin_id,
                          round(avg((q.dimension_scores->>'greetingClosing')::numeric))::int greeting_closing,
                          round(avg((q.dimension_scores->>'problemSolving')::numeric))::int problem_solving,
                          round(avg((q.dimension_scores->>'communicationTone')::numeric))::int communication_tone,
                          round(avg((q.dimension_scores->>'responseTime')::numeric))::int response_time
                        FROM qc_scores q JOIN qc_admins a ON a.id=q.admin_id
                        WHERE q.dimension_scores IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       GROUP BY a.member_name, a.id HAVING count(*)>0 ORDER BY problem_solving DESC NULLS LAST LIMIT 30`, []),
-      safe(() => query`SELECT
+                       GROUP BY a.member_name, a.id HAVING count(*)>0 ORDER BY problem_solving DESC NULLS LAST LIMIT 30`,
+        [],
+      ),
+      safe(
+        () => query`SELECT
                          (SELECT count(*)::int FROM qc_scores WHERE sla_exception=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_exception_count,
                          (SELECT count(*)::int FROM system_events WHERE is_active=true AND (ends_at IS NULL OR ends_at>=now())) AS active_events,
                          (SELECT round(100.0 * sum(CASE WHEN (dimension_scores->>'responseTime')::numeric >= 80 OR sla_exception THEN 1 ELSE 0 END) / NULLIF(count(*),0))::int
-                          FROM qc_scores WHERE dimension_scores IS NOT NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_pass_pct`, [{}]),
+                          FROM qc_scores WHERE dimension_scores IS NOT NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_pass_pct`,
+        [{}],
+      ),
     ]);
 
     const cov = sopCoverage[0] || { total: 0, matched: 0 };
-    const dispMap = Object.fromEntries((disputeSummary || []).map(r => [r.status, r.n]));
+    const dispMap = Object.fromEntries((disputeSummary || []).map((r) => [r.status, r.n]));
 
     // เพิ่ม: fail reasons ซ้ำ + intent ที่ไม่ match SOP + commission ต่อ admin
     const [repeatedFails, unmatchedIntents] = await Promise.all([
-      safe(() => query`SELECT category_code, fail_reason, count(*)::int n FROM qc_score_details d
+      safe(
+        () => query`SELECT category_code, fail_reason, count(*)::int n FROM qc_score_details d
                        JOIN qc_scores q ON q.id=d.qc_score_id
                        WHERE d.pass=false AND d.fail_reason IS NOT NULL AND d.category_code NOT IN ('minorError','fatalError')
                          AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       GROUP BY 1,2 ORDER BY n DESC LIMIT 10`, []),
-      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n FROM qc_scores
+                       GROUP BY 1,2 ORDER BY n DESC LIMIT 10`,
+        [],
+      ),
+      safe(
+        () => query`SELECT COALESCE(intent,'general') intent, count(*)::int n FROM qc_scores
                        WHERE matched_sop_id IS NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       GROUP BY 1 ORDER BY n DESC LIMIT 8`, []),
+                       GROUP BY 1 ORDER BY n DESC LIMIT 8`,
+        [],
+      ),
     ]);
 
-    const counts = await safe(() => query`SELECT
+    const counts = await safe(
+      () => query`SELECT
         (SELECT count(*)::int FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS qc_cases,
         (SELECT count(*)::int FROM messages WHERE direction='admin' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS admin_msgs,
-        (SELECT count(*)::int FROM messages WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS total_msgs`, [{}]);
+        (SELECT count(*)::int FROM messages WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS total_msgs`,
+      [{}],
+    );
     const cnt = counts[0] || {};
 
     // commission ต่อ admin (tier multiplier ตาม Excel) — rate = 1% ของยอด upsell (deposit)
-    const dispByAdmin = await safe(() => query`SELECT admin_id, count(*)::int n FROM qc_disputes
-       WHERE status='approved' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`, []);
-    const dispMapAdmin = Object.fromEntries((dispByAdmin || []).map(r => [r.admin_id, r.n]));
-    const fatalByAdmin = await safe(() => query`SELECT admin_id, count(*)::int n FROM qc_scores
-       WHERE is_fatal=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`, []);
-    const fatalMapAdmin = Object.fromEntries((fatalByAdmin || []).map(r => [r.admin_id, r.n]));
+    const dispByAdmin = await safe(
+      () => query`SELECT admin_id, count(*)::int n FROM qc_disputes
+       WHERE status='approved' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
+      [],
+    );
+    const dispMapAdmin = Object.fromEntries((dispByAdmin || []).map((r) => [r.admin_id, r.n]));
+    const fatalByAdmin = await safe(
+      () => query`SELECT admin_id, count(*)::int n FROM qc_scores
+       WHERE is_fatal=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
+      [],
+    );
+    const fatalMapAdmin = Object.fromEntries((fatalByAdmin || []).map((r) => [r.admin_id, r.n]));
 
-    const MULT = s => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
-    const TIER = s => (s >= 90 ? 'Excellent' : s >= 80 ? 'Standard' : s >= 70 ? 'Warning' : 'Critical');
+    const MULT = (s) => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
+    const TIER = (s) => (s >= 90 ? "Excellent" : s >= 80 ? "Standard" : s >= 70 ? "Warning" : "Critical");
     const RATE = 0.01;
-    const commissionPerAdmin = (rankingAll || []).filter(a => a.cases > 0).map(a => {
-      const mult = MULT(a.avg_score), upsell = Number(a.deposit_sum || 0);
-      return { admin: a.member_name, admin_id: a.id, avg_score: a.avg_score, tier: TIER(a.avg_score),
-        multiplier: mult, upsell_amount: upsell, fatal_penalty: fatalMapAdmin[a.id] || 0,
-        dispute_adjustment: dispMapAdmin[a.id] || 0,
-        estimated_commission: Math.round(upsell * RATE * mult) };
-    });
+    const commissionPerAdmin = (rankingAll || [])
+      .filter((a) => a.cases > 0)
+      .map((a) => {
+        const mult = MULT(a.avg_score),
+          upsell = Number(a.deposit_sum || 0);
+        return {
+          admin: a.member_name,
+          admin_id: a.id,
+          avg_score: a.avg_score,
+          tier: TIER(a.avg_score),
+          multiplier: mult,
+          upsell_amount: upsell,
+          fatal_penalty: fatalMapAdmin[a.id] || 0,
+          dispute_adjustment: dispMapAdmin[a.id] || 0,
+          estimated_commission: Math.round(upsell * RATE * mult),
+        };
+      });
 
     const estCommissionTotal = commissionPerAdmin.reduce((s, a) => s + (a.estimated_commission || 0), 0);
     const kpiExt = {
       totalChats: cnt.total_msgs || 0,
       totalQcCases: cnt.qc_cases || 0,
       avgQaScore: kpiRows[0]?.avg_score || 0,
-      qaCoveragePercent: cnt.admin_msgs ? Math.round((cnt.qc_cases || 0) / cnt.admin_msgs * 100) : 0,
-      sopCoveragePercent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0,
+      qaCoveragePercent: cnt.admin_msgs ? Math.round(((cnt.qc_cases || 0) / cnt.admin_msgs) * 100) : 0,
+      sopCoveragePercent: cov.total ? Math.round((cov.matched / cov.total) * 100) : 0,
       avgResponseSec: kpiRows[0]?.avg_response_sec || 0,
       slaPassPercent: slaExceptionSummary[0]?.sla_pass_pct ?? 0,
       fatalCount: (fatalCases || []).length,
@@ -271,8 +358,10 @@ export async function GET(req) {
       fatalCases,
       minorCases: minorCases[0]?.n || 0,
       sopCoverage: {
-        total: cov.total, matched: cov.matched, unmatched: cov.total - cov.matched,
-        percent: cov.total ? Math.round(cov.matched / cov.total * 100) : 0,
+        total: cov.total,
+        matched: cov.matched,
+        unmatched: cov.total - cov.matched,
+        percent: cov.total ? Math.round((cov.matched / cov.total) * 100) : 0,
         top_unmatched_intents: unmatchedIntents,
       },
       coachingSummary: {
@@ -280,13 +369,17 @@ export async function GET(req) {
         lowest_categories: [...(categorySummary || [])].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3),
         repeated_fail_reasons: repeatedFails,
       },
-      disputeSummary: { pending: dispMap.pending || 0, approved: dispMap.approved || 0, rejected: dispMap.rejected || 0 },
+      disputeSummary: {
+        pending: dispMap.pending || 0,
+        approved: dispMap.approved || 0,
+        rejected: dispMap.rejected || 0,
+      },
       commissionSummary: { tiers: commissionSummary[0] || {}, per_admin: commissionPerAdmin },
       adminCategoryRanking,
       slaExceptionSummary: slaExceptionSummary[0] || {},
     });
   } catch (err) {
-    console.error('Dashboard fatal:', err);
+    console.error("Dashboard fatal:", err);
     return Response.json({ error: String(err.message || err) }, { status: 500 });
   }
 }

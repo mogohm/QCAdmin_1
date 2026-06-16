@@ -41,6 +41,29 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
     ok('per_admin มี tier/multiplier/estimated_commission', has(a, 'tier') && has(a, 'multiplier') && has(a, 'estimated_commission'));
   }
 
+  // ---- SOP CRUD (live) — รันเมื่อมี ADMIN_API_KEY ----
+  const KEY = process.env.ADMIN_API_KEY;
+  if (KEY) {
+    console.log('\n== SOP PATCH/DELETE (live) ==');
+    const H = { 'Content-Type': 'application/json', 'x-api-key': KEY };
+    const topic = '__test_sop_' + Date.now();
+    try {
+      const c = await (await fetch(`${BASE}/api/sop`, { method: 'POST', headers: H, body: JSON.stringify({ topic, answer: 'test answer', intent: 'deposit', required_keywords: 'ลิงก์,ยอด' }) })).json();
+      ok('SOP POST create', c.ok && c.sop?.id, c.error || '');
+      const sid = c.sop?.id;
+      if (sid) {
+        const p = await (await fetch(`${BASE}/api/sop/${sid}`, { method: 'PATCH', headers: H, body: JSON.stringify({ answer: 'updated', forbidden_keywords: 'โง่' }) })).json();
+        ok('SOP PATCH update', p.ok && p.sop?.answer === 'updated');
+        const sd = await (await fetch(`${BASE}/api/sop/${sid}`, { method: 'DELETE', headers: H })).json();
+        ok('SOP DELETE = soft (is_active=false)', sd.ok && sd.soft_deleted?.is_active === false, JSON.stringify(sd).slice(0, 80));
+        const hd = await (await fetch(`${BASE}/api/sop/${sid}?hard=true`, { method: 'DELETE', headers: H })).json();
+        ok('SOP DELETE ?hard=true = hard delete', hd.ok && !!hd.hard_deleted);
+      }
+    } catch (e) { ok('SOP CRUD', false, e.message); }
+  } else {
+    console.log('\n(ข้าม SOP CRUD live test — ไม่มี ADMIN_API_KEY)');
+  }
+
   console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
   process.exit(fail ? 1 : 0);
 })();
