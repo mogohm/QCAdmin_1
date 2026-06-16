@@ -1,16 +1,18 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-export async function GET() {
+export async function GET(req) {
+  if (!requireView(req)) return unauthorized();
   try {
     const rows = await query`
       SELECT id, member_name FROM qc_admins

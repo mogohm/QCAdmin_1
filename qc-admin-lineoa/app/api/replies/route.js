@@ -1,27 +1,29 @@
-import { sql } from '@/lib/db';
+import { sql } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 const SORT_COLS = {
-  date:     'm.created_at',
-  score:    'COALESCE(q.final_score, 0)',
-  customer: 'COALESCE(lc.display_name, m.line_user_id)',
-  admin:    'COALESCE(a.member_name, \'\')',
+  date: "m.created_at",
+  score: "COALESCE(q.final_score, 0)",
+  customer: "COALESCE(lc.display_name, m.line_user_id)",
+  admin: "COALESCE(a.member_name, '')",
 };
 
 export async function GET(req) {
+  if (!requireView(req)) return unauthorized();
   const { searchParams } = new URL(req.url);
-  const dateFrom  = searchParams.get('from')     || '2000-01-01';
-  const dateTo    = searchParams.get('to')       || '2099-12-31';
-  const page      = Math.max(1, parseInt(searchParams.get('page')  || '1'));
-  const limit     = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20')));
-  const customer  = (searchParams.get('customer') || '').trim();
-  const admin     = (searchParams.get('admin')    || '').trim();
-  const sortKey   = searchParams.get('sort') || 'date';
-  const order     = searchParams.get('order') === 'asc' ? 'ASC' : 'DESC';
-  const offset    = (page - 1) * limit;
+  const dateFrom = searchParams.get("from") || "2000-01-01";
+  const dateTo = searchParams.get("to") || "2099-12-31";
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+  const customer = (searchParams.get("customer") || "").trim();
+  const admin = (searchParams.get("admin") || "").trim();
+  const sortKey = searchParams.get("sort") || "date";
+  const order = searchParams.get("order") === "asc" ? "ASC" : "DESC";
+  const offset = (page - 1) * limit;
 
-  const sortCol   = SORT_COLS[sortKey] || SORT_COLS.date;
-  const custPat   = customer ? `%${customer}%` : '%';
-  const adminPat  = admin    ? `%${admin}%`    : '%';
+  const sortCol = SORT_COLS[sortKey] || SORT_COLS.date;
+  const custPat = customer ? `%${customer}%` : "%";
+  const adminPat = admin ? `%${admin}%` : "%";
 
   const db = sql();
 
@@ -55,7 +57,7 @@ export async function GET(req) {
         WHERE ${baseWhere}
         ORDER BY ${sortCol} ${order}, m.id DESC
         LIMIT $5 OFFSET $6`,
-        [...baseParams, limit, offset]
+        [...baseParams, limit, offset],
       ),
       db(
         `SELECT count(*)::int AS total
@@ -63,7 +65,7 @@ export async function GET(req) {
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
         LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id
         WHERE ${baseWhere}`,
-        baseParams
+        baseParams,
       ),
     ]);
 
@@ -76,7 +78,7 @@ export async function GET(req) {
       limit,
     });
   } catch (err) {
-    console.error('replies:', err);
+    console.error("replies:", err);
     return Response.json({ error: String(err.message || err) }, { status: 500 });
   }
 }

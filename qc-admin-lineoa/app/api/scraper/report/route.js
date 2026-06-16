@@ -1,9 +1,10 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
 };
 
 export async function OPTIONS() {
@@ -12,13 +13,14 @@ export async function OPTIONS() {
 
 // GET /api/scraper/report?from=YYYY-MM-DD&to=YYYY-MM-DD
 export async function GET(req) {
+  if (!requireView(req)) return unauthorized();
   const { searchParams } = new URL(req.url);
-  const from = searchParams.get('from') || new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const to   = searchParams.get('to')   || new Date().toISOString().slice(0, 10);
+  const from = searchParams.get("from") || new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
 
   // Explicit UTC to avoid Neon session-timezone ambiguity
   const fromTs = `${from}T00:00:00Z`;
-  const toTs   = `${to}T23:59:59Z`;
+  const toTs = `${to}T23:59:59Z`;
 
   // ---- Jobs: กรองด้วย date_from/date_to ที่ job ถูก scrape ----
   // Bug เดิม: WHERE created_at → job สร้างวันนี้เพื่อ scrape วันเก่าจะไม่ขึ้น
@@ -99,23 +101,23 @@ export async function GET(req) {
       customerMap[m.line_user_id] = {
         line_user_id: m.line_user_id,
         display_name: m.display_name,
-        picture_url:  m.picture_url,
+        picture_url: m.picture_url,
         messages: [],
         notes: [],
       };
     }
     customerMap[m.line_user_id].messages.push({
-      message_text:        m.message_text,
-      created_at:          m.created_at,
-      admin_name:          m.admin_name,
-      final_score:         m.final_score,
-      speed_score:         m.speed_score,
-      correctness_score:   m.correctness_score,
-      sentiment_score:     m.sentiment_score,
-      response_seconds:    m.response_seconds,
-      fail_reasons:        m.fail_reasons,
-      matched_rules:       m.matched_rules,
-      customer_text:       m.customer_text,
+      message_text: m.message_text,
+      created_at: m.created_at,
+      admin_name: m.admin_name,
+      final_score: m.final_score,
+      speed_score: m.speed_score,
+      correctness_score: m.correctness_score,
+      sentiment_score: m.sentiment_score,
+      response_seconds: m.response_seconds,
+      fail_reasons: m.fail_reasons,
+      matched_rules: m.matched_rules,
+      customer_text: m.customer_text,
       customer_created_at: m.customer_created_at,
     });
   }
@@ -126,7 +128,7 @@ export async function GET(req) {
       customerMap[n.line_user_id] = {
         line_user_id: n.line_user_id,
         display_name: null,
-        picture_url:  null,
+        picture_url: null,
         messages: [],
         notes: [],
       };
@@ -134,15 +136,20 @@ export async function GET(req) {
     customerMap[n.line_user_id].notes.push(n);
   }
 
-  const result = Object.values(customerMap)
-    .sort((a, b) => (a.display_name || a.line_user_id).localeCompare(b.display_name || b.line_user_id));
+  const result = Object.values(customerMap).sort((a, b) =>
+    (a.display_name || a.line_user_id).localeCompare(b.display_name || b.line_user_id),
+  );
 
-  return Response.json({
-    from, to,
-    jobs,
-    total_customers: result.length,
-    total_messages:  messages.length,
-    total_notes:     notes.length,
-    customers: result,
-  }, { headers: CORS });
+  return Response.json(
+    {
+      from,
+      to,
+      jobs,
+      total_customers: result.length,
+      total_messages: messages.length,
+      total_notes: notes.length,
+      customers: result,
+    },
+    { headers: CORS },
+  );
 }

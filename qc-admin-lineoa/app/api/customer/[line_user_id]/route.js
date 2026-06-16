@@ -1,9 +1,11 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 export async function GET(req, { params }) {
+  if (!requireView(req)) return unauthorized();
   try {
     const { line_user_id } = await params;
-    if (!line_user_id) return Response.json({ error: 'line_user_id required' }, { status: 400 });
+    if (!line_user_id) return Response.json({ error: "line_user_id required" }, { status: 400 });
 
     const [customer, events, conversations, stats, notes] = await Promise.all([
       query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
@@ -68,7 +70,7 @@ export async function GET(req, { params }) {
       stats: stats[0] || null,
     });
   } catch (err) {
-    console.error('Customer API error:', err);
+    console.error("Customer API error:", err);
     return Response.json({ error: String(err.message || err) }, { status: 500 });
   }
 }

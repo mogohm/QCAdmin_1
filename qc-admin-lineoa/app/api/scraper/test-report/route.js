@@ -1,9 +1,11 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 export async function GET(req) {
+  if (!requireView(req)) return unauthorized();
   const { searchParams } = new URL(req.url);
-  const from = searchParams.get('from') || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-  const to   = searchParams.get('to')   || new Date().toISOString().slice(0, 10);
+  const from = searchParams.get("from") || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
 
   const [jobs, msgStats, customerStats, noteStats, dailyBreakdown, unknownAdminSamples, qcStats] = await Promise.all([
     query`
@@ -80,12 +82,13 @@ export async function GET(req) {
   ]);
 
   return Response.json({
-    from, to,
+    from,
+    to,
     jobs,
-    msgStats:            msgStats[0]     || {},
-    customerStats:       customerStats[0] || {},
-    noteStats:           noteStats[0]     || {},
-    qcStats:             qcStats[0]       || {},
+    msgStats: msgStats[0] || {},
+    customerStats: customerStats[0] || {},
+    noteStats: noteStats[0] || {},
+    qcStats: qcStats[0] || {},
     dailyBreakdown,
     unknownAdminSamples,
   });

@@ -1,20 +1,22 @@
-import { query } from '@/lib/db';
+import { query } from "@/lib/db";
+import { requireView, unauthorized } from "@/lib/guard";
 
 export async function GET(req, { params }) {
+  if (!requireView(req)) return unauthorized();
   try {
-  const { line_user_id } = await params;
+    const { line_user_id } = await params;
 
-  if (!line_user_id) {
-    return Response.json({ error: 'line_user_id required', customer: null, messages: [] }, { status: 400 });
-  }
+    if (!line_user_id) {
+      return Response.json({ error: "line_user_id required", customer: null, messages: [] }, { status: 400 });
+    }
 
-  const [customer, messages] = await Promise.all([
-    query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
+    const [customer, messages] = await Promise.all([
+      query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
 
-    // dedup: webhook และ scraper อาจ insert ข้อความลูกค้าเดียวกัน
-    // ใช้ DISTINCT ON (direction, message_text, ช่วงเวลา 5 นาที) เก็บ message แรกสุด
-    // จากนั้น join คะแนน QC และ customer_message ที่จับคู่ไว้
-    query`
+      // dedup: webhook และ scraper อาจ insert ข้อความลูกค้าเดียวกัน
+      // ใช้ DISTINCT ON (direction, message_text, ช่วงเวลา 5 นาที) เก็บ message แรกสุด
+      // จากนั้น join คะแนน QC และ customer_message ที่จับคู่ไว้
+      query`
       WITH deduped AS (
         SELECT DISTINCT ON (direction, message_text, date_trunc('hour', created_at))
           id, direction, message_text, created_at, admin_id
@@ -46,11 +48,11 @@ export async function GET(req, { params }) {
       ORDER BY d.created_at ASC
       LIMIT 500
     `,
-  ]);
+    ]);
 
-  return Response.json({ customer: customer[0] || null, messages });
+    return Response.json({ customer: customer[0] || null, messages });
   } catch (err) {
-    console.error('Chat API error:', err);
+    console.error("Chat API error:", err);
     return Response.json({ error: String(err.message || err), customer: null, messages: [] }, { status: 500 });
   }
 }
