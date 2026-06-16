@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import AppShell from '../components/AppShell';
 import ChatModal from '../components/ChatModal';
 
 const toISO = d => d.toISOString().slice(0, 10);
@@ -25,11 +25,8 @@ export default function ChatReview() {
   useEffect(() => { load(); }, [sort, order]);
 
   return (
-    <div className="shell">
-      <Sidebar active="/chat-review" />
-      <main className="main">
-        <div className="top"><div><h2 style={{ margin: 0 }}>Chat Review</h2><div className="muted" style={{ fontSize: 12 }}>ตรวจรีวิวคำตอบแอดมิน — คลิกเพื่อดูแชท + QC evidence</div></div></div>
-
+    <AppShell title="Chat Review" subtitle="ตรวจรีวิวคำตอบแอดมิน — คลิกเพื่อดูแชท + QC evidence">
+      <>
         <div className="card" style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
           <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
@@ -58,8 +55,8 @@ export default function ChatReview() {
             </tbody>
           </table>
         </div>
-      </main>
-      {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
-    </div>
+        {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
+      </>
+    </AppShell>
   );
 }

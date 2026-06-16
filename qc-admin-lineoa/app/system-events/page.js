@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import AppShell from '../components/AppShell';
 
 const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 const empty = () => ({ title: '', description: '', event_type: 'bank_delay', affects_sla: true, starts_at: nowLocal(), ends_at: '' });
@@ -27,13 +27,15 @@ export default function SystemEvents() {
   const isLive = e => e.is_active && (!e.ends_at || new Date(e.ends_at) >= new Date());
 
   return (
-    <div className="shell">
-      <Sidebar active="/system-events" />
-      <main className="main">
-        <div className="top"><div><h2 style={{ margin: 0 }}>System Events</h2><div className="muted" style={{ fontSize: 12 }}>ช่วงระบบ/ธนาคารผิดปกติ → ยกเว้น SLA</div></div>
-          <span className="badge" style={{ background: active.length ? '#fee2e2' : '#dcfce7', color: active.length ? '#dc2626' : '#16a34a' }}>{active.length} active</span>
-        </div>
-
+    <AppShell title="System Events" subtitle="ช่วงระบบ/ธนาคารผิดปกติ → ยกเว้น SLA"
+      actions={<span className="badge" style={{ background: active.length ? '#fee2e2' : '#dcfce7', color: active.length ? '#dc2626' : '#16a34a' }}>{active.length} active</span>}>
+      <>
+        {active.length > 0 && (
+          <div style={{ background: 'linear-gradient(90deg,#fef2f2,#fff7ed)', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🛡️</span>
+            <div><b style={{ color: '#dc2626' }}>มี System Event ทำงานอยู่ {active.length} รายการ</b> — Response time จะไม่ถูกหักเต็มในช่วงนี้<div style={{ fontSize: 12, color: '#7c2d12' }}>{active.map(e => e.title).join(' · ')}</div></div>
+          </div>
+        )}
         <section className="grid split">
           <div className="card">
             <h3 style={{ marginTop: 0 }}>+ สร้าง Event</h3>
@@ -68,8 +70,8 @@ export default function SystemEvents() {
             {!events.length && <div className="muted">ยังไม่มี event</div>}
           </div>
         </section>
-      </main>
-    </div>
+      </>
+    </AppShell>
   );
 }
 const lbl = { fontSize: 12, color: '#666' };

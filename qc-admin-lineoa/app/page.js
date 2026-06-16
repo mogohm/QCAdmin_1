@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Sidebar from './components/Sidebar';
+import AppShell from './components/AppShell';
 import ChatModal from './components/ChatModal';
 
 const toISO = d => d.toISOString().slice(0, 10);
@@ -56,19 +56,17 @@ export default function Executive() {
     ['Pending Disputes', k.pendingDisputes ?? 0, 'warn'], ['Est. Commission', '฿' + (k.estimatedCommission ?? 0).toLocaleString()],
   ];
 
-  return (
-    <div className="shell">
-      <Sidebar active="/" />
-      <main className="main">
-        <div className="top">
-          <div><h2 style={{ margin: 0 }}>Executive Dashboard</h2><div className="muted" style={{ fontSize: 12 }}>ภาพรวมคุณภาพการบริการ QC</div></div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
-            <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
-            <button onClick={() => load()}>{loading ? '...' : 'ดู'}</button>
-          </div>
-        </div>
+  const dateActions = (
+    <>
+      <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
+      <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
+      <button onClick={() => load()}>{loading ? '...' : 'ดู'}</button>
+    </>
+  );
 
+  return (
+    <AppShell title="Executive Dashboard" subtitle="ภาพรวมคุณภาพการบริการ QC" actions={dateActions}>
+      <>
         {/* KPI cards */}
         <section className="grid kpis">
           {KPIS.map(([title, v, cls]) => <div className="card" key={title}><div className="kpi-title">{title}</div><div className={`kpi-value ${cls ? 'score ' + cls : ''}`}>{v}</div></div>)}
@@ -142,8 +140,8 @@ export default function Executive() {
                 {!d?.pendingReply?.length && <tr><td colSpan="3" className="muted">ไม่มีงานค้าง 🎉</td></tr>}</tbody></table>
           </div>
         </section>
-      </main>
-      {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
-    </div>
+        {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
+      </>
+    </AppShell>
   );
 }

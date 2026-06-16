@@ -1,6 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import AppShell from '../components/AppShell';
+
+// TAG editor — keyword แบบ chip ลบได้ + เพิ่มได้
+function TagEditor({ value, onChange, placeholder, color = '#0b5cab' }) {
+  const tags = Array.isArray(value) ? value : String(value || '').split(',').map(s => s.trim()).filter(Boolean);
+  const [inp, setInp] = useState('');
+  const add = () => { const v = inp.trim(); if (v && !tags.includes(v)) onChange([...tags, v]); setInp(''); };
+  const rm = (t) => onChange(tags.filter(x => x !== t));
+  return (
+    <div style={{ border: '1px solid #dce6f2', borderRadius: 10, padding: 8, margin: '6px 0 12px', display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+      {tags.map(t => <span key={t} style={{ background: color + '18', color, borderRadius: 100, padding: '2px 8px', fontSize: 12, display: 'inline-flex', gap: 5, alignItems: 'center' }}>{t}<span onClick={() => rm(t)} style={{ cursor: 'pointer', fontWeight: 800 }}>×</span></span>)}
+      <input value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(); } }} onBlur={add} placeholder={placeholder} style={{ border: 0, outline: 'none', flex: 1, minWidth: 100, margin: 0, padding: 4, background: 'transparent' }} />
+    </div>
+  );
+}
 
 const empty = { topic: '', question: '', answer: '', intent: '', category_code: '', keywords: '', required_keywords: '', forbidden_keywords: '', escalation: false, is_active: true };
 const joinKw = v => Array.isArray(v) ? v.join(', ') : (v || '');
@@ -41,13 +55,10 @@ export default function SOPManager() {
   const toggleSel = id => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
 
   return (
-    <div className="shell">
-      <Sidebar active="/sop" />
-      <main className="main">
-        <div className="top"><div><h2 style={{ margin: 0 }}>SOP Knowledge Base</h2><div className="muted" style={{ fontSize: 12 }}>{summary.active ?? 0}/{summary.total ?? 0} active · escalation {summary.escalation ?? 0} · ขาด required keyword {summary.missing_required ?? 0}</div></div>
-          <button onClick={() => setEdit({ ...empty })}>+ เพิ่ม SOP</button>
-        </div>
-
+    <AppShell title="SOP Knowledge Base"
+      subtitle={`${summary.active ?? 0}/${summary.total ?? 0} active · escalation ${summary.escalation ?? 0} · ขาด required keyword ${summary.missing_required ?? 0}`}
+      actions={<button onClick={() => setEdit({ ...empty })}>+ เพิ่ม SOP</button>}>
+      <>
         {/* import status card */}
         <section className="grid kpis" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 12 }}>
           <div className="card"><div className="kpi-title">ทั้งหมด</div><div className="kpi-value">{summary.total ?? 0}</div></div>
@@ -107,8 +118,12 @@ export default function SOPManager() {
                 <div key={key}><label style={lbl}>{label}</label><input value={edit[key] || ''} onChange={e => setEdit({ ...edit, [key]: e.target.value })} /></div>)}
               <label style={lbl}>Answer (คำตอบมาตรฐาน)</label>
               <textarea rows={5} value={edit.answer || ''} onChange={e => setEdit({ ...edit, answer: e.target.value })} />
-              {[['required_keywords', 'Required Keywords (คั่นด้วย ,) — คำตอบที่ดีควรมี'], ['forbidden_keywords', 'Forbidden Keywords — ห้ามมี'], ['keywords', 'Keywords (match คำถามลูกค้า)']].map(([key, label]) =>
-                <div key={key}><label style={lbl}>{label}</label><input value={edit[key] || ''} onChange={e => setEdit({ ...edit, [key]: e.target.value })} /></div>)}
+              <label style={lbl}>✅ Required Keywords — คำตอบที่ดีควรมี (Enter เพื่อเพิ่ม)</label>
+              <TagEditor value={edit.required_keywords} onChange={v => setEdit({ ...edit, required_keywords: v })} placeholder="พิมพ์แล้ว Enter" color="#16a34a" />
+              <label style={lbl}>🚫 Forbidden Keywords — ห้ามมีในคำตอบ</label>
+              <TagEditor value={edit.forbidden_keywords} onChange={v => setEdit({ ...edit, forbidden_keywords: v })} placeholder="พิมพ์แล้ว Enter" color="#ef4444" />
+              <label style={lbl}>🔎 Keywords — match คำถามลูกค้า</label>
+              <TagEditor value={edit.keywords} onChange={v => setEdit({ ...edit, keywords: v })} placeholder="พิมพ์แล้ว Enter" />
               <div style={{ display: 'flex', gap: 16, margin: '10px 0' }}>
                 <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: 'auto' }}><input type="checkbox" style={{ width: 'auto' }} checked={!!edit.escalation} onChange={e => setEdit({ ...edit, escalation: e.target.checked })} /> Escalation</label>
                 <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: 'auto' }}><input type="checkbox" style={{ width: 'auto' }} checked={edit.is_active !== false} onChange={e => setEdit({ ...edit, is_active: e.target.checked })} /> Active</label>
@@ -117,8 +132,8 @@ export default function SOPManager() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </>
+    </AppShell>
   );
 }
 const ghost = { background: '#fff', color: '#65758b', border: '1px solid #dce6f2' };

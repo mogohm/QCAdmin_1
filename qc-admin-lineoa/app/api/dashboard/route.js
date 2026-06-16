@@ -206,13 +206,21 @@ export async function GET(req) {
     const cnt = counts[0] || {};
 
     // commission ต่อ admin (tier multiplier ตาม Excel) — rate = 1% ของยอด upsell (deposit)
+    const dispByAdmin = await safe(() => query`SELECT admin_id, count(*)::int n FROM qc_disputes
+       WHERE status='approved' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`, []);
+    const dispMapAdmin = Object.fromEntries((dispByAdmin || []).map(r => [r.admin_id, r.n]));
+    const fatalByAdmin = await safe(() => query`SELECT admin_id, count(*)::int n FROM qc_scores
+       WHERE is_fatal=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`, []);
+    const fatalMapAdmin = Object.fromEntries((fatalByAdmin || []).map(r => [r.admin_id, r.n]));
+
     const MULT = s => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
     const TIER = s => (s >= 90 ? 'Excellent' : s >= 80 ? 'Standard' : s >= 70 ? 'Warning' : 'Critical');
     const RATE = 0.01;
     const commissionPerAdmin = (rankingAll || []).filter(a => a.cases > 0).map(a => {
       const mult = MULT(a.avg_score), upsell = Number(a.deposit_sum || 0);
       return { admin: a.member_name, admin_id: a.id, avg_score: a.avg_score, tier: TIER(a.avg_score),
-        multiplier: mult, upsell_amount: upsell, fatal_penalty: a.bad || 0,
+        multiplier: mult, upsell_amount: upsell, fatal_penalty: fatalMapAdmin[a.id] || 0,
+        dispute_adjustment: dispMapAdmin[a.id] || 0,
         estimated_commission: Math.round(upsell * RATE * mult) };
     });
 
