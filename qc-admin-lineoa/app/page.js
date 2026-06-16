@@ -76,9 +76,10 @@ export default function Executive() {
         <section className="grid split" style={{ marginTop: 16 }}>
           <div className="card"><h3 style={{ marginTop: 0 }}>QA Score Trend</h3><Trend rows={d?.weeklySummary} /></div>
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>Category Breakdown</h3>
-            <table className="table"><thead><tr><th>หมวด</th><th>เคส</th><th>คะแนน</th><th>Fatal</th></tr></thead>
-              <tbody>{(d?.categorySummary || []).map(c => <tr key={c.intent}><td>{c.intent}</td><td>{c.n}</td><td className={`score ${sc(c.avg_score)}`}>{c.avg_score}</td><td className="score bad">{c.fatal || 0}</td></tr>)}</tbody></table>
+            <h3 style={{ marginTop: 0 }}>Category Breakdown <span className="muted" style={{ fontSize: 11 }}>(จาก qc_score_details)</span></h3>
+            <table className="table"><thead><tr><th>มิติ (rubric)</th><th>เฉลี่ย</th><th>Pass%</th><th>Fail</th><th>Top fail</th></tr></thead>
+              <tbody>{(d?.categorySummary || []).map(c => <tr key={c.category_code}><td>{c.category_code}</td><td className={`score ${sc(c.avg_score)}`}>{c.avg_score}</td><td>{c.pass_rate ?? '—'}%</td><td className="score bad">{c.fail_count || 0}</td><td style={{ fontSize: 11, color: '#b45309', maxWidth: 160 }}>{(c.top_fail_reason || '').slice(0, 36)}</td></tr>)}
+                {!d?.categorySummary?.length && <tr><td colSpan="5" className="muted">ยังไม่มี qc_score_details (มาจากคะแนนใหม่ engine v4)</td></tr>}</tbody></table>
           </div>
         </section>
 
@@ -119,7 +120,7 @@ export default function Executive() {
                 {!d?.fatalCases?.length && <tr><td colSpan="4" className="muted">ไม่มี Fatal 🎉</td></tr>}</tbody></table>
           </div>
           <div className="card"><h3 style={{ marginTop: 0 }}>🎓 Coaching Recommendations</h3>
-            <div style={{ fontSize: 12, marginBottom: 8 }}><b>หมวดที่อ่อนสุด:</b> {(d?.coachingSummary?.lowest_categories || []).map(c => `${c.intent}(${c.avg_score})`).join(', ') || '—'}</div>
+            <div style={{ fontSize: 12, marginBottom: 8 }}><b>มิติที่อ่อนสุด:</b> {(d?.coachingSummary?.lowest_categories || []).map(c => `${c.category_code}(${c.avg_score})`).join(', ') || '—'}</div>
             <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}><b>ปัญหาที่พบซ้ำ:</b></div>
             {(d?.coachingSummary?.repeated_fail_reasons || []).slice(0, 6).map((r, i) => <div key={i} style={{ fontSize: 11, color: '#b45309', margin: '3px 0' }}>• {r.fail_reason} <span className="muted">×{r.n}</span></div>)}
             {!d?.coachingSummary?.repeated_fail_reasons?.length && <div className="muted" style={{ fontSize: 12 }}>—</div>}

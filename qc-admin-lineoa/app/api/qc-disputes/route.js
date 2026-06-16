@@ -14,8 +14,11 @@ export async function GET(req) {
     const rows = await query`
       SELECT d.*, a.member_name AS admin_name, q.final_score AS current_score, q.intent,
              q.matched_sop_topic, q.expected_sop_answer, q.fail_reasons AS ai_reason,
-             q.is_fatal, q.dimension_scores,
-             cm.message_text AS customer_question, am.message_text AS admin_answer
+             q.is_fatal, q.dimension_scores, q.evidence AS ai_evidence, q.sla_exception,
+             cm.message_text AS customer_question, am.message_text AS admin_answer,
+             (SELECT json_agg(json_build_object('category_code',category_code,'raw_score',raw_score,
+                'pass',pass,'fail_reason',fail_reason) ORDER BY id)
+              FROM qc_score_details WHERE qc_score_id = q.id) AS score_details
       FROM qc_disputes d
       LEFT JOIN qc_admins a ON a.id = d.admin_id
       LEFT JOIN qc_scores q ON q.id = d.qc_score_id

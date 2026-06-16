@@ -72,7 +72,15 @@ export default function Disputes() {
                 <div style={qa}><b>❓ คำถามลูกค้า</b><div>{d.customer_question || '—'}</div></div>
                 <div style={qa}><b>💬 คำตอบแอดมิน</b><div>{d.admin_answer || '—'}</div></div>
                 {d.matched_sop_topic && <div style={qa}><b>📋 Matched SOP:</b> {d.matched_sop_topic}{d.expected_sop_answer && <div style={{ color: '#16a34a', fontSize: 12, marginTop: 3 }}>ควรตอบ: {String(d.expected_sop_answer).slice(0, 180)}…</div>}</div>}
-                <div style={qa}><b>🤖 AI ให้เหตุผล</b><div style={{ color: '#dc2626', fontSize: 12 }}>{A(d.ai_reason).slice(0, 5).join(' · ') || '—'}</div></div>
+                <div style={qa}><b>🤖 AI ให้เหตุผล</b><div style={{ color: '#dc2626', fontSize: 12 }}>{A(d.ai_reason).slice(0, 5).join(' · ') || '—'}</div>
+                  {(() => { const ev = (typeof d.ai_evidence === 'object' ? d.ai_evidence : (() => { try { return JSON.parse(d.ai_evidence); } catch { return {}; } })()) || {};
+                    return (ev.missing_required_keywords?.length || ev.forbidden_keyword_hit?.length) ? (
+                      <div style={{ fontSize: 11, marginTop: 4 }}>
+                        {ev.missing_required_keywords?.length > 0 && <div style={{ color: '#b45309' }}>ขาดคำสำคัญ: {ev.missing_required_keywords.join(', ')}</div>}
+                        {ev.forbidden_keyword_hit?.length > 0 && <div style={{ color: '#dc2626' }}>คำต้องห้าม: {ev.forbidden_keyword_hit.join(', ')}</div>}
+                      </div>) : null; })()}
+                  {(d.score_details || []).filter(x => x.pass === false).length > 0 && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>มิติที่ตก: {(d.score_details || []).filter(x => x.pass === false).map(x => `${x.category_code}(${x.raw_score ?? '-'})`).join(', ')}</div>}
+                </div>
                 <div style={{ background: '#fff7ed', borderLeft: '3px solid #f59e0b', borderRadius: '0 8px 8px 0', padding: 10, margin: '8px 0', fontSize: 13 }}><b>⚖️ แอดมินโต้แย้ง:</b> {d.reason}</div>
                 {d.reviewer_note && <div style={{ fontSize: 12, color: '#555' }}>📝 Manager: {d.reviewer_note} {d.reviewed_by && <span className="muted">({d.reviewed_by} · {d.reviewed_at ? new Date(d.reviewed_at).toLocaleString('th-TH') : ''})</span>}</div>}
 

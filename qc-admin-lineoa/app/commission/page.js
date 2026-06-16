@@ -27,9 +27,17 @@ export default function Commission() {
   const finalOf = a => override[a.admin_id] !== undefined && override[a.admin_id] !== '' ? Number(override[a.admin_id]) : a.estimated_commission;
   const total = per.reduce((s, a) => s + (finalOf(a) || 0), 0);
 
+  const [saveMsg, setSaveMsg] = useState('');
   const exportCSV = () => downloadCSV(`commission_${from}_${to}.csv`,
     [['Admin', 'AvgScore', 'Tier', 'Multiplier', 'Upsell', 'FatalPenalty', 'DisputeAdj', 'Estimated', 'Override', 'Final'],
     ...per.map(a => [a.admin, a.avg_score, a.tier, a.multiplier, a.upsell_amount, a.fatal_penalty, a.dispute_adjustment, a.estimated_commission, override[a.admin_id] ?? '', finalOf(a)])]);
+  const saveDB = async () => {
+    const rows = per.map(a => ({ admin_id: a.admin_id, avg_score: a.avg_score, tier: a.multiplier, tier_name: a.tier, upsell_amount: a.upsell_amount, commission: finalOf(a) }));
+    const r = await fetch('/api/commission', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ period_start: from, period_end: to, rows }) });
+    const j = await r.json();
+    setSaveMsg(j.ok ? `✓ บันทึก ${j.saved} รายการลง admin_commissions` : '⚠️ ' + (j.error || 'error'));
+    setTimeout(() => setSaveMsg(''), 3000);
+  };
 
   const actions = (
     <>
@@ -37,12 +45,14 @@ export default function Commission() {
       <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
       <button onClick={load}>ดู</button>
       <button onClick={exportCSV} style={{ background: '#16a34a' }}>⬇ CSV</button>
+      <button onClick={saveDB} style={{ background: '#0b5cab' }}>💾 บันทึกลง DB</button>
     </>
   );
 
   return (
     <AppShell title="Commission" subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณ Tier" actions={actions}>
       <>
+        {saveMsg && <div className="card" style={{ marginBottom: 12, color: saveMsg[0] === '⚠' ? '#ef4444' : '#16a34a' }}>{saveMsg}</div>}
         <section className="grid kpis" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 14 }}>
           {TIERS.map(([name, range, mult, color]) => (
             <div className="card" key={name}>

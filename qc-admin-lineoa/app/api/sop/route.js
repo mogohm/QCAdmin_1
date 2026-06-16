@@ -12,12 +12,15 @@ export async function GET(req) {
   const intent = searchParams.get('intent');
   try {
     const rows = await query`
-      SELECT id, category_code, topic, question, answer, intent, keywords, required_keywords,
-             forbidden_keywords, escalation, is_active, COALESCE(used_count,0) AS used_count, updated_at
-      FROM sop_scripts
-      WHERE (${q}::text = '' OR topic ILIKE ${'%' + q + '%'} OR answer ILIKE ${'%' + q + '%'})
-        AND (${intent}::text IS NULL OR intent = ${intent})
-      ORDER BY is_active DESC, intent, topic LIMIT 1000`;
+      SELECT s.id, s.category_code, s.topic, s.question, s.answer, s.intent, s.keywords, s.required_keywords,
+             s.forbidden_keywords, s.escalation, s.is_active, s.updated_at,
+             (SELECT count(*)::int FROM qc_scores q WHERE q.matched_sop_id = s.id) AS used_count,
+             (SELECT max(q.created_at) FROM qc_scores q WHERE q.matched_sop_id = s.id) AS last_matched_at,
+             (jsonb_array_length(COALESCE(s.required_keywords,'[]'::jsonb)) = 0) AS missing_required
+      FROM sop_scripts s
+      WHERE (${q}::text = '' OR s.topic ILIKE ${'%' + q + '%'} OR s.answer ILIKE ${'%' + q + '%'})
+        AND (${intent}::text IS NULL OR s.intent = ${intent})
+      ORDER BY s.is_active DESC, s.intent, s.topic LIMIT 1000`;
     const cats = await query`SELECT code, name FROM sop_categories ORDER BY code`.catch(() => []);
     const summary = await query`SELECT count(*)::int total,
         sum(CASE WHEN is_active THEN 1 ELSE 0 END)::int active,

@@ -84,7 +84,7 @@ export default function SOPManager() {
 
         <div className="card" style={{ padding: 0, overflow: 'auto' }}>
           <table className="table" style={{ fontSize: 12 }}>
-            <thead><tr><th></th><th>Category</th><th>Intent</th><th>Topic</th><th>Answer</th><th>Required KW</th><th>Forbidden</th><th>Esc</th><th>Used</th><th>Active</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Category</th><th>Intent</th><th>Topic</th><th>Answer</th><th>Required KW</th><th>Forbidden</th><th>Esc</th><th>Used</th><th>Last Match</th><th>Active</th><th></th></tr></thead>
             <tbody>{filtered.map(s => (
               <tr key={s.id} style={{ opacity: s.is_active ? 1 : .5 }}>
                 <td><input type="checkbox" style={{ width: 'auto' }} checked={sel.has(s.id)} onChange={() => toggleSel(s.id)} /></td>
@@ -95,7 +95,8 @@ export default function SOPManager() {
                 <td style={{ maxWidth: 120, color: joinKw(s.required_keywords) ? '#555' : '#ef4444' }}>{joinKw(s.required_keywords).slice(0, 30) || '⚠️ ไม่มี'}</td>
                 <td style={{ maxWidth: 100, color: '#888' }}>{joinKw(s.forbidden_keywords).slice(0, 24)}</td>
                 <td>{s.escalation ? '🔺' : ''}</td>
-                <td>{s.used_count || 0}</td>
+                <td><span className="badge" style={{ background: s.used_count > 0 ? '#dcfce7' : '#f1f5f9', color: s.used_count > 0 ? '#16a34a' : '#94a3b8', fontSize: 10 }}>{s.used_count || 0}</span></td>
+                <td style={{ fontSize: 10, color: '#888' }}>{s.last_matched_at ? new Date(s.last_matched_at).toLocaleDateString('th-TH') : '—'}</td>
                 <td><button onClick={() => setActive(s.id, !s.is_active)} style={{ background: s.is_active ? '#16a34a' : '#9ca3af', padding: '3px 9px', fontSize: 10 }}>{s.is_active ? 'ON' : 'off'}</button></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <button onClick={() => setEdit({ ...s, keywords: joinKw(s.keywords), required_keywords: joinKw(s.required_keywords), forbidden_keywords: joinKw(s.forbidden_keywords) })} style={{ padding: '3px 8px', fontSize: 10 }}>แก้</button>{' '}
@@ -103,7 +104,7 @@ export default function SOPManager() {
                   <button onClick={() => del(s.id)} style={{ background: '#ef4444', padding: '3px 8px', fontSize: 10 }}>ลบ</button>
                 </td>
               </tr>))}
-              {!filtered.length && <tr><td colSpan="11" className="muted" style={{ textAlign: 'center', padding: 20 }}>ไม่พบ SOP</td></tr>}
+              {!filtered.length && <tr><td colSpan="12" className="muted" style={{ textAlign: 'center', padding: 20 }}>ไม่พบ SOP</td></tr>}
             </tbody>
           </table>
         </div>

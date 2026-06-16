@@ -112,13 +112,24 @@ function commissionTier(score) {
 function scoreReply(input) {
   const {
     customerText = '', adminText = '', responseSeconds = null, responseLimitMinutes = 5,
-    sops = [], fatalRules = [], slaException = false,
+    sops, sopScripts, fatalRules = [], systemEvents, conversationContext = null,
   } = input || {};
+  const sopList = sops || sopScripts || [];
+
+  // SLA exception: รับ boolean ตรงๆ หรือคำนวณจาก systemEvents (affects_sla active)
+  let slaException = input.slaException || false;
+  if (!slaException && Array.isArray(systemEvents)) {
+    const now = Date.now();
+    slaException = systemEvents.some(e =>
+      e && e.affects_sla !== false && e.is_active !== false &&
+      (!e.starts_at || new Date(e.starts_at).getTime() <= now) &&
+      (!e.ends_at || new Date(e.ends_at).getTime() >= now));
+  }
 
   const a = normalize(adminText);
   const det = detectIntent(customerText || adminText);
   const intent = det.intent;
-  const m = matchSOP(customerText || adminText, sops, { intent });
+  const m = matchSOP(customerText || adminText, sopList, { intent });
   const sop = m.sop;
   const sopConfidence = m.confidence;
 
@@ -198,6 +209,7 @@ function scoreReply(input) {
       forbidden_keyword_hit: psEv.forbidden_keyword_hit || [],
       tone_words: toneEv.polite || [], rude_words: toneEv.rude || [],
       response_time: rtEv, minor: minorIssues, fatal: fatalHits, sla_exception: !!slaException,
+      conversation_context: conversationContext || null,
     },
     failReasons, commissionTier: commissionTier(finalScore),
     // backward-compat

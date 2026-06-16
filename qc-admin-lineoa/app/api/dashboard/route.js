@@ -144,10 +144,27 @@ export async function GET(req) {
     // ---- Phase 2 summaries ----
     const [categorySummary, intentDistribution, fatalCases, minorCases, sopCoverage,
            coachingSummary, disputeSummary, commissionSummary, adminCategoryRanking, slaExceptionSummary] = await Promise.all([
-      safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n, round(avg(final_score))::int avg_score,
-                              sum(CASE WHEN is_fatal THEN 1 ELSE 0 END)::int fatal
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-                       GROUP BY 1 ORDER BY n DESC`, []),
+      // categorySummary จาก qc_score_details จริง (รายมิติ rubric)
+      safe(() => query`
+        WITH dd AS (
+          SELECT d.category_code, d.raw_score, d.weighted_score, d.pass, d.fail_reason
+          FROM qc_score_details d JOIN qc_scores q ON q.id = d.qc_score_id
+          WHERE d.raw_score IS NOT NULL AND d.category_code NOT IN ('minorError','fatalError')
+            AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+        ),
+        tf AS (
+          SELECT category_code, fail_reason, count(*)::int fn,
+                 row_number() OVER (PARTITION BY category_code ORDER BY count(*) DESC) rn
+          FROM dd WHERE pass=false AND fail_reason IS NOT NULL GROUP BY 1,2
+        )
+        SELECT dd.category_code,
+               count(*)::int n,
+               round(avg(dd.raw_score))::int avg_score,
+               round(avg(dd.weighted_score)::numeric,2) avg_weighted,
+               round(100.0*sum(CASE WHEN dd.pass THEN 1 ELSE 0 END)/NULLIF(count(*),0))::int pass_rate,
+               sum(CASE WHEN dd.pass=false THEN 1 ELSE 0 END)::int fail_count,
+               (SELECT fail_reason FROM tf WHERE tf.category_code=dd.category_code AND rn=1) top_fail_reason
+        FROM dd GROUP BY dd.category_code ORDER BY avg_score ASC`, []),
       safe(() => query`SELECT COALESCE(intent,'general') intent, count(*)::int n
                        FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY 1 ORDER BY n DESC`, []),
       safe(() => query`SELECT q.id, q.final_score, q.intent, q.fatal_reasons, q.created_at, a.member_name admin, q.line_user_id
