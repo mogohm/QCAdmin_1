@@ -77,6 +77,6 @@ const KEY = process.env.QC_API_KEY || process.env.ADMIN_API_KEY;
     console.log("⏭️  ข้าม live test — ไม่มี QC_API_URL + QC_API_KEY (ทดสอบ payload/dedup แบบ offline แล้ว)");
   }
 
-  console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
+  console.log(`\n===== Log reply: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
   process.exit(fail ? 1 : 0);
 })();

@@ -29,8 +29,11 @@ const getArg = (name) => {
 
 const WATCH = hasFlag("--watch");
 const HEADED = hasFlag("--headed");
+const DRY_RUN = hasFlag("--dry-run");
 const HEADLESS = HEADED ? false : !/^(0|false|no)$/i.test(process.env.SCRAPER_HEADLESS || "true");
 const DEBUG = /^(1|true|yes)$/i.test(process.env.SCRAPER_DEBUG || "");
+const EVIDENCE = DEBUG || DRY_RUN; // dry-run เก็บ debug evidence เสมอ
+const DRY_CHATS = 3; // dry-run scrape กี่แชทแรก
 const SCHEDULE_MIN = parseInt(getArg("schedule") || "0", 10);
 const POLL_MS = 10000;
 
@@ -64,21 +67,21 @@ function ensureDir(d) {
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 }
 async function saveScreenshot(page, name) {
-  if (!DEBUG) return;
+  if (!EVIDENCE) return;
   try {
     ensureDir(path.join(DEBUG_DIR, "screenshots"));
     await page.screenshot({ path: path.join(DEBUG_DIR, "screenshots", `${name}.png`) });
   } catch {}
 }
 function saveHtml(name, html) {
-  if (!DEBUG) return;
+  if (!EVIDENCE) return;
   try {
     ensureDir(path.join(DEBUG_DIR, "html"));
     fs.writeFileSync(path.join(DEBUG_DIR, "html", `${name}.html`), html);
   } catch {}
 }
 function logScrape(entry) {
-  if (!DEBUG) return;
+  if (!EVIDENCE) return;
   try {
     ensureDir(DEBUG_DIR);
     fs.appendFileSync(
@@ -288,11 +291,18 @@ async function scrapeChat(page, item) {
     return { title, uid, picture };
   });
 
-  // messages (ผ่าน core — dedup + แยก customer/admin)
-  const parsed = core.parseChatHTML(panelHtml, { now: new Date() });
-  const { unique } = core.dedupMessages(parsed, meta.uid || item.name);
+  // messages (ผ่าน core — dedup + แยก customer/admin) + เก็บ bubble ที่ parse fail
+  const failures = [];
+  const parsed = core.parseChatHTML(panelHtml, { now: new Date(), failures });
+  const { unique, skipped_duplicate } = core.dedupMessages(parsed, meta.uid || item.name);
 
-  return { meta, messages: unique, panelHtml };
+  // raw HTML ของ bubble ที่ parse fail → debug/html เพื่อแก้ selector ให้ตรง ไม่เดา
+  if (failures.length) {
+    const fname = `parse-fail-${item.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50);
+    saveHtml(fname, failures.map((f) => `<!-- ${f.reason} (${f.direction}) -->\n${f.html}`).join("\n\n"));
+  }
+
+  return { meta, messages: unique, panelHtml, dupSkipped: skipped_duplicate, failures };
 }
 
 // ---------- Job Runner ----------
@@ -441,8 +451,106 @@ async function extractNotes(page) {
     .catch(() => []);
 }
 
+// ---------- DRY-RUN (validation) ----------
+// scan chat list + scrape N แชทแรก, ไม่ insert DB, เก็บ evidence (screenshots/html/scrape-log.jsonl)
+async function runDryRunBrowser(chromium, from, to) {
+  const browser = await chromium.launch({ headless: HEADLESS });
+  const context = await browser.newContext({ storageState: AUTH_FILE });
+  const page = await openLineOA(context);
+  await saveScreenshot(page, "dryrun-list");
+  log(`🧪 DRY-RUN ${from} → ${to} — scrape ${DRY_CHATS} แชทแรก (ไม่ insert DB)`);
+  const chats = (await scanChatList(page, from, to)).slice(0, DRY_CHATS);
+  let idx = 0;
+  for (const item of chats) {
+    idx++;
+    const res = await scrapeChat(page, item).catch((e) => {
+      log(`  #${idx} ${item.name} — error: ${e.message}`);
+      return null;
+    });
+    if (!res) continue;
+    await saveScreenshot(page, `dryrun-chat-${idx}`);
+    const pairs = core.pairMessages(res.messages, { groupWindowSec: 90 });
+    const notes = await extractNotes(page).catch(() => []);
+    const summary = core.summarizeChat({
+      chatIndex: idx,
+      customerName: res.meta.title || item.name,
+      dateLabel: item.label,
+      messages: res.messages,
+      pairs,
+      dupSkipped: res.dupSkipped,
+      notesCount: notes.length,
+    });
+    summary.parse_fail = res.failures.length;
+    logScrape(summary);
+    log(
+      `  #${idx} ${summary.customer_name} [${item.label}] msgs=${summary.message_count} pairs=${summary.pairs} parse_fail=${summary.parse_fail}`,
+    );
+  }
+  await browser.close().catch(() => {});
+  log(
+    `✅ dry-run เสร็จ — evidence: ${path.relative(process.cwd(), DEBUG_DIR)}/ (scrape-log.jsonl, html/, screenshots/)`,
+  );
+}
+
+// dry-run แบบ offline (ไม่มี LINE session) — ใช้ fixture เพื่อให้ validation รันได้ทุกที่
+async function runDryRunFixture(from, to) {
+  log(`🧪 DRY-RUN (offline fixture) ${from} → ${to} — tests/fixtures/line-chat-sample.html (ไม่ insert DB)`);
+  const sample = fs.readFileSync(path.join(__dirname, "tests", "fixtures", "line-chat-sample.html"), "utf8");
+  const chats = [
+    { name: "ลูกค้า A (fixture)", label: "Yesterday" },
+    { name: "ลูกค้า B (fixture)", label: "Today" },
+    { name: "ลูกค้า C (fixture)", label: "Monday" },
+  ];
+  let idx = 0;
+  for (const c of chats.slice(0, DRY_CHATS)) {
+    idx++;
+    const failures = [];
+    const parsed = core.parseChatHTML(sample, { now: new Date(), failures });
+    const { unique, skipped_duplicate } = core.dedupMessages(parsed, "fixture_" + idx);
+    const pairs = core.pairMessages(unique, { groupWindowSec: 90 });
+    saveHtml(`chat-${idx}-${c.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50), sample);
+    if (failures.length)
+      saveHtml(`parse-fail-${idx}`, failures.map((f) => `<!-- ${f.reason} -->\n${f.html}`).join("\n\n"));
+    const summary = core.summarizeChat({
+      chatIndex: idx,
+      customerName: c.name,
+      dateLabel: c.label,
+      messages: unique,
+      pairs,
+      dupSkipped: skipped_duplicate,
+      notesCount: 0,
+    });
+    summary.parse_fail = failures.length;
+    logScrape(summary);
+    log(
+      `  #${idx} ${c.name} [${c.label}] msgs=${summary.message_count} (cust=${summary.customer_message_count}/admin=${summary.admin_message_count}) pairs=${summary.pairs} dup=${summary.duplicates}`,
+    );
+  }
+  log(`✅ dry-run เสร็จ — evidence: ${path.relative(process.cwd(), DEBUG_DIR)}/ (scrape-log.jsonl, html/)`);
+}
+
 // ---------- main ----------
 async function main() {
+  // DRY-RUN ก่อน requireSession (offline fixture รันได้แม้ไม่มี session)
+  if (DRY_RUN) {
+    const dArg = getArg("date"),
+      fArg = getArg("from"),
+      tArg = getArg("to");
+    const from = dArg || fArg || toISO(new Date(Date.now() - 86400000));
+    const to = dArg || tArg || from;
+    let chromium = null;
+    try {
+      ({ chromium } = require("playwright"));
+    } catch {}
+    if (fs.existsSync(AUTH_FILE) && chromium) await runDryRunBrowser(chromium, from, to);
+    else {
+      if (!fs.existsSync(AUTH_FILE))
+        log("ℹ️ ไม่พบ LINE session — dry-run offline จาก fixture (production: scraper:login ก่อน)");
+      await runDryRunFixture(from, to);
+    }
+    return;
+  }
+
   requireSession();
   let chromium;
   try {

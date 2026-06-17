@@ -120,6 +120,7 @@ function stripTags(s) {
 function parseChatHTML(html, opts = {}) {
   const now = opts.now || new Date();
   const out = [];
+  const failures = opts.failures; // อาเรย์ (ถ้าส่งมา) เก็บ raw HTML ของ bubble ที่ parse ไม่ได้ เพื่อแก้ selector
   // หา marker เปิดของ date separator และ bubble ตามลำดับเอกสาร
   //   class ต้องขึ้นต้นด้วย chatsys-date / chat-reverse / chat (ตามด้วยช่องว่างหรือ ") เท่านั้น
   //   เพื่อไม่ให้ <div class="chat-item-text"> (ข้อความ) ถูกจับเป็น bubble แยก
@@ -177,18 +178,53 @@ function parseChatHTML(html, opts = {}) {
         admin_name = alt.trim();
     }
 
-    if (!text) continue;
+    const created_at = time ? timeOnDate(time, currentDate || now) : null;
+    if (!text) {
+      // bubble ที่ดึงข้อความไม่ได้ → เก็บ raw HTML ไว้แก้ selector (ไม่เดา)
+      if (failures) failures.push({ reason: "no_text", direction, html: (markers[i].open + seg).slice(0, 500) });
+      continue;
+    }
+    if (!created_at && failures)
+      failures.push({
+        reason: "no_created_at",
+        direction,
+        text: text.slice(0, 60),
+        html: (markers[i].open + seg).slice(0, 500),
+      });
     out.push({
       direction,
       message_text: text,
       message_type,
       time,
-      created_at: time ? timeOnDate(time, currentDate || now) : null,
+      created_at,
       admin_name,
       raw_text: stripTags(seg).slice(0, 500),
     });
   }
   return out;
+}
+
+// สรุปคุณภาพการ parse ของ 1 แชท — ใช้ทั้ง dry-run และ audit
+function summarizeChat({ chatIndex, customerName, dateLabel, messages, pairs, dupSkipped = 0, notesCount = 0 }) {
+  const KNOWN_TYPES = ["text", "image", "sticker", "file", "media"];
+  const admin = messages.filter((m) => m.direction === "admin");
+  const customer = messages.filter((m) => m.direction === "customer");
+  return {
+    chat_index: chatIndex,
+    customer_name: customerName,
+    detected_date_label: dateLabel || null,
+    date_label_parsed: dateLabel ? dayLabelToDate(dateLabel) !== null : null,
+    message_count: messages.length,
+    admin_message_count: admin.length,
+    customer_message_count: customer.length,
+    missing_created_at: messages.filter((m) => !m.created_at).length,
+    missing_direction: messages.filter((m) => m.direction !== "admin" && m.direction !== "customer").length,
+    unknown_message_type: messages.filter((m) => !KNOWN_TYPES.includes(m.message_type)).length,
+    admin_without_customer_pair: pairs.filter((p) => !p.customer_text).length,
+    pairs: pairs.length,
+    duplicates: dupSkipped,
+    notes_count: notesCount,
+  };
 }
 
 // รวม HH:MM กับวันที่ → ISO timestamp
@@ -333,5 +369,6 @@ module.exports = {
   pairMessages,
   dedupMessages,
   buildLogReplyPayload,
+  summarizeChat,
   DAY_MAP,
 };

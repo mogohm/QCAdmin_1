@@ -59,5 +59,5 @@ const { unique, skipped_duplicate } = dedupMessages(doubled, "Utest");
 ok("ป้อน 12 (ซ้ำ) → unique 6", unique.length === 6, `unique=${unique.length}`);
 ok("นับ skipped_duplicate = 6", skipped_duplicate === 6, `skipped=${skipped_duplicate}`);
 
-console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
+console.log(`\n===== Parser: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
 process.exit(fail ? 1 : 0);

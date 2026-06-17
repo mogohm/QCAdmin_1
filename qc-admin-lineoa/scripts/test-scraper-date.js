@@ -94,5 +94,5 @@ for (const m of items) {
 }
 ok("วันที่ที่ระบุ data-iso ตรงทั้งหมด", isoOk === isoTotal, `${isoOk}/${isoTotal}`);
 
-console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
+console.log(`\n===== Date label: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
 process.exit(fail ? 1 : 0);
