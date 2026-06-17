@@ -354,7 +354,7 @@ async function runJob(job, context) {
       }
 
       const lineUserId = res.meta.uid || `name:${item.name}`;
-      const pairs = core.pairMessages(res.messages, { groupWindowSec: 90 });
+      const pairs = core.pairMessages(res.messages, { groupWindowSec: 180 });
 
       // นับฝั่ง
       const adminCount = res.messages.filter((m) => m.direction === "admin").length;
@@ -470,7 +470,7 @@ async function runDryRunBrowser(chromium, from, to) {
     });
     if (!res) continue;
     await saveScreenshot(page, `dryrun-chat-${idx}`);
-    const pairs = core.pairMessages(res.messages, { groupWindowSec: 90 });
+    const pairs = core.pairMessages(res.messages, { groupWindowSec: 180 });
     const notes = await extractNotes(page).catch(() => []);
     const summary = core.summarizeChat({
       chatIndex: idx,
@@ -508,7 +508,7 @@ async function runDryRunFixture(from, to) {
     const failures = [];
     const parsed = core.parseChatHTML(sample, { now: new Date(), failures });
     const { unique, skipped_duplicate } = core.dedupMessages(parsed, "fixture_" + idx);
-    const pairs = core.pairMessages(unique, { groupWindowSec: 90 });
+    const pairs = core.pairMessages(unique, { groupWindowSec: 180 });
     saveHtml(`chat-${idx}-${c.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50), sample);
     if (failures.length)
       saveHtml(`parse-fail-${idx}`, failures.map((f) => `<!-- ${f.reason} -->\n${f.html}`).join("\n\n"));

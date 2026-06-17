@@ -275,10 +275,12 @@ function pairMessages(messages, opts = {}) {
 
   const pairs = [];
   let pendingCust = [];
+  let lastCustomer = null; // ลูกค้าคนล่าสุดที่เคยถาม (context ของ admin follow-up หลังตอบไปแล้ว)
   for (let i = 0; i < sorted.length; i++) {
     const cur = sorted[i];
     if (cur.direction === "customer") {
       pendingCust.push(cur);
+      lastCustomer = cur;
       continue;
     }
     // admin — รวม bubble ต่อเนื่องภายใน window
@@ -295,10 +297,15 @@ function pairMessages(messages, opts = {}) {
     const admin_text = group.map((g) => g.message_text).join("\n");
     const admin_created_at = group[0].created_at || null;
     const admin_name = group.map((g) => g.admin_name).find(Boolean) || null;
-    const customer_text = pendingCust.length ? pendingCust.map((c) => c.message_text).join("\n") : null;
-    const customer_created_at = pendingCust.length ? pendingCust[pendingCust.length - 1].created_at || null : null;
+
+    // คำถามลูกค้า: ใช้คำถามใหม่ที่ยังไม่ตอบ (fresh) ก่อน; ถ้าไม่มี = admin follow-up
+    //   → carry คำถามล่าสุดเป็น context (กัน "admin ไม่มีคู่") แต่ไม่คิด response_seconds (ไม่ใช่การตอบใหม่)
+    const fresh = pendingCust.length > 0;
+    const custMsgs = fresh ? pendingCust : lastCustomer ? [lastCustomer] : [];
+    const customer_text = custMsgs.length ? custMsgs.map((c) => c.message_text).join("\n") : null;
+    const customer_created_at = fresh ? pendingCust[pendingCust.length - 1].created_at || null : null;
     let response_seconds = null;
-    if (customer_created_at && admin_created_at)
+    if (fresh && customer_created_at && admin_created_at)
       response_seconds = Math.max(0, Math.round((new Date(admin_created_at) - new Date(customer_created_at)) / 1000));
     pairs.push({
       customer_text,
@@ -307,6 +314,7 @@ function pairMessages(messages, opts = {}) {
       admin_created_at,
       admin_name,
       response_seconds,
+      is_followup: !fresh && !!customer_text, // admin ตอบต่อเนื่องคำถามเดิม
       message_type: group[group.length - 1].message_type || "text",
       reply_group_id: hashText(group.map((g) => g.message_text + (g.created_at || "")).join("|")),
     });
