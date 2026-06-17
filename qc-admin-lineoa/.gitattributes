@@ -1,0 +1,7 @@
+# บังคับให้ text/source เป็น LF บน GitHub (กัน CRLF จาก autocrlf บน Windows)
+* text=auto eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.html text eol=lf

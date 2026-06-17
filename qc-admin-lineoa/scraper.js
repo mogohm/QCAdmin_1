@@ -1,4 +1,5 @@
-// scraper.js — LINE OA Manager scraper (Production)
+// scraper.js — LINE OA Manager scraper (Production) · full source (~629 lines)
+//   หากดูบน GitHub raw แล้วเห็นสั้น/ว่าง = cache เก่า ให้ hard-refresh (Ctrl+Shift+R)
 //   node scraper.js --watch                     poll job แล้ว scrape ต่อเนื่อง
 //   node scraper.js --watch --schedule=30        + สร้าง job Yesterday อัตโนมัติทุก 30 นาที
 //   node scraper.js --headed                     เปิดหน้าต่าง browser (debug)

@@ -1,3 +1,5 @@
+// log-reply route — POST จาก scraper: upsert customer/conversation, insert messages,
+//   runQc → qc_scores + qc_score_details, dedup. (full source ~330 lines)
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { isPkName } from "@/lib/admin-name";

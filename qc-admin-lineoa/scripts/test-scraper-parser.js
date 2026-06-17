@@ -1,4 +1,4 @@
-// test-scraper-parser.js — ตรวจการแยก bubble customer/admin + pairing จาก HTML fixture
+// test-scraper-parser.js — ตรวจการแยก bubble customer/admin + pairing จาก HTML fixture (full ~96 บรรทัด)
 //   npm run test:scraper  (ส่วนที่ 2)
 const fs = require("fs");
 const path = require("path");

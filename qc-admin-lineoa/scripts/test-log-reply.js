@@ -1,4 +1,4 @@
-// test-log-reply.js — ตรวจการสร้าง payload + dedup คู่ QC และ (ถ้ามี API) ยิง log-reply จริง
+// test-log-reply.js — ตรวจการสร้าง payload + dedup คู่ QC และ (ถ้ามี API) ยิง log-reply จริง (full ~107 บรรทัด)
 //   npm run test:scraper  (ส่วนที่ 3)
 //   ตั้ง QC_API_URL + QC_API_KEY เพื่อทดสอบ insert จริง + runQc
 const fs = require("fs");

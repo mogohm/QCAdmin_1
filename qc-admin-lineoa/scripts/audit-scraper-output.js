@@ -1,4 +1,4 @@
-// audit-scraper-output.js — สรุปคุณภาพผล scrape จาก .storage/debug/scrape-log.jsonl
+// audit-scraper-output.js — สรุปคุณภาพผล scrape จาก .storage/debug/scrape-log.jsonl (full ~110 บรรทัด)
 //   npm run audit:scraper        (รัน dry-run ก่อนเพื่อสร้าง scrape-log.jsonl)
 //
 // รายงาน + เกณฑ์ acceptance:
