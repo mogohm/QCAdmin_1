@@ -41,6 +41,18 @@ export async function POST(req) {
     await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`;
     await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()`;
     await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0`;
+    // scraper (production) — messages/qc_scores metadata + unique dedup index
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_hash TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS source TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS raw JSONB`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS admin_name TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_group_id TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text'`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS source TEXT`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS scraper_job_id UUID`;
+    await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_dedup ON messages (line_user_id, direction, message_hash, created_at) WHERE message_hash IS NOT NULL`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_reply_group ON messages (reply_group_id)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_job ON qc_scores (scraper_job_id)`;
 
     // ---- Phase 2 tables ----
     await query`CREATE TABLE IF NOT EXISTS qc_score_details (
