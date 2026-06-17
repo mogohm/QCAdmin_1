@@ -22,15 +22,15 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",
+    "dotenv": "latest",
     "lucide-react": "latest",
     "next": "latest",
+    "playwright": "latest",
     "react": "latest",
     "react-dom": "latest",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "dotenv": "^16.4.7",
-    "playwright": "^1.49.1",
     "prettier": "^3.8.4"
   }
 }
