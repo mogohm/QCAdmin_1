@@ -67,9 +67,34 @@ const KEY = process.env.QC_API_KEY || process.env.ADMIN_API_KEY;
       });
       const j = await res.json();
       ok("POST /api/admin/log-reply ok", j.ok === true, j.error || JSON.stringify(j).slice(0, 80));
-      ok("return มี qc_score_id หรือ duplicate", "qc_score_id" in j || j.duplicate, JSON.stringify(j).slice(0, 100));
-      if ("final_score" in j)
-        ok("return มี final_score เป็นตัวเลข", typeof j.final_score === "number" || j.final_score === null);
+      // insert customer + admin message (inserted_messages = 2 ครั้งแรก)
+      ok(
+        "insert customer + admin message (inserted_messages ≥ 1)",
+        (j.inserted_messages || 0) >= 1,
+        `inserted=${j.inserted_messages}`,
+      );
+      // create qc_scores (qc_score_id) + ทำ runQc (final_score)
+      ok("create qc_scores (มี qc_score_id)", !!j.qc_score_id, JSON.stringify(j).slice(0, 90));
+      ok("runQc ทำงาน (final_score เป็นตัวเลข)", typeof j.final_score === "number");
+      // create qc_score_details — runQc insert รายมิติ; ยืนยันผ่าน qc object ที่ส่งกลับ (details ≥ 7)
+      ok(
+        "create qc_score_details (รายมิติ ≥ 7)",
+        Array.isArray(j.qc?.details) && j.qc.details.length >= 7,
+        `details=${j.qc?.details?.length}`,
+      );
+
+      // ---- POST ซ้ำด้วย payload เดิม → ต้องไม่ insert ซ้ำ ----
+      const res2 = await fetch(`${API}/api/admin/log-reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": KEY },
+        body: JSON.stringify(body),
+      });
+      const j2 = await res2.json();
+      ok(
+        "POST ซ้ำ → duplicate (ไม่ insert admin ซ้ำ)",
+        j2.duplicate === true || (j2.skipped_duplicates || 0) >= 1,
+        JSON.stringify(j2).slice(0, 90),
+      );
     } catch (e) {
       ok("live log-reply", false, e.message);
     }

@@ -41,6 +41,39 @@ const sticker = adm.find((m) => m.message_type === "sticker");
 ok("ตรวจ sticker จาก data-mtype", !!sticker, sticker ? sticker.message_text : "ไม่เจอ");
 ok("ข้อความ text ปกติ = type text", adm.filter((m) => m.message_type === "text").length === 2);
 
+console.log("\n===== 2b) date separator + image/file/sticker types =====");
+// inline HTML: date separator "Monday" + image (data-mtype) + file (download link) + sticker (img src)
+const typeHtml = `
+<div class="chatsys-date">Monday</div>
+<div class="chat"><div class="chat-item-text">ส่งรูปให้ดูหน่อย</div><span>09:00</span></div>
+<div class="chat chat-reverse"><img alt="PK - Mei"><div class="chat-item-text" data-mtype="image">[image]</div><span>09:01</span></div>
+<div class="chat chat-reverse"><img alt="PK - Mei"><div class="chat-item-text"><a download href="/f.pdf">[file]</a></div><span>09:02</span></div>
+<div class="chat chat-reverse"><img alt="PK - Mei" src="/sticker/x.png"><div class="chat-item-text">[sticker]</div><span>09:03</span></div>
+<div class="chatsys chatsys-system">ระบบ: จบการสนทนา</div>`;
+const tmsgs = parseChatHTML(typeHtml, { now: NOW });
+ok("date separator ไม่ถูกนับเป็นข้อความ + system ถูกข้าม → 4 ข้อความ", tmsgs.length === 4, `got ${tmsgs.length}`);
+ok(
+  "date separator 'Monday' กำหนด created_at เป็นวันจันทร์",
+  tmsgs.every((m) => m.created_at && new Date(m.created_at).getDay() === 1),
+  tmsgs.map((m) => m.created_at).join(","),
+);
+ok(
+  "ตรวจ type image",
+  tmsgs.some((m) => m.message_type === "image"),
+);
+ok(
+  "ตรวจ type file (จาก download link)",
+  tmsgs.some((m) => m.message_type === "file"),
+);
+ok(
+  "ตรวจ type sticker (จาก img src)",
+  tmsgs.some((m) => m.message_type === "sticker"),
+);
+ok(
+  "ทั้งหมดเป็น bubble admin (chat-reverse) ยกเว้นข้อความลูกค้าแรก",
+  tmsgs.filter((m) => m.direction === "admin").length === 3,
+);
+
 console.log("\n===== 3) pairing (รวมหลายข้อความ + รวม bubble admin ≤90s) =====");
 const pairs = pairMessages(msgs, { groupWindowSec: 90 });
 ok("ได้ 2 คู่ QC", pairs.length === 2, `got ${pairs.length}`);
