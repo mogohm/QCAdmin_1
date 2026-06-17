@@ -148,7 +148,47 @@ npm run test:admin-reply    # runQc + qc_score_details insert (24 checks)
 npm run test:dashboard-api  # /api/dashboard fields + SOP CRUD live (ตั้ง ADMIN_API_KEY)
 npm run audit:sop           # คุณภาพข้อมูล SOP (DB หรือ offline)
 npm run uat:check           # รวมทั้งหมด: build + tests + audit (ต้องมี ADMIN_API_KEY)
+npm run test:scraper        # date label + bubble parser + log-reply payload/dedup (offline)
 ```
+
+---
+
+## Scraper (LINE OA Manager)
+
+Playwright scraper อยู่ที่ `scraper.js` (ในโฟลเดอร์นี้) — ดึงข้อความจาก LINE OA Manager เพราะ webhook ไม่ส่งข้อความฝั่งแอดมินกลับมา
+
+**Flow:** เว็บสร้าง job (`/scraper`) → scraper poll `/api/scraper/poll` → เปิด LINE OA → scrape ตามช่วงวันที่ → `POST /api/admin/log-reply` → `runQc()` → เห็นคะแนนใน dashboard
+
+```bash
+cd qc-admin-lineoa
+npm install
+npx playwright install chromium
+
+# .env (หรือ env บนเครื่อง operator)
+#   QC_API_URL=https://qc-admin-1.vercel.app
+#   QC_API_KEY=<ADMIN_API_KEY ตรงกับ Vercel>
+#   LINE_OA_URL=https://chat.line.biz      # default
+#   SCRAPER_HEADLESS=false                 # true=ไม่เปิดหน้าต่าง
+#   SCRAPER_DEBUG=true                     # เก็บ screenshot/html/scrape-log ที่ .storage/debug/
+
+# 1) login LINE OA ครั้งแรก → เก็บ session ที่ .storage/line-auth.json
+npm run scraper:login
+
+# 2) รัน watch (poll job จากเว็บแล้ว scrape)
+npm run scraper:watch
+
+# ตัวเลือกอื่น
+node scraper.js --watch --schedule=30          # สร้าง job Yesterday อัตโนมัติทุก 30 นาที
+node scraper.js --headed                        # เปิดหน้าต่าง browser
+node scraper.js --date=2026-06-16               # ดึงวันเดียว
+node scraper.js --from=2026-06-10 --to=2026-06-16
+```
+
+- session หมดอายุ → ขึ้น `LINE session expired, run npm run scraper:login`
+- กรองเฉพาะชื่อแอดมินที่ขึ้นต้น **PK** (ชื่ออื่น = scraper ดึงผิด → ข้าม)
+- รวม bubble admin ที่ตอบติดกัน ≤ 90 วินาทีเป็นคำตอบเดียว + รวมคำถามลูกค้าต่อเนื่องก่อนตอบ
+- กันซ้ำด้วย message hash + qc pair key (ไม่ insert ซ้ำลง DB)
+- logic ล้วน (date label / bubble parse / pairing / dedup) อยู่ที่ `lib/scraper-core.js` — ทดสอบด้วย `npm run test:scraper`
 
 ---
 

@@ -32,6 +32,9 @@ export async function POST(req) {
     phone,
     email,
     message_type,
+    reply_group_id,
+    source,
+    scraper_job_id,
   } = await req.json();
   if (!line_user_id || !text)
     return Response.json({ error: "line_user_id, text required" }, { status: 400, headers: CORS });
@@ -127,7 +130,10 @@ export async function POST(req) {
         }
       }
     }
-    return Response.json({ ok: true, duplicate: true }, { headers: CORS });
+    return Response.json(
+      { ok: true, duplicate: true, inserted_messages: 0, skipped_duplicates: 1, qc_score_id: null },
+      { headers: CORS },
+    );
   }
 
   // หา open conversation ของ user นี้
@@ -148,6 +154,7 @@ export async function POST(req) {
   }
 
   const convId = conv[0].id;
+  let insertedMessages = 0; // นับข้อความที่ insert จริง (customer + admin)
 
   // บันทึกข้อความลูกค้าที่ scraper ส่งมา — จับ id ไว้ตรงนี้เลย
   // (ไม่ query ใหม่ทีหลัง เพราะ ORDER BY created_at อาจคืน message อื่นในกลุ่มเดียวกัน)
@@ -176,6 +183,7 @@ export async function POST(req) {
       `;
       customerMsgId = custRow[0].id;
       customerMsgCreatedAt = custRow[0].created_at;
+      insertedMessages++;
     } else {
       customerMsgId = existCust[0].id;
       customerMsgCreatedAt = existCust[0].created_at;
@@ -202,17 +210,19 @@ export async function POST(req) {
   // บันทึก admin message พร้อม timestamp จริงจาก LINE
   const adminAt = admin_ts || null;
   const msgType = message_type || "text";
+  const src = source || "scraper";
   const adminMsg = adminAt
     ? await query`
-    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type, created_at)
-    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType}, ${adminAt}::timestamptz)
+    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type, source, admin_name, reply_group_id, created_at)
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType}, ${src}, ${admin_name || null}, ${reply_group_id || null}, ${adminAt}::timestamptz)
     RETURNING *
   `
     : await query`
-    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type)
-    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType})
+    INSERT INTO messages (conversation_id, line_user_id, admin_id, direction, message_text, message_type, source, admin_name, reply_group_id)
+    VALUES (${convId}, ${line_user_id}, ${resolvedAdminId}, 'admin', ${text}, ${msgType}, ${src}, ${admin_name || null}, ${reply_group_id || null})
     RETURNING *
   `;
+  insertedMessages++;
 
   await query`
     UPDATE conversations SET assigned_admin_id = ${resolvedAdminId} WHERE id = ${convId}
@@ -243,6 +253,13 @@ export async function POST(req) {
     customerName: customer_name,
     responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
   });
+
+  // บันทึก source/scraper_job_id ลง qc_scores (แยกจาก runQc เพื่อไม่แตะ pipeline หลัก)
+  if (qc?.id) {
+    await query`UPDATE qc_scores SET source = ${src}, scraper_job_id = ${scraper_job_id || null} WHERE id = ${qc.id}`.catch(
+      () => {},
+    );
+  }
 
   // ---- Auto-detect customer events ----
   const allText = [text, customer_text || ""].join(" ");
@@ -297,5 +314,17 @@ export async function POST(req) {
     }
   }
 
-  return Response.json({ ok: true, qc }, { headers: CORS });
+  return Response.json(
+    {
+      ok: true,
+      inserted_messages: insertedMessages,
+      skipped_duplicates: 0,
+      qc_score_id: qc?.id || null,
+      final_score: qc?.finalScore ?? null,
+      matched_sop: qc?.matchedSop?.topic || null,
+      response_seconds: responseSeconds,
+      qc,
+    },
+    { headers: CORS },
+  );
 }

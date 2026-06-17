@@ -15,7 +15,10 @@
     "test:admin-reply": "node scripts/test-admin-reply.js",
     "test:dashboard-api": "node scripts/test-dashboard-api.js",
     "audit:sop": "node scripts/audit-sop-data.js",
-    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:dashboard-api"
+    "test:scraper": "node scripts/test-scraper-date.js && node scripts/test-scraper-parser.js && node scripts/test-log-reply.js",
+    "scraper:login": "node scripts/line-login.js",
+    "scraper:watch": "node scraper.js --watch",
+    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",
@@ -26,6 +29,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "dotenv": "^16.4.7",
+    "playwright": "^1.49.1",
     "prettier": "^3.8.4"
   }
 }

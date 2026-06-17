@@ -1,0 +1,42 @@
+<!-- ตัวอย่าง chat panel ของ LINE OA Manager (mirror class จริง) สำหรับ test-scraper-parser.js
+     customer = bubble .chat (ซ้าย) ; admin = .chat .chat-reverse (ขวา) ; date = .chatsys-date
+     system message (.chatsys-system) ต้องถูกข้าม ไม่เข้า QC -->
+<div class="chat-panel">
+  <div class="chatsys-date">Yesterday</div>
+
+  <!-- ลูกค้าถาม 2 ข้อความติดกันก่อน admin ตอบ -->
+  <div class="chat">
+    <div class="chat-item-text user-select-text">สวัสดีครับ ขอลิงก์ฝากเงินหน่อย</div>
+    <span>10:30</span>
+  </div>
+  <div class="chat">
+    <div class="chat-item-text user-select-text">ฝากผ่านวิธีไหนได้บ้างครับ</div>
+    <span>10:31</span>
+  </div>
+
+  <!-- admin ตอบ 2 bubble ภายใน 90 วินาที → ต้องรวมเป็นคำตอบเดียว -->
+  <div class="chat chat-reverse">
+    <img alt="PK - Mei" src="/avatar/mei.png" />
+    <div class="chat-item-text user-select-text">สวัสดีค่ะ รบกวนกดที่เมนูฝาก ลิงก์ https://bit.ly/dep ค่ะ</div>
+    <span>10:32</span>
+  </div>
+  <div class="chat chat-reverse">
+    <img alt="PK - Mei" src="/avatar/mei.png" />
+    <div class="chat-item-text user-select-text">ตรวจสอบยอดให้แล้วนะคะ ยินดีให้บริการค่ะ</div>
+    <span>10:33</span>
+  </div>
+
+  <!-- คู่ที่สอง: ลูกค้าขอบคุณ → admin ส่ง sticker -->
+  <div class="chat">
+    <div class="chat-item-text user-select-text">ขอบคุณครับ</div>
+    <span>10:40</span>
+  </div>
+  <div class="chat chat-reverse" data-mtype="sticker">
+    <img alt="PK - Mei" src="/sticker/123.png" />
+    <div class="chat-item-text">[sticker]</div>
+    <span>10:41</span>
+  </div>
+
+  <!-- system message — ต้องไม่ถูกดึงไป QC -->
+  <div class="chatsys chatsys-system">ลูกค้าเข้าร่วมการสนทนาแล้ว</div>
+</div>

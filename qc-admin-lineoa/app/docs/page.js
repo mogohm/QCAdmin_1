@@ -128,8 +128,13 @@ npm run test:qc-accuracy   # ชุดเคสจริง 34 cases (intent + p
 npm run audit:sop          # คุณภาพข้อมูล SOP
 npm run test:admin-import  # PK admin detection 32
 npm run test:admin-reply   # runQc + qc_score_details 24
+npm run test:scraper       # date label + bubble parser + log-reply (offline)
 npm run test:dashboard-api # /api/dashboard + SOP CRUD live (ตั้ง ADMIN_API_KEY)
-npm run uat:check          # รวมทั้งหมดตามลำดับด้านบน`)}
+npm run uat:check          # รวมทั้งหมดตามลำดับด้านบน
+
+# Scraper (LINE OA)
+npm run scraper:login      # login LINE OA → .storage/line-auth.json
+npm run scraper:watch      # poll job แล้ว scrape ต่อเนื่อง`)}
       </article>
     </AppShell>
   );

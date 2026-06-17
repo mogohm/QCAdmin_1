@@ -270,3 +270,23 @@ ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS expected_sop_answer TEXT;
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS minor_issues JSONB DEFAULT '[]';
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS commission_tier JSONB;
 ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS used_count INT DEFAULT 0;
+
+-- ============================================================
+-- Scraper (Production) — messages/qc_scores เพิ่ม metadata + unique indexes กันซ้ำ
+-- ============================================================
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_hash   TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS source         TEXT;       -- 'scraper' | 'webhook' | 'admin_console'
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS raw            JSONB;      -- raw payload จาก scraper (debug/audit)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS admin_name     TEXT;       -- ชื่อ admin ที่ scraper ดึงมา (ก่อน resolve เป็น admin_id)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_group_id TEXT;       -- รวม bubble admin ที่ตอบติดกันเป็นกลุ่มเดียว
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type   TEXT DEFAULT 'text'; -- text/image/sticker/file/media/system
+
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS source          TEXT;     -- 'scraper' | 'admin_console'
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS scraper_job_id  UUID;     -- job ที่ทำให้เกิดคะแนนนี้
+
+-- unique indexes ป้องกัน insert ข้อความ/คู่ QC ซ้ำ (partial — เฉพาะแถวที่มี hash)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_dedup
+  ON messages (line_user_id, direction, message_hash, created_at)
+  WHERE message_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_reply_group ON messages (reply_group_id);
+CREATE INDEX IF NOT EXISTS idx_qc_scores_job ON qc_scores (scraper_job_id);

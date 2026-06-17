@@ -481,8 +481,19 @@ export default function ScraperPage() {
               </>
             )}
             {activeJob.current_chat && (
-              <div style={{ fontSize: 12, color: "#555", marginTop: 6 }}>🔍 {activeJob.current_chat}</div>
+              <div style={{ fontSize: 12, color: "#555", marginTop: 6 }}>
+                🔍 chat ปัจจุบัน: {activeJob.current_chat}
+              </div>
             )}
+            <div style={{ fontSize: 12, marginTop: 6, color: activeJob.status === "running" ? "#16a34a" : "#a16207" }}>
+              {activeJob.status === "running"
+                ? "🟢 scraper ออนไลน์ — กำลังทำงาน"
+                : "🟡 รอ scraper รับงาน (เปิด npm run scraper:watch บนเครื่อง)"}
+              {activeJob.started_at && (
+                <span style={{ color: "#888" }}> · เริ่ม {new Date(activeJob.started_at).toLocaleString("th-TH")}</span>
+              )}
+              {activeJob.error_text && <span style={{ color: "#ef4444" }}> · ⚠️ {activeJob.error_text}</span>}
+            </div>
           </div>
         ) : (
           <div
@@ -785,10 +796,22 @@ export default function ScraperPage() {
         <div className="card" style={{ marginBottom: 24, background: "#f8fafc", fontSize: 13 }}>
           <h2>วิธีเปิด Scraper บนเครื่อง</h2>
           <div style={{ fontFamily: "monospace", lineHeight: 2.2 }}>
-            <div style={{ color: "#888" }}># poll งาน (รอรับ job จากเว็บ)</div>
-            <div>node scraper.js --watch</div>
-            <div style={{ marginTop: 6, color: "#888" }}># หรือรันพร้อม schedule อัตโนมัติ ไม่ต้องเปิดเบราว์เซอร์</div>
+            <div style={{ color: "#888" }}># 1) login LINE OA ครั้งแรก (เปิด browser ให้ login แล้ว save session)</div>
+            <div>npm run scraper:login</div>
+            <div style={{ marginTop: 6, color: "#888" }}># 2) poll งาน + scrape ต่อเนื่อง (รอรับ job จากเว็บ)</div>
+            <div>npm run scraper:watch</div>
+            <div style={{ marginTop: 6, color: "#888" }}>
+              # หรือรันพร้อม schedule สร้าง job Yesterday อัตโนมัติทุก 30 นาที
+            </div>
             <div>node scraper.js --watch --schedule=30</div>
+            <div style={{ marginTop: 6, color: "#888" }}># ดึงวันเดียว / ช่วงวันที่</div>
+            <div>node scraper.js --date=2026-06-16</div>
+            <div>node scraper.js --from=2026-06-10 --to=2026-06-16</div>
+          </div>
+          <div style={{ marginTop: 10, color: "#888" }}>
+            ENV: <code>QC_API_URL</code> · <code>QC_API_KEY</code> · <code>LINE_OA_URL</code> ·{" "}
+            <code>SCRAPER_HEADLESS</code> · <code>SCRAPER_DEBUG</code> — session เก็บที่{" "}
+            <code>.storage/line-auth.json</code> (debug evidence ที่ <code>.storage/debug/</code>)
           </div>
         </div>
 
