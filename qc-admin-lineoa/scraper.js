@@ -36,6 +36,7 @@ const DEBUG = /^(1|true|yes)$/i.test(process.env.SCRAPER_DEBUG || "");
 const EVIDENCE = DEBUG || DRY_RUN; // dry-run เก็บ debug evidence เสมอ
 const DRY_CHATS = 3; // dry-run scrape กี่แชทแรก
 const SCHEDULE_MIN = parseInt(getArg("schedule") || "0", 10);
+const LIMIT = getArg("limit") ? parseInt(getArg("limit"), 10) : Infinity; // จำกัดจำนวนแชทต่อ job (ทดสอบ/ปลอดภัย)
 const POLL_MS = 10000;
 
 const toISO = (d) => new Date(d).toISOString().slice(0, 10);
@@ -328,8 +329,9 @@ async function runJob(job, context) {
     failed = 0,
     chatIndex = 0;
   try {
-    const chats = await scanChatList(page, fromDate, toDate, shouldCancel);
-    log(`🔍 พบ ${chats.length} แชทในช่วงวันที่`);
+    let chats = await scanChatList(page, fromDate, toDate, shouldCancel);
+    if (Number.isFinite(LIMIT)) chats = chats.slice(0, LIMIT);
+    log(`🔍 พบ ${chats.length} แชทในช่วงวันที่${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""}`);
     await patchJob(job.id, { total_chats: chats.length });
 
     for (const item of chats) {

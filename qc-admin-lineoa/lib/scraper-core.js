@@ -130,6 +130,7 @@ function parseChatHTML(html, opts = {}) {
   while ((m = markerRe.exec(html))) markers.push({ index: m.index, end: markerRe.lastIndex, cls: m[1], open: m[0] });
 
   let currentDate = null;
+  let lastAdminName = null; // carry-forward — LINE OA แสดงชื่อ admin ครั้งเดียวต่อ sequence
   for (let i = 0; i < markers.length; i++) {
     const seg = html.slice(markers[i].end, i + 1 < markers.length ? markers[i + 1].index : html.length);
     const cls = markers[i].cls;
@@ -164,18 +165,22 @@ function parseChatHTML(html, opts = {}) {
       time = last ? last[1] : null;
     }
 
-    // ชื่อ admin จาก img[alt]
+    // ชื่อ admin — หลายกลยุทธ์ + carry-forward (real LINE OA ซ่อนชื่อหลัง bubble แรก)
+    //   admin จริงขึ้นต้น PK เสมอ → หา PK-name ใน header (ลบ message text ออกก่อน กันชนกับเนื้อหา)
     let admin_name = null;
     if (direction === "admin") {
+      const valid = (s) =>
+        s &&
+        s.trim().length >= 2 &&
+        s.trim().length < 50 &&
+        /[฀-๿a-zA-Z]/.test(s) &&
+        !/^(photo|image|avatar|icon|sticker|read|seen|delivered|sent|อ่านแล้ว|ส่งแล้ว)$/i.test(s.trim());
+      const segNoText = seg.replace(/class="[^"]*\bchat-item-text\b[^"]*"[^>]*>[\s\S]*?<\/(?:div|span|p)>/gi, "");
       const alt = (seg.match(/<img[^>]+alt="([^"]+)"/i) || [])[1];
-      if (
-        alt &&
-        alt.length >= 2 &&
-        alt.length < 50 &&
-        /[฀-๿a-zA-Z]/.test(alt) &&
-        !/^(photo|image|avatar|icon|sticker)$/i.test(alt)
-      )
-        admin_name = alt.trim();
+      const titleAttr = (segNoText.match(/(?:title|aria-label)="([^"]+)"/i) || [])[1];
+      const pkName = (segNoText.match(/((?:ᴘᴋ|🅿🅺|🅿️🅺|PK|pk|Pk)[ \-_·.][^\n<>"]{0,25})/) || [])[1];
+      admin_name = [alt, pkName, titleAttr].find(valid)?.trim() || lastAdminName;
+      if (admin_name) lastAdminName = admin_name;
     }
 
     const created_at = time ? timeOnDate(time, currentDate || now) : null;
