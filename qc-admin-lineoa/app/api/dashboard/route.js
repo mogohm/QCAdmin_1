@@ -309,6 +309,59 @@ export async function GET(req) {
     );
     const fatalMapAdmin = Object.fromEntries((fatalByAdmin || []).map((r) => [r.admin_id, r.n]));
 
+    // ---- marketing summary (customer_events ในช่วงวันที่) ----
+    const mkt = await safe(
+      () => query`SELECT
+        count(*) FILTER (WHERE event_type='register')::int AS registration,
+        count(*) FILTER (WHERE event_type='register' AND status='pass')::int AS registration_pass,
+        count(*) FILTER (WHERE event_type='register' AND status='fail')::int AS registration_fail,
+        count(*) FILTER (WHERE event_type='kyc' AND status='pass')::int AS kyc_pass,
+        count(*) FILTER (WHERE event_type='kyc')::int AS kyc_total,
+        coalesce(sum(amount) FILTER (WHERE event_type='deposit'),0)::numeric AS deposit_total,
+        count(*) FILTER (WHERE event_type='deposit')::int AS deposit_count,
+        coalesce(sum(amount) FILTER (WHERE event_type IN ('withdraw','withdrawal')),0)::numeric AS withdraw_total,
+        count(*) FILTER (WHERE event_type IN ('withdraw','withdrawal'))::int AS withdraw_count,
+        coalesce(sum(amount) FILTER (WHERE event_type='deposit' AND promotion_code IS NOT NULL),0)::numeric AS promo_deposit,
+        count(DISTINCT line_user_id) FILTER (WHERE promotion_code IS NOT NULL)::int AS promo_participants
+        FROM customer_events
+        WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+      [{}],
+    );
+    const m0 = mkt[0] || {};
+    const marketingSummary = {
+      registration: m0.registration || 0,
+      registration_pass: m0.registration_pass || 0,
+      registration_fail: m0.registration_fail || 0,
+      kyc_pass: m0.kyc_pass || 0,
+      kyc_total: m0.kyc_total || 0,
+      deposit_total: Number(m0.deposit_total || 0),
+      deposit_count: m0.deposit_count || 0,
+      withdraw_total: Number(m0.withdraw_total || 0),
+      withdraw_count: m0.withdraw_count || 0,
+      promotion_deposit: Number(m0.promo_deposit || 0),
+      promotion_participants: m0.promo_participants || 0,
+    };
+
+    // ---- most improved: avg score 7 วันล่าสุด vs 7 วันก่อนหน้า (อิง dateTo) ----
+    const improved = await safe(
+      () => query`
+      WITH cur AS (SELECT admin_id, avg(final_score) s FROM qc_scores
+         WHERE created_at > (${dateTo}::date - interval '6 days') AND created_at < (${dateTo}::date + interval '1 day') GROUP BY admin_id),
+       prev AS (SELECT admin_id, avg(final_score) s FROM qc_scores
+         WHERE created_at > (${dateTo}::date - interval '13 days') AND created_at <= (${dateTo}::date - interval '6 days') GROUP BY admin_id)
+      SELECT a.member_name, round(cur.s)::int cur, round(prev.s)::int prev, round(cur.s - prev.s)::int delta
+      FROM cur JOIN prev ON prev.admin_id = cur.admin_id JOIN qc_admins a ON a.id = cur.admin_id
+      WHERE prev.s > 0 ORDER BY (cur.s - prev.s) DESC LIMIT 6`,
+      [],
+    );
+    const mostImproved = (improved || []).map((r) => ({
+      admin: r.member_name,
+      current: r.cur,
+      previous: r.prev,
+      delta: r.delta,
+      pct: r.prev ? Math.round((r.delta / r.prev) * 100) : 0,
+    }));
+
     const MULT = (s) => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
     const TIER = (s) => (s >= 90 ? "Excellent" : s >= 80 ? "Standard" : s >= 70 ? "Warning" : "Critical");
     const RATE = 0.01;
@@ -379,6 +432,8 @@ export async function GET(req) {
       commissionSummary: { tiers: commissionSummary[0] || {}, per_admin: commissionPerAdmin },
       adminCategoryRanking,
       slaExceptionSummary: slaExceptionSummary[0] || {},
+      marketingSummary,
+      mostImproved,
     });
   } catch (err) {
     console.error("Dashboard fatal:", err);

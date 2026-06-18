@@ -11,6 +11,8 @@ const MENU = [
   ["/system-events", "🛠️", "System Events"],
   ["/admin-performance", "🏅", "Admin Performance"],
   ["/commission", "💰", "Commission"],
+  ["/scraper", "🛰️", "Scraper"],
+  ["/docs", "📄", "Docs"],
   ["/rules", "⚙️", "Settings"],
 ];
 
@@ -58,6 +60,7 @@ export default function AppShell({ title, subtitle, actions, children }) {
         <div className="brand">
           QC<span>Admin</span>
         </div>
+        <div className="brand-sub">AI QC PROGRAM</div>
         <nav className="nav">
           {MENU.map(([href, icon, label]) => (
             <a key={href} href={href} className={active(href) ? "active" : ""} onClick={() => setOpen(false)}>

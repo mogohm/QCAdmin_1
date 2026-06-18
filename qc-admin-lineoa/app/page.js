@@ -1,455 +1,315 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "./components/AppShell";
-import ChatModal from "./components/ChatModal";
+import GlassPanel from "./components/GlassPanel";
+import KpiGauge from "./components/KpiGauge";
+import RadarChart from "./components/RadarChart";
+import MiniLineChart from "./components/MiniLineChart";
+import BarChart from "./components/BarChart";
+import FunnelChart from "./components/FunnelChart";
+import MetricTile from "./components/MetricTile";
+import LeaderboardTable from "./components/LeaderboardTable";
+import AdminAvatarCard from "./components/AdminAvatarCard";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
-const weekAgo = () => toISO(new Date(Date.now() - 7 * 864e5));
-const today = () => toISO(new Date());
 const sc = (v) => (v >= 85 ? "good" : v >= 70 ? "warn" : "bad");
 const fmtSec = (s) => {
   s = Number(s || 0);
   return s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
 };
-const A = (v) => {
-  try {
-    return Array.isArray(v) ? v : JSON.parse(v) || [];
-  } catch {
-    return [];
-  }
-};
-const O = (v) => {
-  try {
-    return typeof v === "object" ? v : JSON.parse(v) || {};
-  } catch {
-    return {};
-  }
-};
+const baht = (n) => "฿" + Number(n || 0).toLocaleString();
 
-function Trend({ rows }) {
-  const data = [...(rows || [])].reverse().filter((r) => r.avg_score != null);
-  if (data.length < 2)
-    return (
-      <div className="muted" style={{ fontSize: 12 }}>
-        ข้อมูลไม่พอวาดกราฟ
-      </div>
-    );
-  const W = 560,
-    H = 150,
-    pad = 26;
-  const xs = data.map((_, i) => pad + (i * (W - 2 * pad)) / (data.length - 1));
-  const ys = data.map((d) => H - pad - (d.avg_score / 100) * (H - 2 * pad));
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
-      {[0, 50, 100].map((g) => {
-        const y = H - pad - (g / 100) * (H - 2 * pad);
-        return (
-          <g key={g}>
-            <line x1={pad} y1={y} x2={W - pad} y2={y} stroke="#eef3f8" />
-            <text x={4} y={y + 3} fontSize="9" fill="#aaa">
-              {g}
-            </text>
-          </g>
-        );
-      })}
-      <path
-        d={xs.map((x, i) => `${i ? "L" : "M"}${x},${ys[i]}`).join(" ")}
-        fill="none"
-        stroke="#0b5cab"
-        strokeWidth="2.5"
-      />
-      {xs.map((x, i) => (
-        <circle
-          key={i}
-          cx={x}
-          cy={ys[i]}
-          r="3"
-          fill={data[i].avg_score >= 85 ? "#16a34a" : data[i].avg_score >= 70 ? "#f59e0b" : "#ef4444"}
-        />
-      ))}
-    </svg>
-  );
-}
-function Bars({ rows }) {
-  const mx = Math.max(1, ...rows.map((r) => r.v));
-  return rows.map((r) => (
-    <div key={r.label} style={{ margin: "6px 0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-        <span>{r.label}</span>
-        <b>{r.v}</b>
-      </div>
-      <div style={{ background: "#eef3f8", borderRadius: 6, height: 8 }}>
-        <div
-          style={{
-            width: (r.v / mx) * 100 + "%",
-            height: 8,
-            borderRadius: 6,
-            background: r.color || "linear-gradient(90deg,#0b5cab,#09a8d8)",
-          }}
-        />
-      </div>
-    </div>
-  ));
-}
-
-export default function Executive() {
+export default function Dashboard() {
   const [d, setD] = useState(null);
-  const [from, setFrom] = useState(weekAgo());
-  const [to, setTo] = useState(today());
+  const [from, setFrom] = useState(toISO(new Date(Date.now() - 6 * 864e5)));
+  const [to, setTo] = useState(toISO(new Date()));
   const [loading, setLoading] = useState(false);
-  const [chatUser, setChatUser] = useState(null);
+  const [pickAdmin, setPickAdmin] = useState(null);
 
   const load = (f = from, t = to) => {
     setLoading(true);
     fetch(`/api/dashboard?from=${f}&to=${t}`)
       .then((r) => r.json())
       .then(setD)
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
   useEffect(() => {
     load();
   }, []);
 
-  const k = d?.kpiExt || {};
-  const KPIS = [
-    ["Avg QA Score", k.avgQaScore ?? 0, sc(k.avgQaScore)],
-    ["QA Coverage", (k.qaCoveragePercent ?? 0) + "%"],
-    ["SOP Coverage", (k.sopCoveragePercent ?? 0) + "%"],
-    ["SLA Pass", (k.slaPassPercent ?? 0) + "%"],
-    ["Fatal Errors", k.fatalCount ?? 0, "bad"],
-    ["Minor Errors", k.minorCount ?? 0, "warn"],
-    ["Pending Disputes", k.pendingDisputes ?? 0, "warn"],
-    ["Est. Commission", "฿" + (k.estimatedCommission ?? 0).toLocaleString()],
-  ];
+  const quick = (key) => {
+    const now = new Date();
+    let f, t;
+    if (key === "today") f = t = toISO(now);
+    else if (key === "yesterday") f = t = toISO(new Date(Date.now() - 864e5));
+    else if (key === "7d") {
+      f = toISO(new Date(Date.now() - 6 * 864e5));
+      t = toISO(now);
+    } else if (key === "month") {
+      f = toISO(new Date(now.getFullYear(), now.getMonth(), 1));
+      t = toISO(now);
+    }
+    setFrom(f);
+    setTo(t);
+    load(f, t);
+  };
 
-  const dateActions = (
+  const ranking = useMemo(() => (d?.ranking || []).filter((a) => a.cases > 0), [d]);
+  const acr = d?.adminCategoryRanking || [];
+  const skillById = useMemo(() => Object.fromEntries(acr.map((a) => [a.admin_id, a])), [acr]);
+  const commById = useMemo(
+    () => Object.fromEntries((d?.commissionSummary?.per_admin || []).map((a) => [a.admin_id, a])),
+    [d],
+  );
+  const k = d?.kpiExt || {};
+
+  // selected admin (default = อันดับ 1)
+  const selId = pickAdmin || ranking[0]?.id || null;
+  const selAdmin = ranking.find((a) => a.id === selId) || null;
+  const selSkill = skillById[selId];
+  const selComm = commById[selId];
+  const radarAxes = selSkill
+    ? [
+        { label: "Greet", value: selSkill.greeting_closing },
+        { label: "Problem", value: selSkill.problem_solving },
+        { label: "Tone", value: selSkill.communication_tone },
+        { label: "Response", value: selSkill.response_time },
+      ].filter((x) => x.value != null)
+    : [];
+
+  const actions = (
     <>
-      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <button onClick={() => load()}>{loading ? "..." : "ดู"}</button>
+      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 140, margin: 0 }} />
+      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 140, margin: 0 }} />
+      <button onClick={() => load()}>{loading ? "..." : "🔄 ดู"}</button>
     </>
   );
 
+  const QF = ({ id, label }) => (
+    <span className="chip" onClick={() => quick(id)}>
+      {label}
+    </span>
+  );
+
   return (
-    <AppShell title="Executive Dashboard" subtitle="ภาพรวมคุณภาพการบริการ QC" actions={dateActions}>
+    <AppShell title="AI QC PROGRAM DASHBOARD SYSTEM" subtitle="ระบบแดชบอร์ด AI ควบคุมคุณภาพ" actions={actions}>
       <>
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          <QF id="today" label="วันนี้" />
+          <QF id="yesterday" label="เมื่อวาน" />
+          <QF id="7d" label="7 วันล่าสุด" />
+          <QF id="month" label="เดือนนี้" />
+          <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>
+            ช่วง {from} → {to}
+          </span>
+        </div>
+
         {loading && (
-          <div
-            className="card"
-            style={{
-              marginBottom: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              color: "#1e40af",
-              fontWeight: 700,
-            }}
-          >
+          <div className="loadbar">
             <span className="spin">⏳</span> กำลังโหลดข้อมูล Dashboard...
-            <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>
-              (ข้อมูลช่วงกว้างอาจใช้เวลาสักครู่)
-            </span>
           </div>
         )}
-        {!loading && d && !d.error && (d.kpiExt?.totalQcCases ?? 0) === 0 && (
-          <div className="card muted" style={{ marginBottom: 12, fontSize: 13 }}>
-            ไม่พบ QC case ในช่วงวันที่นี้ — ลองขยายช่วงวันที่ (ข้อมูลส่วนใหญ่อยู่ 14–18 มิ.ย. 2026)
-          </div>
-        )}
-        {/* KPI cards */}
-        <section className="grid kpis" style={{ opacity: loading ? 0.5 : 1, transition: "opacity .2s" }}>
-          {KPIS.map(([title, v, cls]) => (
-            <div className="card" key={title}>
-              <div className="kpi-title">{title}</div>
-              <div className={`kpi-value ${cls ? "score " + cls : ""}`}>{v}</div>
-            </div>
-          ))}
-        </section>
 
-        {/* Trend + Category */}
-        <section className="grid split" style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>QA Score Trend</h3>
-            <Trend rows={d?.weeklySummary} />
-          </div>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>
-              Category Breakdown{" "}
-              <span className="muted" style={{ fontSize: 11 }}>
-                (จาก qc_score_details)
-              </span>
-            </h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>มิติ (rubric)</th>
-                  <th>เฉลี่ย</th>
-                  <th>Pass%</th>
-                  <th>Fail</th>
-                  <th>Top fail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.categorySummary || []).map((c) => (
-                  <tr key={c.category_code}>
-                    <td>{c.category_code}</td>
-                    <td className={`score ${sc(c.avg_score)}`}>{c.avg_score}</td>
-                    <td>{c.pass_rate ?? "—"}%</td>
-                    <td className="score bad">{c.fail_count || 0}</td>
-                    <td style={{ fontSize: 11, color: "#b45309", maxWidth: 160 }}>
-                      {(c.top_fail_reason || "").slice(0, 36)}
-                    </td>
-                  </tr>
-                ))}
-                {!d?.categorySummary?.length && (
-                  <tr>
-                    <td colSpan="5" className="muted">
-                      ยังไม่มี qc_score_details (มาจากคะแนนใหม่ engine v4)
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Intent + SOP coverage */}
-        <section className="grid split" style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Intent Distribution</h3>
-            <Bars rows={(d?.intentDistribution || []).map((x) => ({ label: x.intent, v: x.n }))} />
-          </div>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>SOP Coverage</h3>
-            <div style={{ display: "flex", gap: 12, marginBottom: 10 }}>
-              <div style={{ flex: 1, textAlign: "center", padding: 12, background: "#ecfdf5", borderRadius: 10 }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: "#16a34a" }}>{d?.sopCoverage?.matched ?? 0}</div>
-                <div className="muted" style={{ fontSize: 11 }}>
-                  Matched
+        <section className="grid dash2x2">
+          {/* ===== Panel 1: Admin Dashboard ===== */}
+          <GlassPanel
+            title="🧑‍💼 Admin Dashboard"
+            tag="รายบุคคล"
+            glow
+            empty={!ranking.length && !loading && "ยังไม่มีข้อมูลในช่วงวันที่นี้"}
+          >
+            <select value={selId || ""} onChange={(e) => setPickAdmin(e.target.value)} style={{ marginBottom: 12 }}>
+              {ranking.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.member_name} — {a.avg_score}
+                </option>
+              ))}
+            </select>
+            {selAdmin && (
+              <>
+                <AdminAvatarCard
+                  name={selAdmin.member_name}
+                  score={selAdmin.avg_score}
+                  cases={selAdmin.cases}
+                  tier={selComm?.tier}
+                />
+                <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr 1fr", marginTop: 14, gap: 10 }}>
+                  <div className="glass" style={{ padding: 10 }}>
+                    <KpiGauge value={selAdmin.avg_score} label="Avg QA Score" size={120} />
+                  </div>
+                  <MetricTile label="Total Cases" value={selAdmin.cases} tone="blue" />
+                  <MetricTile label="ตอบเฉลี่ย" value={fmtSec(selAdmin.avg_response_sec)} tone="blue" />
                 </div>
-              </div>
-              <div style={{ flex: 1, textAlign: "center", padding: 12, background: "#fef2f2", borderRadius: 10 }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>{d?.sopCoverage?.unmatched ?? 0}</div>
-                <div className="muted" style={{ fontSize: 11 }}>
-                  Unmatched
+                <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 12, gap: 12 }}>
+                  <div>
+                    <div className="panel-title">Skill Radar</div>
+                    <RadarChart axes={radarAxes} size={210} />
+                  </div>
+                  <div>
+                    <div className="panel-title">AI Coaching</div>
+                    <MetricTile label="Est. Commission" value={baht(selComm?.estimated_commission)} />
+                    <div className="case" style={{ marginTop: 10, fontSize: 12 }}>
+                      <b className="muted">มิติที่อ่อนสุด</b>
+                      <div>
+                        {(d?.coachingSummary?.lowest_categories || []).slice(0, 3).map((c, i) => (
+                          <span
+                            key={i}
+                            className="badge"
+                            style={{ marginRight: 4, marginTop: 4, display: "inline-block" }}
+                          >
+                            {c.category_code} {c.avg_score}
+                          </span>
+                        )) || "—"}
+                      </div>
+                      <b className="muted" style={{ display: "block", marginTop: 8 }}>
+                        ปัญหาที่พบบ่อย
+                      </b>
+                      <div style={{ color: "#cfe0ff" }}>
+                        {(d?.coachingSummary?.repeated_fail_reasons || [])
+                          .slice(0, 2)
+                          .map((r) => r.reason || r)
+                          .join(" · ") || "—"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ flex: 1, textAlign: "center", padding: 12, background: "#eff6ff", borderRadius: 10 }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: "#0b5cab" }}>{d?.sopCoverage?.percent ?? 0}%</div>
-                <div className="muted" style={{ fontSize: 11 }}>
-                  Coverage
-                </div>
-              </div>
-            </div>
-            <div className="muted" style={{ fontSize: 12 }}>
-              Intent ที่ยังไม่มี SOP ตรง:{" "}
-              {(d?.sopCoverage?.top_unmatched_intents || []).map((x) => `${x.intent}(${x.n})`).join(", ") || "—"}
-            </div>
-          </div>
-        </section>
-
-        {/* Admin Ranking + Skill Matrix */}
-        <section className="grid split" style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Admin Ranking</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Admin</th>
-                  <th>เคส</th>
-                  <th>คะแนน</th>
-                  <th>ตอบเฉลี่ย</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.ranking || [])
-                  .filter((a) => a.cases > 0)
-                  .slice(0, 10)
-                  .map((a, i) => (
-                    <tr key={a.id}>
-                      <td>{i + 1}</td>
-                      <td>{a.member_name}</td>
-                      <td>{a.cases}</td>
-                      <td className={`score ${sc(a.avg_score)}`}>{a.avg_score}</td>
-                      <td>{fmtSec(a.avg_response_sec)}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Admin Skill Matrix</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Admin</th>
-                  <th>Greet</th>
-                  <th>Solve</th>
-                  <th>Tone</th>
-                  <th>Resp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.adminCategoryRanking || []).slice(0, 10).map((a) => (
-                  <tr key={a.admin_id}>
-                    <td>{a.admin}</td>
-                    {["greeting_closing", "problem_solving", "communication_tone", "response_time"].map((c) => (
-                      <td key={c} className={`score ${a[c] != null ? sc(a[c]) : ""}`}>
-                        {a[c] ?? "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                {!d?.adminCategoryRanking?.length && (
-                  <tr>
-                    <td colSpan="5" className="muted">
-                      ยังไม่มีข้อมูลรายมิติ
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Fatal + Coaching */}
-        <section className="grid split" style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>🔴 Fatal Case List</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Admin</th>
-                  <th>Intent</th>
-                  <th>เหตุผล</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.fatalCases || []).slice(0, 10).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.admin || "—"}</td>
-                    <td>{c.intent}</td>
-                    <td style={{ fontSize: 11, color: "#dc2626" }}>
-                      {A(c.fatal_reasons)
-                        .map((x) => x.name || x)
-                        .join(", ") || "—"}
-                    </td>
-                    <td>
-                      {c.line_user_id && (
-                        <button
-                          onClick={() => setChatUser({ line_user_id: c.line_user_id })}
-                          style={{ padding: "3px 8px", fontSize: 11 }}
-                        >
-                          ดู
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {!d?.fatalCases?.length && (
-                  <tr>
-                    <td colSpan="4" className="muted">
-                      ไม่มี Fatal 🎉
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>🎓 Coaching Recommendations</h3>
-            <div style={{ fontSize: 12, marginBottom: 8 }}>
-              <b>มิติที่อ่อนสุด:</b>{" "}
-              {(d?.coachingSummary?.lowest_categories || [])
-                .map((c) => `${c.category_code}(${c.avg_score})`)
-                .join(", ") || "—"}
-            </div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
-              <b>ปัญหาที่พบซ้ำ:</b>
-            </div>
-            {(d?.coachingSummary?.repeated_fail_reasons || []).slice(0, 6).map((r, i) => (
-              <div key={i} style={{ fontSize: 11, color: "#b45309", margin: "3px 0" }}>
-                • {r.fail_reason} <span className="muted">×{r.n}</span>
-              </div>
-            ))}
-            {!d?.coachingSummary?.repeated_fail_reasons?.length && (
-              <div className="muted" style={{ fontSize: 12 }}>
-                —
-              </div>
+              </>
             )}
-          </div>
-        </section>
+          </GlassPanel>
 
-        {/* Dispute preview + Pending replies */}
-        <section className="grid split" style={{ marginTop: 16 }}>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>
-              ⚖️ Dispute Queue{" "}
-              <a href="/disputes" style={{ fontSize: 12, float: "right" }}>
-                จัดการ →
-              </a>
-            </h3>
-            <div style={{ display: "flex", gap: 12 }}>
-              {[
-                ["Pending", d?.disputeSummary?.pending, "#f59e0b"],
-                ["Approved", d?.disputeSummary?.approved, "#16a34a"],
-                ["Rejected", d?.disputeSummary?.rejected, "#ef4444"],
-              ].map(([l, v, c]) => (
-                <div
-                  key={l}
-                  style={{ flex: 1, textAlign: "center", padding: 12, background: "#f8fafc", borderRadius: 10 }}
-                >
-                  <div style={{ fontSize: 24, fontWeight: 900, color: c }}>{v ?? 0}</div>
+          {/* ===== Panel 2: Manager Dashboard ===== */}
+          <GlassPanel title="📊 Manager Dashboard" tag="ภาพรวมทีม" glow>
+            <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+              <MetricTile
+                label="Avg QA"
+                value={k.avgQaScore ?? 0}
+                tone={k.avgQaScore >= 85 ? "green" : k.avgQaScore >= 70 ? "gold" : "red"}
+              />
+              <MetricTile label="QA Coverage" value={(k.qaCoveragePercent ?? 0) + "%"} tone="blue" />
+              <MetricTile label="SLA Pass" value={(k.slaPassPercent ?? 0) + "%"} tone="green" />
+              <MetricTile label="ตอบเฉลี่ย" value={fmtSec(k.avgResponseSec)} tone="blue" />
+            </div>
+            <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
+              <MetricTile label="Fatal" value={k.fatalCount ?? 0} tone="red" />
+              <MetricTile label="Minor" value={k.minorCount ?? 0} tone="gold" />
+              <MetricTile label="Pending Disputes" value={k.pendingDisputes ?? 0} tone="gold" />
+            </div>
+            <div className="panel-title" style={{ marginTop: 16 }}>
+              Team Average & Trend
+            </div>
+            <MiniLineChart
+              data={[...(d?.weeklySummary || [])].reverse().map((w) => ({ label: w.day, value: w.avg_score }))}
+              height={140}
+            />
+            <div className="panel-title" style={{ marginTop: 12 }}>
+              Bottleneck Analysis <span className="tag">มิติที่ตกบ่อย</span>
+            </div>
+            <BarChart
+              rows={[...(d?.categorySummary || [])]
+                .filter((c) => !["minorError", "fatalError"].includes(c.category_code))
+                .sort((a, b) => (b.fail_count || 0) - (a.fail_count || 0))
+                .slice(0, 5)
+                .map((c) => ({
+                  label: c.category_code,
+                  value: c.fail_count || 0,
+                  color: "linear-gradient(90deg,#ef4444,#f6c65b)",
+                }))}
+              unit=" fail"
+            />
+          </GlassPanel>
+
+          {/* ===== Panel 3: Leaderboard ===== */}
+          <GlassPanel title="🏆 Leaderboard" tag="อันดับ" glow empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}>
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              {ranking.slice(0, 3).map((a, i) => (
+                <div key={a.id} className="glass" style={{ flex: 1, padding: 12, textAlign: "center" }}>
+                  <span className={`medal ${["g", "s", "b"][i]}`} style={{ margin: "0 auto 6px" }}>
+                    {i + 1}
+                  </span>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "#eef4ff" }}>{a.member_name}</div>
+                  <div className={`score ${sc(a.avg_score)}`} style={{ fontSize: 20 }}>
+                    {a.avg_score}
+                  </div>
                   <div className="muted" style={{ fontSize: 11 }}>
-                    {l}
+                    {a.cases} เคส
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>⏳ Pending Reply List</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ลูกค้า</th>
-                  <th>รอ (นาที)</th>
-                  <th>Admin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.pendingReply || []).slice(0, 8).map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <button
-                        onClick={() => setChatUser({ line_user_id: p.line_user_id })}
-                        style={{ padding: "2px 6px", fontSize: 11 }}
-                      >
-                        {p.display_name || p.line_user_id?.slice(0, 10)}
-                      </button>
-                    </td>
-                    <td className={Number(p.waiting_minutes) > 5 ? "score bad" : ""}>
-                      {Math.round(p.waiting_minutes)}
-                    </td>
-                    <td className="muted">{p.assigned_admin || "—"}</td>
-                  </tr>
-                ))}
-                {!d?.pendingReply?.length && (
-                  <tr>
-                    <td colSpan="3" className="muted">
-                      ไม่มีงานค้าง 🎉
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+            <LeaderboardTable rows={ranking.slice(0, 10)} onPick={(a) => setPickAdmin(a.id)} />
+            <div className="panel-title" style={{ marginTop: 14 }}>
+              📈 Most Improved <span className="tag">7 วัน vs ก่อนหน้า</span>
+            </div>
+            {(d?.mostImproved || []).length ? (
+              (d.mostImproved || []).slice(0, 5).map((m, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", justifyContent: "space-between", padding: "6px 4px", fontSize: 13 }}
+                >
+                  <span style={{ color: "#dbe7ff" }}>{m.admin}</span>
+                  <span style={{ color: m.delta >= 0 ? "var(--green)" : "var(--red)", fontWeight: 800 }}>
+                    {m.delta >= 0 ? "▲" : "▼"} {Math.abs(m.delta)} ({m.previous}→{m.current})
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="empty">ยังไม่มีข้อมูลเปรียบเทียบ</div>
+            )}
+          </GlassPanel>
+
+          {/* ===== Panel 4: Marketing Dashboard ===== */}
+          <GlassPanel title="📣 Marketing Dashboard" tag="การตลาด" glow>
+            {(() => {
+              const m = d?.marketingSummary || {};
+              const hasData = (m.registration || 0) + (m.deposit_count || 0) + (m.kyc_total || 0) > 0;
+              if (!hasData && !loading) return <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>;
+              return (
+                <>
+                  <div className="panel-title">Registration Funnel</div>
+                  <FunnelChart
+                    steps={[
+                      { label: "สมัคร", value: m.registration || 0 },
+                      { label: "สมัครสำเร็จ", value: m.registration_pass || 0 },
+                      { label: "KYC ผ่าน", value: m.kyc_pass || 0 },
+                      { label: "ล้มเหลว", value: m.registration_fail || 0, color: "#ef4444" },
+                    ]}
+                  />
+                  <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                    <MetricTile
+                      label="Deposit รวม"
+                      value={baht(m.deposit_total)}
+                      tone="green"
+                      hint={`${m.deposit_count || 0} ครั้ง`}
+                    />
+                    <MetricTile
+                      label="Withdraw รวม"
+                      value={baht(m.withdraw_total)}
+                      tone="red"
+                      hint={`${m.withdraw_count || 0} ครั้ง`}
+                    />
+                  </div>
+                  <div className="panel-title" style={{ marginTop: 14 }}>
+                    KYC
+                  </div>
+                  <BarChart
+                    rows={[
+                      { label: "ผ่าน KYC", value: m.kyc_pass || 0, color: "linear-gradient(90deg,#22c55e,#38bdf8)" },
+                      { label: "ทั้งหมด", value: m.kyc_total || 0 },
+                    ]}
+                  />
+                  <div className="panel-title" style={{ marginTop: 14 }}>
+                    Promotion
+                  </div>
+                  <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <MetricTile label="ผู้ร่วมโปร" value={m.promotion_participants || 0} tone="blue" />
+                    <MetricTile label="ยอดฝากจากโปร" value={baht(m.promotion_deposit)} tone="gold" />
+                  </div>
+                </>
+              );
+            })()}
+          </GlassPanel>
         </section>
-        {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
       </>
     </AppShell>
   );

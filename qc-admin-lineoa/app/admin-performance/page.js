@@ -10,7 +10,7 @@ const fmtSec = (s) => {
 };
 const heatBg = (v) =>
   v == null
-    ? "#f1f5f9"
+    ? "rgba(125,211,252,0.08)"
     : v >= 90
       ? "#16a34a"
       : v >= 80
@@ -202,7 +202,7 @@ export default function AdminPerformance() {
                   <tr
                     key={a.id}
                     onClick={() => setPick(a.id)}
-                    style={{ cursor: "pointer", background: pick === a.id ? "#eff6ff" : "" }}
+                    style={{ cursor: "pointer", background: pick === a.id ? "rgba(56,189,248,0.15)" : "" }}
                   >
                     <td>{i + 1}</td>
                     <td>{a.member_name}</td>
