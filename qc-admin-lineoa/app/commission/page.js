@@ -30,10 +30,15 @@ export default function Commission() {
       setOverride(JSON.parse(localStorage.getItem("commission_override") || "{}"));
     } catch {}
   }, []);
-  const load = () =>
+  const [loading, setLoading] = useState(false);
+  const load = () => {
+    setLoading(true);
     fetch(`/api/dashboard?from=${from}&to=${to}`)
       .then((r) => r.json())
-      .then(setD);
+      .then(setD)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -104,7 +109,7 @@ export default function Commission() {
     <>
       <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
       <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <button onClick={load}>ดู</button>
+      <button onClick={load}>{loading ? "..." : "ดู"}</button>
       <button onClick={exportCSV} style={{ background: "#16a34a" }}>
         ⬇ CSV
       </button>
@@ -117,6 +122,23 @@ export default function Commission() {
   return (
     <AppShell title="Commission" subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณ Tier" actions={actions}>
       <>
+        {loading && (
+          <div
+            className="card"
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1e40af",
+              fontWeight: 700,
+            }}
+          >
+            <span className="spin">⏳</span> กำลังโหลดข้อมูล...
+          </div>
+        )}
         {saveMsg && (
           <div className="card" style={{ marginBottom: 12, color: saveMsg[0] === "⚠" ? "#ef4444" : "#16a34a" }}>
             {saveMsg}

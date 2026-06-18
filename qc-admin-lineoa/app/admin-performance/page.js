@@ -41,11 +41,16 @@ export default function AdminPerformance() {
   const [from, setFrom] = useState(toISO(new Date(Date.now() - 30 * 864e5)));
   const [to, setTo] = useState(toISO(new Date()));
   const [pick, setPick] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const load = () =>
+  const load = () => {
+    setLoading(true);
     fetch(`/api/dashboard?from=${from}&to=${to}`)
       .then((r) => r.json())
-      .then(setD);
+      .then(setD)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -96,7 +101,7 @@ export default function AdminPerformance() {
     <>
       <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
       <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <button onClick={load}>ดู</button>
+      <button onClick={load}>{loading ? "..." : "ดู"}</button>
       <button onClick={exportCSV} style={{ background: "#16a34a" }}>
         ⬇ CSV
       </button>
@@ -106,6 +111,23 @@ export default function AdminPerformance() {
   return (
     <AppShell title="Admin Performance" subtitle="คะแนนรายแอดมิน · heatmap · coaching" actions={actions}>
       <>
+        {loading && (
+          <div
+            className="card"
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1e40af",
+              fontWeight: 700,
+            }}
+          >
+            <span className="spin">⏳</span> กำลังโหลดข้อมูล...
+          </div>
+        )}
         {/* Heatmap */}
         <div className="card" style={{ marginBottom: 16, overflow: "auto" }}>
           <h3 style={{ marginTop: 0 }}>Category Heatmap</h3>
