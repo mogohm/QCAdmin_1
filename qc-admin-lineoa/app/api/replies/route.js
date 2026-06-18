@@ -1,5 +1,5 @@
 import { sql } from "@/lib/db";
-import { requireView, unauthorized } from "@/lib/guard";
+import { guard } from "@/lib/permissions";
 
 const SORT_COLS = {
   date: "m.created_at",
@@ -9,7 +9,8 @@ const SORT_COLS = {
 };
 
 export async function GET(req) {
-  if (!requireView(req)) return unauthorized();
+  const g = guard(req, "chat.view.all", "chat.view.own", "chat.review");
+  if (g) return g;
   const { searchParams } = new URL(req.url);
   const dateFrom = searchParams.get("from") || "2000-01-01";
   const dateTo = searchParams.get("to") || "2099-12-31";

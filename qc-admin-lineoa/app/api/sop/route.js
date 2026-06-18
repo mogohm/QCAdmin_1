@@ -1,6 +1,5 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
-import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 
 const arr = (v) =>
   Array.isArray(v)
@@ -14,7 +13,8 @@ const arr = (v) =>
 
 // GET /api/sop?q=&intent=&active= — ค้นหา SOP
 export async function GET(req) {
-  if (!readSession(req) && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "sop.view");
+  if (g) return g;
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
   const intent = searchParams.get("intent");
@@ -43,8 +43,8 @@ export async function GET(req) {
 
 // POST — create SOP
 export async function POST(req) {
-  if (!requireAdmin(req) && !(readSession(req)?.role === "manager"))
-    return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "sop.create", "sop.update");
+  if (g) return g;
   const b = await req.json().catch(() => ({}));
   if (!b.topic || !b.answer) return Response.json({ error: "topic, answer required" }, { status: 400 });
   try {

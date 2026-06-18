@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 // ป้องกันหน้าเว็บ: ถ้าไม่มี session cookie → เด้งไป /login (กัน dashboard ขึ้น 0 ตอน logged-out)
 //   ตรวจแค่ว่ามี cookie ไหม (verify จริงอยู่ที่ API); login/_next/ไฟล์ static ผ่านได้
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/register", "/forbidden"];
 
 export function middleware(req) {
   const { pathname } = req.nextUrl;

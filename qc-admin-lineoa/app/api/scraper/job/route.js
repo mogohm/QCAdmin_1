@@ -1,9 +1,11 @@
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { guard } from "@/lib/permissions";
 
-// สร้าง job ใหม่
+// สร้าง job ใหม่ — ต้องมี scraper.run (หรือ x-api-key จาก worker)
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "scraper.run", "scraper.schedule");
+  if (g) return g;
   const { date_from, date_to } = await req.json();
   if (!date_from || !date_to) return Response.json({ error: "date_from, date_to required" }, { status: 400 });
 

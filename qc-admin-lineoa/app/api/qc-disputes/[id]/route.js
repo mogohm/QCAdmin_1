@@ -1,14 +1,12 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
 import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 
-// PATCH — manager review dispute (approved/rejected)
-//   ถ้า approved + new_score → update qc_scores.final_score
+// PATCH — manager review dispute (approved/rejected) — ต้องมี qc.dispute.review
 export async function PATCH(req, { params }) {
+  const gate = guard(req, "qc.dispute.review");
+  if (gate) return gate;
   const s = readSession(req);
-  const isManager = (s && s.role === "manager") || requireAdmin(req);
-  if (!isManager) return Response.json({ error: "unauthorized (manager only)" }, { status: 401 });
-
   const { id } = await params;
   const b = await req.json().catch(() => ({}));
   const status = b.status;

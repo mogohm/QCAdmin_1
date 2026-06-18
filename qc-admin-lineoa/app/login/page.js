@@ -27,7 +27,13 @@ export default function Login() {
         setBusy(false);
         return;
       }
-      window.location.href = "/qc-dashboard";
+      // redirect ตาม role (home จาก /api/auth/me) หรือ ?next=
+      const next = new URLSearchParams(location.search).get("next");
+      let home = "/";
+      try {
+        home = (await (await fetch("/api/auth/me")).json()).home || "/";
+      } catch {}
+      window.location.href = next || home;
     } catch {
       setErr("เชื่อมต่อไม่ได้");
       setBusy(false);
@@ -90,14 +96,19 @@ export default function Login() {
         >
           {busy ? "..." : "เข้าสู่ระบบ"}
         </button>
-        <div style={{ marginTop: 14, fontSize: 11, color: "#6b80a6", lineHeight: 1.6 }}>
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <a href="/register" style={{ color: "#5fd0ff", fontSize: 13 }}>
+            ยังไม่มีบัญชี? สมัครขอเข้าใช้งาน
+          </a>
+        </div>
+        <div style={{ marginTop: 12, fontSize: 11, color: "#6b80a6", lineHeight: 1.6 }}>
           <b>บัญชีเริ่มต้น:</b>
           <br />
-          ผู้จัดการ: <code>manager / manager123</code>
+          ผู้ดูแลระบบ: <code>sysadmin / sysadmin123</code>
           <br />
-          การตลาด: <code>marketing / marketing123</code>
+          ผู้จัดการ: <code>manager / manager123</code> · หัวหน้า: <code>leader / leader123</code>
           <br />
-          แอดมิน: <code>ชื่อ-slug / pk1234</code>
+          การตลาด: <code>marketing / marketing123</code> · แอดมิน: <code>slug / pk1234</code>
         </div>
       </form>
     </div>

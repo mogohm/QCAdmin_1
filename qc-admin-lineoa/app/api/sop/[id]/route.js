@@ -1,6 +1,5 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
-import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 
 // แปลง value → array (รับ array หรือ comma string)
 function toArray(v) {
@@ -13,13 +12,10 @@ function toArray(v) {
   return null;
 }
 
-function allow(req) {
-  return requireAdmin(req) || readSession(req)?.role === "manager";
-}
-
 // PATCH /api/sop/:id — แก้ไข SOP (เฉพาะ field ที่ส่งมา)
 export async function PATCH(req, { params }) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "sop.update");
+  if (g) return g;
 
   const { id } = await params;
   const b = await req.json().catch(() => ({}));
@@ -53,7 +49,8 @@ export async function PATCH(req, { params }) {
 
 // DELETE /api/sop/:id — soft delete (set is_active=false) ; ?hard=true เพื่อลบจริง
 export async function DELETE(req, { params }) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "sop.delete");
+  if (g) return g;
 
   const { id } = await params;
   const hard = new URL(req.url).searchParams.get("hard") === "true";

@@ -1,12 +1,13 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
 import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 import { sendTelegram } from "@/lib/telegram";
 
 // GET /api/qc-disputes?status=pending — list (manager เห็นทั้งหมด, admin เห็นของตัวเอง)
 export async function GET(req) {
+  const gate = guard(req, "qc.dispute.review", "qc.dispute.create");
+  if (gate) return gate;
   const s = readSession(req);
-  if (!s && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const af = s?.role === "admin" ? s.adminId || "00000000-0000-0000-0000-000000000000" : null;
@@ -36,8 +37,9 @@ export async function GET(req) {
 
 // POST — admin โต้แย้งผล AI
 export async function POST(req) {
+  const gate = guard(req, "qc.dispute.create", "qc.dispute.review");
+  if (gate) return gate;
   const s = readSession(req);
-  if (!s && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const b = await req.json().catch(() => ({}));
   if (!b.qc_score_id || !b.reason) return Response.json({ error: "qc_score_id, reason required" }, { status: 400 });
   try {

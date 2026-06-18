@@ -1,10 +1,11 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { guard } from "@/lib/permissions";
 import { pushLineText } from "@/lib/line";
 import { runQc } from "@/lib/qc-runner";
 
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "chat.reply");
+  if (g) return g;
   const { conversation_id, admin_id, text, send_line = true } = await req.json();
   if (!conversation_id || !admin_id || !text)
     return Response.json({ error: "conversation_id, admin_id, text required" }, { status: 400 });

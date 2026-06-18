@@ -1,8 +1,9 @@
 import { query } from "@/lib/db";
-import { requireView, unauthorized } from "@/lib/guard";
+import { guard } from "@/lib/permissions";
 
 export async function GET(req, { params }) {
-  if (!requireView(req)) return unauthorized();
+  const g = guard(req, "chat.view.all", "chat.view.own", "chat.review");
+  if (g) return g;
   try {
     const { line_user_id } = await params;
     if (!line_user_id) return Response.json({ error: "line_user_id required" }, { status: 400 });

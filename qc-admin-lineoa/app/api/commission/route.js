@@ -1,14 +1,10 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
-import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 
-function allow(req) {
-  return requireAdmin(req) || readSession(req)?.role === "manager";
-}
-
-// POST — บันทึกผลคำนวณค่าคอมลง admin_commissions (period snapshot)
+// POST — บันทึกผลคำนวณค่าคอมลง admin_commissions (period snapshot) — ต้องมี commission.adjust
 export async function POST(req) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "commission.adjust");
+  if (g) return g;
   const b = await req.json().catch(() => ({}));
   const { period_start, period_end, rows } = b;
   if (!period_start || !period_end || !Array.isArray(rows))
@@ -44,7 +40,8 @@ export async function POST(req) {
 
 // GET — ดู snapshot ที่บันทึกไว้
 export async function GET(req) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "commission.view.own", "commission.view.team", "commission.view.all");
+  if (g) return g;
   const rows = await query`SELECT ac.*, a.member_name FROM admin_commissions ac
     LEFT JOIN qc_admins a ON a.id=ac.admin_id ORDER BY ac.period_end DESC, ac.commission DESC LIMIT 500`.catch(
     () => [],

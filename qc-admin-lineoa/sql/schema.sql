@@ -305,3 +305,31 @@ CREATE INDEX IF NOT EXISTS idx_customer_events_admin_meta ON customer_events ((m
 CREATE INDEX IF NOT EXISTS idx_qc_score_details_code ON qc_score_details (category_code);
 CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages (conversation_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_lineuser ON conversations (line_user_id);
+
+-- ============================================================
+-- RBAC: roles / permissions / role_permissions / registration / audit (+ app_users cols)
+-- (seed จริงทำที่ POST /api/auth/setup)
+-- ============================================================
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS linked_admin_id UUID;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+CREATE TABLE IF NOT EXISTS roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  role_key TEXT UNIQUE NOT NULL, role_name TEXT NOT NULL, description TEXT,
+  is_system BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE IF NOT EXISTS permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  permission_key TEXT UNIQUE NOT NULL, permission_name TEXT, description TEXT, module TEXT);
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role_key TEXT NOT NULL, permission_key TEXT NOT NULL, PRIMARY KEY(role_key, permission_key));
+CREATE TABLE IF NOT EXISTS user_registration_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT NOT NULL, password_hash TEXT NOT NULL, display_name TEXT, email TEXT,
+  requested_role TEXT, linked_admin_name TEXT, note TEXT,
+  status TEXT DEFAULT 'pending', reviewed_by TEXT, reviewed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE IF NOT EXISTS user_audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_user_id TEXT, target_user_id TEXT, action TEXT, detail JSONB, created_at TIMESTAMPTZ DEFAULT now());

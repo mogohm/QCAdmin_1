@@ -1,16 +1,12 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
-import { readSession } from "@/lib/session";
+import { requirePermission } from "@/lib/permissions";
 
-function allow(req, roles = ["manager"]) {
-  if (requireAdmin(req)) return true;
-  const s = readSession(req);
-  return s && (roles.includes(s.role) || s.role === "manager");
-}
+const allow = (req) => requirePermission(req, "system.events.manage");
 
-// GET — list system events (active ก่อน)
+// GET — list system events (active ก่อน) — ต้องดู QC ได้หรือจัดการ system events
 export async function GET(req) {
-  if (!readSession(req) && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requirePermission(req, "system.events.manage", "qc.monitor.view"))
+    return Response.json({ error: "forbidden" }, { status: 403 });
   try {
     const rows = await query`SELECT * FROM system_events ORDER BY is_active DESC, starts_at DESC LIMIT 100`;
     const active = rows.filter((r) => r.is_active && (!r.ends_at || new Date(r.ends_at) >= new Date()));

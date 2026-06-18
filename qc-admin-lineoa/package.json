@@ -16,10 +16,11 @@
     "test:dashboard-api": "node scripts/test-dashboard-api.js",
     "audit:sop": "node scripts/audit-sop-data.js",
     "test:scraper": "node scripts/test-scraper-date.js && node scripts/test-scraper-parser.js && node scripts/test-log-reply.js",
+    "test:auth": "node scripts/test-auth-roles.js && node scripts/test-permissions.js && node scripts/test-role-menu.js",
     "audit:scraper": "node scripts/audit-scraper-output.js",
     "scraper:login": "node scripts/line-login.js",
     "scraper:watch": "node scraper.js --watch",
-    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api"
+    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run test:auth"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",

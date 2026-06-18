@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { requireView, unauthorized } from "@/lib/guard";
+import { guard } from "@/lib/permissions";
 
 async function safe(fn, fb) {
   try {
@@ -11,7 +11,15 @@ async function safe(fn, fb) {
 }
 
 export async function GET(req) {
-  if (!requireView(req)) return unauthorized();
+  const g = guard(
+    req,
+    "dashboard.executive.view",
+    "dashboard.manager.view",
+    "dashboard.admin.view",
+    "dashboard.marketing.view",
+    "dashboard.leaderboard.view",
+  );
+  if (g) return g;
   const { searchParams } = new URL(req.url);
   const dateFrom = searchParams.get("from") || "2000-01-01";
   const dateTo = searchParams.get("to") || "2099-12-31";
