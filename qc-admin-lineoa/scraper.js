@@ -372,7 +372,7 @@ async function runJob(job, context) {
         sentKeys.add(key);
         const payload = core.buildLogReplyPayload(pair, {
           line_user_id: res.meta.uid || null,
-          customer_name: res.meta.title || item.name,
+          customer_name: item.name || res.meta.title,
           raw: { detected_date_label: item.label, message_type: pair.message_type },
         });
         payload.scraper_job_id = job.id;
@@ -393,7 +393,7 @@ async function runJob(job, context) {
 
       logScrape({
         chat_index: chatIndex,
-        customer_name: res.meta.title || item.name,
+        customer_name: item.name || res.meta.title,
         detected_date_label: item.label,
         message_count: res.messages.length,
         admin_message_count: adminCount,
@@ -476,7 +476,7 @@ async function runDryRunBrowser(chromium, from, to) {
     const notes = await extractNotes(page).catch(() => []);
     const summary = core.summarizeChat({
       chatIndex: idx,
-      customerName: res.meta.title || item.name,
+      customerName: item.name || res.meta.title,
       dateLabel: item.label,
       messages: res.messages,
       pairs,
