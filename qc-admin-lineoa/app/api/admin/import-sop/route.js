@@ -53,6 +53,16 @@ export async function POST(req) {
     await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_dedup ON messages (line_user_id, direction, message_hash, created_at) WHERE message_hash IS NOT NULL`;
     await query`CREATE INDEX IF NOT EXISTS idx_messages_reply_group ON messages (reply_group_id)`;
     await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_job ON qc_scores (scraper_job_id)`;
+    // performance indexes — dashboard ช้า 28s บน 59k messages / 9.6k qc_scores (date filter + joins)
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages (created_at)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_admin_id ON messages (admin_id)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_dir_created ON messages (direction, created_at)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_lineuser ON messages (line_user_id)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_created_at ON qc_scores (created_at)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_msg ON qc_scores (admin_message_id)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_id ON qc_scores (admin_id)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_customer_events_created ON customer_events (created_at)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_customer_events_type_created ON customer_events (event_type, created_at)`;
 
     // ---- Phase 2 tables ----
     await query`CREATE TABLE IF NOT EXISTS qc_score_details (

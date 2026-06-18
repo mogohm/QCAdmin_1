@@ -290,3 +290,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_dedup
   WHERE message_hash IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_messages_reply_group ON messages (reply_group_id);
 CREATE INDEX IF NOT EXISTS idx_qc_scores_job ON qc_scores (scraper_job_id);
+
+-- performance indexes (dashboard date-filter + joins บน messages/qc_scores/customer_events)
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages (created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_admin_id ON messages (admin_id);
+CREATE INDEX IF NOT EXISTS idx_messages_dir_created ON messages (direction, created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_lineuser ON messages (line_user_id);
+CREATE INDEX IF NOT EXISTS idx_qc_scores_created_at ON qc_scores (created_at);
+CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_msg ON qc_scores (admin_message_id);
+CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_id ON qc_scores (admin_id);
+CREATE INDEX IF NOT EXISTS idx_customer_events_created ON customer_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_customer_events_type_created ON customer_events (event_type, created_at);
