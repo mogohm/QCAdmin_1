@@ -16,13 +16,19 @@ export default function ChatReview() {
   const [chatUser, setChatUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const [err, setErr] = useState("");
   const load = () => {
     setLoading(true);
+    setErr("");
     const p = new URLSearchParams({ from, to, sort, order, limit: "40" });
     if (cust) p.set("customer", cust);
     fetch("/api/replies?" + p)
       .then((r) => r.json())
-      .then((d) => setRows(d.rows || d.replies || []))
+      .then((d) => setRows(d.items || d.rows || d.replies || []))
+      .catch((e) => {
+        setErr("โหลดข้อมูลไม่สำเร็จ: " + e.message);
+        setRows([]);
+      })
       .finally(() => setLoading(false));
   };
   useEffect(() => {
@@ -74,42 +80,60 @@ export default function ChatReview() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ fontSize: 11, whiteSpace: "nowrap" }}>
-                    {new Date(r.created_at).toLocaleString("th-TH", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </td>
-                  <td>{r.customer_name || r.line_user_id?.slice(0, 10)}</td>
-                  <td>{r.admin_name || "—"}</td>
-                  <td style={{ maxWidth: 320, fontSize: 12, color: "#555" }}>
-                    {String(r.reply_text || "").slice(0, 70)}
-                  </td>
-                  <td>
-                    {r.final_score != null ? (
-                      <span className={`score ${sc(r.final_score)}`}>{r.final_score}</span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => setChatUser({ line_user_id: r.line_user_id })}
-                      style={{ padding: "3px 10px", fontSize: 11 }}
-                    >
-                      ดูแชท
-                    </button>
+              {loading && (
+                <tr>
+                  <td colSpan="6" className="muted" style={{ textAlign: "center", padding: 24 }}>
+                    <span className="spin" style={{ marginRight: 8 }}>
+                      ⏳
+                    </span>
+                    กำลังโหลดข้อมูล...
                   </td>
                 </tr>
-              ))}
-              {!rows.length && (
+              )}
+              {!loading &&
+                rows.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                      {new Date(r.created_at).toLocaleString("th-TH", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td>{r.customer_name || r.line_user_id?.slice(0, 10)}</td>
+                    <td>{r.admin_name || "—"}</td>
+                    <td style={{ maxWidth: 320, fontSize: 12, color: "#555" }}>
+                      {String(r.reply_text || "").slice(0, 70)}
+                    </td>
+                    <td>
+                      {r.final_score != null ? (
+                        <span className={`score ${sc(r.final_score)}`}>{r.final_score}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => setChatUser({ line_user_id: r.line_user_id })}
+                        style={{ padding: "3px 10px", fontSize: 11 }}
+                      >
+                        ดูแชท
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              {!loading && err && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: "center", padding: 20, color: "#dc2626" }}>
+                    ⚠️ {err}
+                  </td>
+                </tr>
+              )}
+              {!loading && !err && !rows.length && (
                 <tr>
                   <td colSpan="6" className="muted" style={{ textAlign: "center", padding: 20 }}>
-                    ไม่พบข้อมูล
+                    ไม่พบข้อมูลในช่วงวันที่นี้ — ลองขยายช่วงวันที่
                   </td>
                 </tr>
               )}
