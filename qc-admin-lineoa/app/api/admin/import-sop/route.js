@@ -63,6 +63,8 @@ export async function POST(req) {
     await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_id ON qc_scores (admin_id)`;
     await query`CREATE INDEX IF NOT EXISTS idx_customer_events_created ON customer_events (created_at)`;
     await query`CREATE INDEX IF NOT EXISTS idx_customer_events_type_created ON customer_events (event_type, created_at)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_customer_events_admin_meta ON customer_events ((metadata->>'admin_id'))`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_score_details_code ON qc_score_details (category_code)`;
 
     // ---- Phase 2 tables ----
     await query`CREATE TABLE IF NOT EXISTS qc_score_details (

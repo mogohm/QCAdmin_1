@@ -133,8 +133,33 @@ export default function Executive() {
   return (
     <AppShell title="Executive Dashboard" subtitle="ภาพรวมคุณภาพการบริการ QC" actions={dateActions}>
       <>
+        {loading && (
+          <div
+            className="card"
+            style={{
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              color: "#1e40af",
+              fontWeight: 700,
+            }}
+          >
+            <span className="spin">⏳</span> กำลังโหลดข้อมูล Dashboard...
+            <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>
+              (ข้อมูลช่วงกว้างอาจใช้เวลาสักครู่)
+            </span>
+          </div>
+        )}
+        {!loading && d && !d.error && (d.kpiExt?.totalQcCases ?? 0) === 0 && (
+          <div className="card muted" style={{ marginBottom: 12, fontSize: 13 }}>
+            ไม่พบ QC case ในช่วงวันที่นี้ — ลองขยายช่วงวันที่ (ข้อมูลส่วนใหญ่อยู่ 14–18 มิ.ย. 2026)
+          </div>
+        )}
         {/* KPI cards */}
-        <section className="grid kpis">
+        <section className="grid kpis" style={{ opacity: loading ? 0.5 : 1, transition: "opacity .2s" }}>
           {KPIS.map(([title, v, cls]) => (
             <div className="card" key={title}>
               <div className="kpi-title">{title}</div>
