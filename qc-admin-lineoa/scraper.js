@@ -569,13 +569,15 @@ async function main() {
     return { browser, context };
   };
 
-  // โหมดสั่งครั้งเดียว: --date หรือ --from/--to → สร้าง job แล้วทำจนจบ
+  // โหมดสั่งครั้งเดียว: --yesterday / --date / --from..--to → สร้าง job แล้วทำจนจบ
   const dateArg = getArg("date");
   const fromArg = getArg("from");
   const toArg = getArg("to");
-  if (!WATCH && (dateArg || fromArg || toArg)) {
-    const from = dateArg || fromArg || toISO(new Date(Date.now() - 86400000));
-    const to = dateArg || toArg || from;
+  const YESTERDAY = hasFlag("--yesterday");
+  if (!WATCH && (YESTERDAY || dateArg || fromArg || toArg)) {
+    const yesterday = toISO(new Date(Date.now() - 86400000));
+    const from = YESTERDAY ? yesterday : dateArg || fromArg || yesterday;
+    const to = YESTERDAY ? yesterday : dateArg || toArg || from;
     log(`▶️  สร้าง job ${from} → ${to}`);
     const created = await createJob(from, to);
     const job = created?.job;
@@ -590,7 +592,7 @@ async function main() {
   }
 
   if (!WATCH) {
-    console.log("ใช้: node scraper.js --watch | --date=YYYY-MM-DD | --from=.. --to=..  (ดู --help ใน README)");
+    console.log("ใช้: node scraper.js --watch | --yesterday | --date=YYYY-MM-DD | --from=.. --to=..");
     process.exit(0);
   }
 
