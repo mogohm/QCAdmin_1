@@ -65,6 +65,9 @@ export async function POST(req) {
     await query`CREATE INDEX IF NOT EXISTS idx_customer_events_type_created ON customer_events (event_type, created_at)`;
     await query`CREATE INDEX IF NOT EXISTS idx_customer_events_admin_meta ON customer_events ((metadata->>'admin_id'))`;
     await query`CREATE INDEX IF NOT EXISTS idx_qc_score_details_code ON qc_score_details (category_code)`;
+    // pendingReply JOIN LATERAL + chat/customer endpoints หา message ต่อ conversation → ต้องมี index นี้
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages (conversation_id, created_at DESC)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_conversations_lineuser ON conversations (line_user_id)`;
 
     // ---- Phase 2 tables ----
     await query`CREATE TABLE IF NOT EXISTS qc_score_details (

@@ -301,3 +301,7 @@ CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_msg ON qc_scores (admin_message_i
 CREATE INDEX IF NOT EXISTS idx_qc_scores_admin_id ON qc_scores (admin_id);
 CREATE INDEX IF NOT EXISTS idx_customer_events_created ON customer_events (created_at);
 CREATE INDEX IF NOT EXISTS idx_customer_events_type_created ON customer_events (event_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_customer_events_admin_meta ON customer_events ((metadata->>'admin_id'));
+CREATE INDEX IF NOT EXISTS idx_qc_score_details_code ON qc_score_details (category_code);
+CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages (conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_lineuser ON conversations (line_user_id);

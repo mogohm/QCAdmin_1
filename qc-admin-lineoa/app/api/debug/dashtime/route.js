@@ -71,6 +71,25 @@ export async function GET(req) {
     ),
   );
 
+  results.push(
+    await time(
+      "pendingReply_lateral",
+      () => query`
+      SELECT c.id FROM conversations c
+      JOIN line_customers lc ON lc.line_user_id=c.line_user_id
+      JOIN LATERAL (SELECT created_at, direction FROM messages WHERE conversation_id=c.id ORDER BY created_at DESC LIMIT 1) m ON m.direction='customer'
+      WHERE m.created_at > now() - interval '7 days' LIMIT 20`,
+    ),
+  );
+  results.push(
+    await time(
+      "kpi_full",
+      () => query`SELECT
+        (SELECT count(DISTINCT m.line_user_id) FROM messages m WHERE m.created_at BETWEEN ${f}::date AND (${t}::date + interval '1 day'))::int customers,
+        (SELECT coalesce(sum(amount),0) FROM customer_events WHERE event_type='deposit' AND created_at BETWEEN ${f}::date AND (${t}::date + interval '1 day'))::numeric dep`,
+    ),
+  );
+
   results.sort((a, b) => b.ms - a.ms);
   return Response.json({ from: f, to: t, total_ms: results.reduce((s, r) => s + r.ms, 0), slowest: results });
 }
