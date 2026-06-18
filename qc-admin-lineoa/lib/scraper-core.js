@@ -102,6 +102,21 @@ function labelInRange(label, fromDate, toDate, now = new Date()) {
   return t >= new Date(fromDate).setHours(0, 0, 0, 0) && t <= new Date(toDate).setHours(23, 59, 59, 999);
 }
 
+// label = แชทที่ active ตั้งแต่ fromDate เป็นต้นมา (รวมแชทที่ active วันนี้ ซึ่งอาจมีประวัติของ fromDate)
+//   ใช้ scan ให้ครอบแชทที่ "ยังมีข้อความของวันเป้าหมายอยู่ใน history" แล้วค่อยกรอง message ทีหลัง
+function labelOnOrAfter(label, fromDate, now = new Date()) {
+  const d = dayLabelToDate(label, now);
+  if (!d) return null;
+  return d.getTime() >= new Date(fromDate).setHours(0, 0, 0, 0);
+}
+
+// created_at อยู่ในช่วงวันที่เป้าหมายไหม (กรอง message ให้เหลือเฉพาะวันที่ scrape)
+function inDateWindow(created_at, fromDate, toDate) {
+  if (!created_at) return false;
+  const t = new Date(created_at).getTime();
+  return t >= new Date(fromDate).setHours(0, 0, 0, 0) && t <= new Date(toDate).setHours(23, 59, 59, 999);
+}
+
 function stripTags(s) {
   return String(s || "")
     .replace(/<[^>]*>/g, " ")
@@ -383,5 +398,7 @@ module.exports = {
   dedupMessages,
   buildLogReplyPayload,
   summarizeChat,
+  labelOnOrAfter,
+  inDateWindow,
   DAY_MAP,
 };

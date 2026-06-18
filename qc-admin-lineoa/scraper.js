@@ -181,7 +181,8 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       const key = `${it.name}|${it.label}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const r = core.labelInRange(it.label, fromDate, toDate);
+      // on-or-after: รวมแชทที่ active วันนี้ด้วย (อาจมีข้อความของวันเป้าหมายใน history) แล้วกรอง message ทีหลัง
+      const r = core.labelOnOrAfter(it.label, fromDate);
       if (r === true) inRange.push(it);
     }
 
@@ -356,11 +357,17 @@ async function runJob(job, context) {
       }
 
       const lineUserId = res.meta.uid || `name:${item.name}`;
-      const pairs = core.pairMessages(res.messages, { groupWindowSec: 180 });
+      // กรองเฉพาะข้อความของวันที่เป้าหมาย (แชทอาจมีทั้งวันนี้+เมื่อวานใน history)
+      const windowMsgs = res.messages.filter((m) => core.inDateWindow(m.created_at, fromDate, toDate));
+      if (!windowMsgs.length) {
+        logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "no messages in date window" });
+        continue;
+      }
+      const pairs = core.pairMessages(windowMsgs, { groupWindowSec: 180 });
 
       // นับฝั่ง
-      const adminCount = res.messages.filter((m) => m.direction === "admin").length;
-      const custCount = res.messages.filter((m) => m.direction === "customer").length;
+      const adminCount = windowMsgs.filter((m) => m.direction === "admin").length;
+      const custCount = windowMsgs.filter((m) => m.direction === "customer").length;
 
       const sentKeys = new Set();
       for (const pair of pairs) {
@@ -395,7 +402,7 @@ async function runJob(job, context) {
         chat_index: chatIndex,
         customer_name: item.name || res.meta.title,
         detected_date_label: item.label,
-        message_count: res.messages.length,
+        message_count: windowMsgs.length,
         admin_message_count: adminCount,
         customer_message_count: custCount,
         notes_count: notesCount,
@@ -472,13 +479,15 @@ async function runDryRunBrowser(chromium, from, to) {
     });
     if (!res) continue;
     await saveScreenshot(page, `dryrun-chat-${idx}`);
-    const pairs = core.pairMessages(res.messages, { groupWindowSec: 180 });
+    // กรองเฉพาะข้อความของวันที่เป้าหมาย (แชทอาจมีทั้งวันนี้+เมื่อวานใน history)
+    const windowMsgs = res.messages.filter((m) => core.inDateWindow(m.created_at, from, to));
+    const pairs = core.pairMessages(windowMsgs, { groupWindowSec: 180 });
     const notes = await extractNotes(page).catch(() => []);
     const summary = core.summarizeChat({
       chatIndex: idx,
       customerName: item.name || res.meta.title,
       dateLabel: item.label,
-      messages: res.messages,
+      messages: windowMsgs,
       pairs,
       dupSkipped: res.dupSkipped,
       notesCount: notes.length,
