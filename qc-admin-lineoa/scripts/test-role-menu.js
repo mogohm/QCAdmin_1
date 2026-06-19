@@ -86,3 +86,4 @@ if (BASE) {
 
 console.log(`\n===== Role menu: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
 process.exit(fail ? 1 : 0);
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

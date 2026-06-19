@@ -107,3 +107,4 @@ export function guard(req, ...keys) {
   if (u.role === "system_admin") return null;
   return hasPermission(u, keys.length === 1 ? keys[0] : keys) ? null : forbidden();
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

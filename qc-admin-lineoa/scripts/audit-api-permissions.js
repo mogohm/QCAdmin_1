@@ -119,3 +119,4 @@ if (critical > 0) {
 }
 console.log("\n===== API audit: ✅ PASS — ทุก sensitive/write route มี guard =====");
 process.exit(0);
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

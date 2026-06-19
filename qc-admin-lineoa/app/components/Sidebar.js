@@ -66,3 +66,4 @@ export default function Sidebar({ active }) {
     </aside>
   );
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

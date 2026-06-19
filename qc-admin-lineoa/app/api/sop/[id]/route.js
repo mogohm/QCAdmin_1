@@ -71,3 +71,4 @@ export async function DELETE(req, { params }) {
     return Response.json({ error: e.message }, { status: 500 });
   }
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

@@ -195,3 +195,4 @@ export function filterMenuByPermissions(user, menuItems = MENU) {
   if (!user) return [];
   return menuItems.filter((item) => hasPermission(user, item.perm));
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

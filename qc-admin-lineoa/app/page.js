@@ -369,3 +369,4 @@ export default function Dashboard() {
     </div>
   );
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

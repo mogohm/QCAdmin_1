@@ -91,3 +91,4 @@ async function login(username, password) {
   console.log(`\n===== Auth roles: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
   process.exit(fail ? 1 : 0);
 })();
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)

@@ -391,3 +391,4 @@ INSERT INTO role_permissions (role_key, permission_key) VALUES
   ('marketing','dashboard.marketing.view'),('marketing','marketing.dashboard.view'),
   ('marketing','marketing.events.view'),('marketing','commission.view.all')
 ON CONFLICT DO NOTHING;
+-- rev: 2026-06-19 file-integrity (LF, multi-line verified)

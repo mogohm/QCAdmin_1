@@ -46,3 +46,4 @@ export async function POST(req) {
   }
   return Response.json({ ok: true, qc });
 }
+// rev: 2026-06-19 file-integrity (LF, multi-line verified)
