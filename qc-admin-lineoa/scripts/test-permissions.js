@@ -33,6 +33,20 @@ const postCode = async (path, cookie, body = {}) =>
   ok("no session → /api/dashboard 401", (await code("/api/dashboard")) === 401);
   ok("no session → /api/system/users 401", (await code("/api/system/users")) === 401);
 
+  // scraper API: x-api-key (service) ต้องผ่าน guard (ไม่ใช่ 401/403); ไม่มี key/session → 401
+  const API_KEY = process.env.ADMIN_API_KEY || process.env.QC_API_KEY || "";
+  ok("scraper/job no auth → 401", (await postCode("/api/scraper/job", null, {})) === 401);
+  if (API_KEY) {
+    const r = await fetch(`${BASE}/api/scraper/job`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      body: JSON.stringify({ date_from: "2026-06-01", date_to: "2026-06-01" }),
+    });
+    ok("scraper/job x-api-key ผ่าน (ไม่ใช่ 401/403)", r.status !== 401 && r.status !== 403, `status ${r.status}`);
+  } else {
+    console.log("⏭️  ข้าม scraper x-api-key — ไม่ได้ตั้ง ADMIN_API_KEY");
+  }
+
   const sys = await login("sysadmin", "sysadmin123");
   const mgr = await login("manager", "manager123");
   const mkt = await login("marketing", "marketing123");
@@ -50,11 +64,24 @@ const postCode = async (path, cookie, body = {}) =>
   ok("manager → /api/qc-disputes 200", (await code("/api/qc-disputes", mgr)) === 200);
   ok("manager → /api/system/users 403 (no system.users.view)", (await code("/api/system/users", mgr)) === 403);
 
-  // manager — dispute review write
+  // manager — approve dispute ได้ (มี qc.dispute.review): PATCH ต้องไม่ใช่ 401/403
+  const mgrPatch = await fetch(`${BASE}/api/qc-disputes/999999999`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: mgr },
+    body: JSON.stringify({ status: "approved" }),
+  });
   ok(
-    "manager → PATCH /api/qc-disputes/0 ไม่ใช่ 403 (มี qc.dispute.review)",
-    (await postCode("/api/qc-disputes", mgr, {})) !== 403,
+    "manager → approve dispute (PATCH) ไม่ใช่ 401/403",
+    mgrPatch.status !== 401 && mgrPatch.status !== 403,
+    `status ${mgrPatch.status}`,
   );
+  // marketing approve dispute ไม่ได้ (403)
+  const mktPatch = await fetch(`${BASE}/api/qc-disputes/999999999`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Cookie: mkt },
+    body: JSON.stringify({ status: "approved" }),
+  });
+  ok("marketing → approve dispute (PATCH) 403", mktPatch.status === 403, `status ${mktPatch.status}`);
 
   // marketing — ห้ามดู chat detail
   ok("marketing → /api/dashboard 200", (await code("/api/dashboard?from=2026-06-01&to=2026-06-30", mkt)) === 200);

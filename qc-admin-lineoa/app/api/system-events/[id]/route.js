@@ -1,16 +1,10 @@
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
-import { readSession } from "@/lib/session";
+import { guard } from "@/lib/permissions";
 
-function allow(req) {
-  if (requireAdmin(req)) return true;
-  const s = readSession(req);
-  return s && s.role === "manager";
-}
-
-// PATCH — update (ปิด event / แก้เวลา)
+// PATCH — update (ปิด event / แก้เวลา) — ต้องมี system.events.manage
 export async function PATCH(req, { params }) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const gate = guard(req, "system.events.manage");
+  if (gate) return gate;
   const { id } = await params;
   const b = await req.json().catch(() => ({}));
   try {

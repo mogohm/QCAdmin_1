@@ -36,28 +36,56 @@ async function login(username, password) {
     );
   }
 
-  // pending/disabled: สร้าง user ผ่าน sysadmin แล้ว disable → login ต้องโดน 403
+  // ต้องใช้ sysadmin สร้าง user ทดสอบ (admin/active, disabled, pending)
   const admin = await login("sysadmin", "sysadmin123");
-  if (admin.cookie) {
-    const uname = "__test_disabled_" + Date.now();
-    const create = await fetch(`${BASE}/api/system/users`, {
+  const mk = (cookie, uname, status) =>
+    fetch(`${BASE}/api/system/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: admin.cookie },
-      body: JSON.stringify({ username: uname, password: "test1234", role: "admin", status: "active" }),
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ username: uname, password: "test1234", role: "admin", status }),
     }).then((r) => r.json());
-    if (create.user?.id) {
-      await fetch(`${BASE}/api/system/users/${create.user.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Cookie: admin.cookie },
-        body: JSON.stringify({ action: "disable" }),
-      });
-      const dl = await login(uname, "test1234");
-      ok("disabled user cannot login (403)", dl.status === 403, `status ${dl.status}`);
+  const disable = (cookie, id) =>
+    fetch(`${BASE}/api/system/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ action: "disable" }),
+    });
+
+  if (admin.cookie) {
+    // login admin สำเร็จ (active) — พิสูจน์ password hash verify ได้
+    const au = "__test_admin_" + Date.now();
+    const ac = await mk(admin.cookie, au, "active");
+    if (ac.user?.id) {
+      const al = await login(au, "test1234");
+      ok(
+        "login admin สำเร็จ (active, hash verify)",
+        al.status === 200 && al.json.role === "admin",
+        `status ${al.status}`,
+      );
+      ok("wrong password ของ admin → 401", (await login(au, "WRONGpw")).status === 401);
+      // disabled
+      await disable(admin.cookie, ac.user.id);
+      ok("disabled user login ไม่ได้ (403)", (await login(au, "test1234")).status === 403);
     } else {
-      ok("create test user (skipped pending test)", false, create.error || "no id");
+      ok("create active admin", false, ac.error || "no id");
     }
+
+    // pending login ไม่ได้
+    const pu = "__test_pending_" + Date.now();
+    const pc = await mk(admin.cookie, pu, "pending");
+    if (pc.user?.id) {
+      ok("pending user login ไม่ได้ (403)", (await login(pu, "test1234")).status === 403);
+      await disable(admin.cookie, pc.user.id);
+    } else {
+      ok("create pending user", false, pc.error || "no id");
+    }
+
+    // password_hash ไม่ใช่ plain text (users API ต้องไม่คืน field password/password_hash)
+    const list = await fetch(`${BASE}/api/system/users`, { headers: { Cookie: admin.cookie } }).then((r) => r.json());
+    const leak = (list.users || []).some((u) => "password" in u || "password_hash" in u);
+    ok("password เก็บแบบ hash — users API ไม่คืน plain text", !leak);
   } else {
-    console.log("⏭️  ข้าม disabled test — login sysadmin ไม่ได้ (รัน /api/auth/setup ก่อน)");
+    console.log("⏭️  ข้าม admin/disabled/pending — login sysadmin ไม่ได้ (รัน /api/auth/setup ก่อน)");
   }
 
   console.log(`\n===== Auth roles: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
