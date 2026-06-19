@@ -44,7 +44,9 @@ export async function GET() {
   if (process.env.LINE_CHANNEL_ACCESS_TOKEN) {
     try {
       const res = await fetch("https://api.line.me/v2/bot/info", {
-        headers: { Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}` },
+        headers: {
+          Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
+        },
       });
       if (res.ok) {
         const info = await res.json();

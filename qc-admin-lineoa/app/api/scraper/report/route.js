@@ -15,7 +15,9 @@ export async function OPTIONS() {
 export async function GET(req) {
   if (!requireView(req)) return unauthorized();
   const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from") || new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const from =
+    searchParams.get("from") ||
+    new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
 
   // Explicit UTC to avoid Neon session-timezone ambiguity
@@ -137,7 +139,9 @@ export async function GET(req) {
   }
 
   const result = Object.values(customerMap).sort((a, b) =>
-    (a.display_name || a.line_user_id).localeCompare(b.display_name || b.line_user_id),
+    (a.display_name || a.line_user_id).localeCompare(
+      b.display_name || b.line_user_id,
+    ),
   );
 
   return Response.json(

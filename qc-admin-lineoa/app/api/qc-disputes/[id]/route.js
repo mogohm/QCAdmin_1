@@ -11,7 +11,10 @@ export async function PATCH(req, { params }) {
   const b = await req.json().catch(() => ({}));
   const status = b.status;
   if (!["approved", "rejected", "pending"].includes(status))
-    return Response.json({ error: "status ต้องเป็น approved/rejected/pending" }, { status: 400 });
+    return Response.json(
+      { error: "status ต้องเป็น approved/rejected/pending" },
+      { status: 400 },
+    );
 
   try {
     const d = await query`SELECT * FROM qc_disputes WHERE id = ${id}`;
@@ -31,7 +34,11 @@ export async function PATCH(req, { params }) {
         new_score = ${newScore ?? null},
         reviewed_at = now()
       WHERE id = ${id} RETURNING *`;
-    return Response.json({ ok: true, dispute: rows[0], updated_score: status === "approved" ? newScore : null });
+    return Response.json({
+      ok: true,
+      dispute: rows[0],
+      updated_score: status === "approved" ? newScore : null,
+    });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }

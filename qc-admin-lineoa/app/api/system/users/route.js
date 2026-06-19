@@ -4,7 +4,9 @@ import { guard, getCurrentUser, ROLE_PERMS } from "@/lib/permissions";
 
 async function audit(actor, target, action, detail) {
   await query`INSERT INTO user_audit_logs (actor_user_id, target_user_id, action, detail)
-              VALUES (${actor || null}, ${target || null}, ${action}, ${JSON.stringify(detail || {})})`.catch(() => {});
+              VALUES (${actor || null}, ${target || null}, ${action}, ${JSON.stringify(detail || {})})`.catch(
+    () => {},
+  );
 }
 
 // GET /api/system/users — รายชื่อผู้ใช้ (filter q/role/status)
@@ -37,8 +39,12 @@ export async function POST(req) {
     .toLowerCase()
     .trim();
   if (!username || !b.password || !b.role)
-    return Response.json({ error: "username, password, role required" }, { status: 400 });
-  if (!ROLE_PERMS[b.role]) return Response.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
+    return Response.json(
+      { error: "username, password, role required" },
+      { status: 400 },
+    );
+  if (!ROLE_PERMS[b.role])
+    return Response.json({ error: "role ไม่ถูกต้อง" }, { status: 400 });
   try {
     const rows =
       await query`INSERT INTO app_users (username, password_hash, role, display_name, email, linked_admin_id, qc_admin_id, status)
@@ -48,6 +54,11 @@ export async function POST(req) {
     await audit(me?.uid, rows[0].id, "user.create", { username, role: b.role });
     return Response.json({ ok: true, user: rows[0] });
   } catch (e) {
-    return Response.json({ error: /unique/i.test(e.message) ? "username นี้มีอยู่แล้ว" : e.message }, { status: 500 });
+    return Response.json(
+      {
+        error: /unique/i.test(e.message) ? "username นี้มีอยู่แล้ว" : e.message,
+      },
+      { status: 500 },
+    );
   }
 }

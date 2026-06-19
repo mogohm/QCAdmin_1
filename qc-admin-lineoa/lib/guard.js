@@ -13,12 +13,16 @@ export function requireView(req) {
 
 export function requireManager(req) {
   const s = readSession(req);
-  return (s && (s.role === "manager" || s.role === "admin")) || requireAdmin(req);
+  return (
+    (s && (s.role === "manager" || s.role === "admin")) || requireAdmin(req)
+  );
 }
 
 export function requireEditor(req) {
   const s = readSession(req);
-  return (s && (s.role === "admin" || s.role === "manager")) || requireAdmin(req);
+  return (
+    (s && (s.role === "admin" || s.role === "manager")) || requireAdmin(req)
+  );
 }
 
 export function sessionRole(req) {
@@ -26,4 +30,5 @@ export function sessionRole(req) {
 }
 
 // คืน Response ใหม่ทุกครั้ง (อย่า reuse object เดิม — body stream ถูกใช้ไปแล้ว)
-export const unauthorized = (msg = "unauthorized") => Response.json({ error: msg }, { status: 401 });
+export const unauthorized = (msg = "unauthorized") =>
+  Response.json({ error: msg }, { status: 401 });

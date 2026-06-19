@@ -1,7 +1,18 @@
 "use client";
 // MetricTile — การ์ด KPI เล็ก (เลข gold) + label + เทรนด์เล็ก
-export default function MetricTile({ label, value, suffix = "", tone = "gold", hint }) {
-  const colors = { gold: "var(--gold)", green: "var(--green)", red: "var(--red)", blue: "var(--blue)" };
+export default function MetricTile({
+  label,
+  value,
+  suffix = "",
+  tone = "gold",
+  hint,
+}) {
+  const colors = {
+    gold: "var(--gold)",
+    green: "var(--green)",
+    red: "var(--red)",
+    blue: "var(--blue)",
+  };
   return (
     <div
       style={{

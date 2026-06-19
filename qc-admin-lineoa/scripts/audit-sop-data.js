@@ -11,7 +11,14 @@ const fs = require("fs");
 const path = require("path");
 const { detectIntent } = require("../lib/intent-engine");
 
-const C = { red: "\x1b[31m", grn: "\x1b[32m", yel: "\x1b[33m", dim: "\x1b[2m", rst: "\x1b[0m", b: "\x1b[1m" };
+const C = {
+  red: "\x1b[31m",
+  grn: "\x1b[32m",
+  yel: "\x1b[33m",
+  dim: "\x1b[2m",
+  rst: "\x1b[0m",
+  b: "\x1b[1m",
+};
 const arr = (v) =>
   Array.isArray(v)
     ? v
@@ -45,20 +52,41 @@ async function loadSops() {
          WHERE s.is_active IS NOT false
            AND NOT EXISTS (SELECT 1 FROM qc_scores q WHERE q.matched_sop_id = s.id)`,
       ).catch(() => null);
-      return { sops, categoryCodes: cats.map((c) => c.code), neverMatched, source: "DB (Neon)" };
+      return {
+        sops,
+        categoryCodes: cats.map((c) => c.code),
+        neverMatched,
+        source: "DB (Neon)",
+      };
     } catch (e) {
       console.log(`${C.yel}DB error (${e.message}) — fallback ไป JSON${C.rst}`);
     }
   }
-  const data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"));
-  const sops = data.scripts.map((s, i) => ({ id: i + 1, ...s, is_active: true }));
+  const data = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, "..", "data", "sop-data.json"),
+      "utf8",
+    ),
+  );
+  const sops = data.scripts.map((s, i) => ({
+    id: i + 1,
+    ...s,
+    is_active: true,
+  }));
   const categoryCodes = (data.categories || []).map((c) => c.code || c);
-  return { sops, categoryCodes, neverMatched: null, source: "data/sop-data.json (offline)" };
+  return {
+    sops,
+    categoryCodes,
+    neverMatched: null,
+    source: "data/sop-data.json (offline)",
+  };
 }
 
 (async () => {
   const { sops, categoryCodes, neverMatched, source } = await loadSops();
-  console.log(`\n${C.b}===== SOP DATA AUDIT =====${C.rst}  ${C.dim}(${source})${C.rst}\n`);
+  console.log(
+    `\n${C.b}===== SOP DATA AUDIT =====${C.rst}  ${C.dim}(${source})${C.rst}\n`,
+  );
 
   // 1) total
   const total = sops.length;
@@ -81,16 +109,22 @@ async function loadSops() {
 
   // 5) category ไม่ match
   const catSet = new Set(categoryCodes);
-  const badCategory = categoryCodes.length ? sops.filter((s) => s.category_code && !catSet.has(s.category_code)) : [];
+  const badCategory = categoryCodes.length
+    ? sops.filter((s) => s.category_code && !catSet.has(s.category_code))
+    : [];
 
   // 6) intent detect ไม่ได้ (จาก topic/question)
   const undetectable = sops.filter((s) => {
-    const d = detectIntent(`${s.topic || ""} ${s.question || ""} ${arr(s.keywords).join(" ")}`);
+    const d = detectIntent(
+      `${s.topic || ""} ${s.question || ""} ${arr(s.keywords).join(" ")}`,
+    );
     return d.intent === "general" || d.confidence < 15;
   });
 
   // 8) forbidden ว่าง
-  const emptyForbidden = sops.filter((s) => arr(s.forbidden_keywords).length === 0);
+  const emptyForbidden = sops.filter(
+    (s) => arr(s.forbidden_keywords).length === 0,
+  );
 
   const rows = [
     ["1. Total SOP records", total, C.grn, ""],
@@ -142,7 +176,9 @@ async function loadSops() {
   ];
 
   for (const [label, count, color, detail] of rows) {
-    console.log(`  ${color}${String(count).padStart(4)}${C.rst}  ${label.padEnd(30)} ${C.dim}${detail}${C.rst}`);
+    console.log(
+      `  ${color}${String(count).padStart(4)}${C.rst}  ${label.padEnd(30)} ${C.dim}${detail}${C.rst}`,
+    );
   }
 
   // 7) never matched (DB only)
@@ -155,7 +191,9 @@ async function loadSops() {
         .join(", ")}${C.rst}`,
     );
   } else {
-    console.log(`  ${C.dim}   —  7. SOP never matched          (ต้องมี DATABASE_URL — ข้ามใน offline mode)${C.rst}`);
+    console.log(
+      `  ${C.dim}   —  7. SOP never matched          (ต้องมี DATABASE_URL — ข้ามใน offline mode)${C.rst}`,
+    );
   }
 
   // สรุป health

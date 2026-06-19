@@ -5,7 +5,11 @@ export async function sendTelegram(text) {
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      disable_web_page_preview: true,
+    }),
   });
   return res.ok;
 }
@@ -24,7 +28,10 @@ export async function qcAlert({
   lineUserId,
   slaException,
 }) {
-  const base = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://qc-admin-1.vercel.app";
+  const base =
+    process.env.APP_BASE_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    "https://qc-admin-1.vercel.app";
   const link = lineUserId ? `${base}/customer/${lineUserId}` : "—";
   const lines = [
     `[QC ${kind}]`,

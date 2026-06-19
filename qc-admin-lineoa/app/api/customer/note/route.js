@@ -13,11 +13,18 @@ export async function OPTIONS() {
 
 // POST — บันทึก Note ที่ scraper ดึงมาจาก LINE OA
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
+  if (!requireAdmin(req))
+    return Response.json(
+      { error: "unauthorized" },
+      { status: 401, headers: CORS },
+    );
 
   const { line_user_id, note_text, noted_at, noted_by } = await req.json();
   if (!line_user_id || !note_text)
-    return Response.json({ error: "line_user_id, note_text required" }, { status: 400, headers: CORS });
+    return Response.json(
+      { error: "line_user_id, note_text required" },
+      { status: 400, headers: CORS },
+    );
 
   // ตรวจสอบ/สร้าง customer ก่อน
   await query`
@@ -55,14 +62,21 @@ export async function POST(req) {
         RETURNING id
       `;
 
-  return Response.json({ ok: true, inserted: result.length > 0 }, { headers: CORS });
+  return Response.json(
+    { ok: true, inserted: result.length > 0 },
+    { headers: CORS },
+  );
 }
 
 // GET — ดึง notes ทั้งหมดของ user
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const uid = searchParams.get("line_user_id");
-  if (!uid) return Response.json({ error: "line_user_id required" }, { status: 400, headers: CORS });
+  if (!uid)
+    return Response.json(
+      { error: "line_user_id required" },
+      { status: 400, headers: CORS },
+    );
 
   const notes = await query`
     SELECT cn.id, cn.note_text, cn.noted_at, cn.noted_by, cn.scraped_at,

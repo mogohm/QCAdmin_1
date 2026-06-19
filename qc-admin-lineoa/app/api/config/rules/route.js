@@ -1,10 +1,13 @@
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 export async function GET() {
-  return Response.json(await query`SELECT * FROM knowledge_rules ORDER BY category, rule_code`);
+  return Response.json(
+    await query`SELECT * FROM knowledge_rules ORDER BY category, rule_code`,
+  );
 }
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const r = await req.json();
   const rows =
     await query`INSERT INTO knowledge_rules(rule_code,rule_name,category,question_keywords,answer_keywords,weight,is_active)

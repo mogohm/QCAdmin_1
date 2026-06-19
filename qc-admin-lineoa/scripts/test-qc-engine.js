@@ -15,14 +15,24 @@ const ok = (name, cond, extra = "") => {
 };
 
 // โหลด knowledge base
-const data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"));
+const data = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"),
+);
 const sops = data.scripts.map((s, i) => ({ id: i + 1, ...s }));
 const fatalRules = data.fatal_rules;
 
 console.log("===== 1) SOP IMPORT =====");
 ok("โหลด sop-data.json ได้", sops.length > 50, `${sops.length} records`);
-ok("มีหมวด (categories)", data.categories.length >= 5, `${data.categories.length} หมวด`);
-ok("มี intent patterns", data.intent_patterns.length > 50, `${data.intent_patterns.length}`);
+ok(
+  "มีหมวด (categories)",
+  data.categories.length >= 5,
+  `${data.categories.length} หมวด`,
+);
+ok(
+  "มี intent patterns",
+  data.intent_patterns.length > 50,
+  `${data.intent_patterns.length}`,
+);
 ok("มี fatal rules", fatalRules.length >= 1, `${fatalRules.length}`);
 
 console.log("\n===== 2) INTENT DETECTION (TH/EN/mixed) =====");
@@ -46,7 +56,11 @@ for (const [msg, exp] of intentCases) {
 }
 
 console.log("\n===== 3) SOP MATCHING =====");
-const matchCases = ["ขอลิงก์ฝากเงิน", "ถอนเงินไม่ได้ ธนาคารดีเลย์", "สมัครสมาชิก"];
+const matchCases = [
+  "ขอลิงก์ฝากเงิน",
+  "ถอนเงินไม่ได้ ธนาคารดีเลย์",
+  "สมัครสมาชิก",
+];
 for (const msg of matchCases) {
   const m = matchSOP(msg, sops);
   ok(
@@ -58,13 +72,22 @@ for (const msg of matchCases) {
 console.log("\n===== 4) QC SCORING (8 มิติ) =====");
 const good = scoreReply({
   customerText: "ขอลิงก์ฝากเงินหน่อยค่ะ",
-  adminText: "วิธีเติมเงิน Auto เช็คที่เมนูฝากทุกครั้ง ลิงก์ https://bit.ly/xxx ค่ะ ยินดีให้บริการนะคะ",
+  adminText:
+    "วิธีเติมเงิน Auto เช็คที่เมนูฝากทุกครั้ง ลิงก์ https://bit.ly/xxx ค่ะ ยินดีให้บริการนะคะ",
   responseSeconds: 60,
   sops,
   fatalRules,
 });
-ok("คำตอบดี → คะแนนสูง", good.finalScore >= 60, `score ${good.finalScore}, intent ${good.intent}`);
-ok("มีครบ 8 มิติ/มิติที่เกี่ยวข้อง", Object.keys(good.dimensions).length >= 5, Object.keys(good.dimensions).join(","));
+ok(
+  "คำตอบดี → คะแนนสูง",
+  good.finalScore >= 60,
+  `score ${good.finalScore}, intent ${good.intent}`,
+);
+ok(
+  "มีครบ 8 มิติ/มิติที่เกี่ยวข้อง",
+  Object.keys(good.dimensions).length >= 5,
+  Object.keys(good.dimensions).join(","),
+);
 
 const slow = scoreReply({
   customerText: "ถอนเงินยังไง",
@@ -73,7 +96,11 @@ const slow = scoreReply({
   sops,
   fatalRules,
 });
-ok("ตอบช้า → responseTime ต่ำ", slow.dimensions.responseTime < 80, `rt ${slow.dimensions.responseTime}`);
+ok(
+  "ตอบช้า → responseTime ต่ำ",
+  slow.dimensions.responseTime < 80,
+  `rt ${slow.dimensions.responseTime}`,
+);
 
 console.log("\n===== 5) FATAL RULES =====");
 const rude = scoreReply({
@@ -83,7 +110,11 @@ const rude = scoreReply({
   sops,
   fatalRules,
 });
-ok("คำหยาบ → fatal & score 0", rude.isFatal && rude.finalScore === 0, `score ${rude.finalScore}`);
+ok(
+  "คำหยาบ → fatal & score 0",
+  rude.isFatal && rude.finalScore === 0,
+  `score ${rude.finalScore}`,
+);
 const dismiss = scoreReply({
   customerText: "ฝากเงินไม่เข้า",
   adminText: "ไม่รู้ ไปถามที่อื่น",
@@ -112,7 +143,11 @@ ok(
   coach ? `${coach.reasons.length} เหตุผล` : "null",
 );
 ok("coaching มี suggested reply", coach && !!coach.suggested_reply);
-const noCoach = generateCoaching({ customerText: "x", adminText: "y", scoreResult: { finalScore: 95 } });
+const noCoach = generateCoaching({
+  customerText: "x",
+  adminText: "y",
+  scoreResult: { finalScore: 95 },
+});
 ok("คะแนนสูง → ไม่ต้อง coaching", noCoach === null);
 
 console.log("\n===== 7) MINOR ERROR PENALTY =====");
@@ -123,7 +158,11 @@ const noPolite = scoreReply({
   sops,
   fatalRules,
 });
-ok("ไม่มีคำลงท้ายสุภาพ → minor issue", noPolite.minorIssues.length > 0, noPolite.minorIssues.join(","));
+ok(
+  "ไม่มีคำลงท้ายสุภาพ → minor issue",
+  noPolite.minorIssues.length > 0,
+  noPolite.minorIssues.join(","),
+);
 
 console.log("\n===== 8) SLA EXCEPTION =====");
 const slaOff = scoreReply({
@@ -144,7 +183,8 @@ const slaOn = scoreReply({
 });
 ok(
   "SLA exception → responseTime ไม่หักเต็ม",
-  slaOn.dimensions.responseTime >= slaOff.dimensions.responseTime && slaOn.dimensions.responseTime >= 80,
+  slaOn.dimensions.responseTime >= slaOff.dimensions.responseTime &&
+    slaOn.dimensions.responseTime >= 80,
   `off=${slaOff.dimensions.responseTime} on=${slaOn.dimensions.responseTime}`,
 );
 ok("SLA exception flag ติด", slaOn.slaException === true);
@@ -154,9 +194,14 @@ const det = good.details || [];
 const codes = det.map((d) => d.category_code);
 ok(
   "details มีครบ 7 มิติ rubric + minor + fatal",
-  ["greetingClosing", "problemSolving", "communicationTone", "responseTime", "minorError", "fatalError"].every((c) =>
-    codes.includes(c),
-  ),
+  [
+    "greetingClosing",
+    "problemSolving",
+    "communicationTone",
+    "responseTime",
+    "minorError",
+    "fatalError",
+  ].every((c) => codes.includes(c)),
   codes.join(","),
 );
 ok(
@@ -172,8 +217,14 @@ ok(
   det.every((d) => d.evidence !== undefined),
 );
 const ps = det.find((d) => d.category_code === "problemSolving");
-ok("problemSolving มี matched_sop evidence", ps && ps.evidence && "matched_sop" in ps.evidence);
-ok("evidence รวมมี matched/missing keywords", good.evidence && Array.isArray(good.evidence.missing_required_keywords));
+ok(
+  "problemSolving มี matched_sop evidence",
+  ps && ps.evidence && "matched_sop" in ps.evidence,
+);
+ok(
+  "evidence รวมมี matched/missing keywords",
+  good.evidence && Array.isArray(good.evidence.missing_required_keywords),
+);
 
 // DB-dependent tests (รันเมื่อมี DATABASE_URL)
 if (process.env.DATABASE_URL) {

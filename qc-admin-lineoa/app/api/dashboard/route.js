@@ -25,7 +25,15 @@ export async function GET(req) {
   const dateTo = searchParams.get("to") || "2099-12-31";
 
   try {
-    const [kpiRows, rankingAll, weeklySummary, promos, pendingReply, replyLog, lastActivity] = await Promise.all([
+    const [
+      kpiRows,
+      rankingAll,
+      weeklySummary,
+      promos,
+      pendingReply,
+      replyLog,
+      lastActivity,
+    ] = await Promise.all([
       // KPI — กรองตามวันที่
       safe(
         () => query`SELECT
@@ -242,7 +250,11 @@ export async function GET(req) {
                        ORDER BY q.created_at DESC LIMIT 25`,
         [],
       ),
-      safe(() => query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`, []),
+      safe(
+        () =>
+          query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`,
+        [],
+      ),
       safe(
         () => query`SELECT
                          sum(CASE WHEN final_score>=90 THEN 1 ELSE 0 END)::int tier1,
@@ -274,7 +286,9 @@ export async function GET(req) {
     ]);
 
     const cov = sopCoverage[0] || { total: 0, matched: 0 };
-    const dispMap = Object.fromEntries((disputeSummary || []).map((r) => [r.status, r.n]));
+    const dispMap = Object.fromEntries(
+      (disputeSummary || []).map((r) => [r.status, r.n]),
+    );
 
     // เพิ่ม: fail reasons ซ้ำ + intent ที่ไม่ match SOP + commission ต่อ admin
     const [repeatedFails, unmatchedIntents] = await Promise.all([
@@ -309,13 +323,17 @@ export async function GET(req) {
        WHERE status='approved' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
       [],
     );
-    const dispMapAdmin = Object.fromEntries((dispByAdmin || []).map((r) => [r.admin_id, r.n]));
+    const dispMapAdmin = Object.fromEntries(
+      (dispByAdmin || []).map((r) => [r.admin_id, r.n]),
+    );
     const fatalByAdmin = await safe(
       () => query`SELECT admin_id, count(*)::int n FROM qc_scores
        WHERE is_fatal=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
       [],
     );
-    const fatalMapAdmin = Object.fromEntries((fatalByAdmin || []).map((r) => [r.admin_id, r.n]));
+    const fatalMapAdmin = Object.fromEntries(
+      (fatalByAdmin || []).map((r) => [r.admin_id, r.n]),
+    );
 
     // ---- marketing summary (customer_events ในช่วงวันที่) ----
     const mkt = await safe(
@@ -371,7 +389,14 @@ export async function GET(req) {
     }));
 
     const MULT = (s) => (s >= 90 ? 1.2 : s >= 80 ? 1.0 : s >= 70 ? 0.5 : 0);
-    const TIER = (s) => (s >= 90 ? "Excellent" : s >= 80 ? "Standard" : s >= 70 ? "Warning" : "Critical");
+    const TIER = (s) =>
+      s >= 90
+        ? "Excellent"
+        : s >= 80
+          ? "Standard"
+          : s >= 70
+            ? "Warning"
+            : "Critical";
     const RATE = 0.01;
     const commissionPerAdmin = (rankingAll || [])
       .filter((a) => a.cases > 0)
@@ -391,13 +416,20 @@ export async function GET(req) {
         };
       });
 
-    const estCommissionTotal = commissionPerAdmin.reduce((s, a) => s + (a.estimated_commission || 0), 0);
+    const estCommissionTotal = commissionPerAdmin.reduce(
+      (s, a) => s + (a.estimated_commission || 0),
+      0,
+    );
     const kpiExt = {
       totalChats: cnt.total_msgs || 0,
       totalQcCases: cnt.qc_cases || 0,
       avgQaScore: kpiRows[0]?.avg_score || 0,
-      qaCoveragePercent: cnt.admin_msgs ? Math.round(((cnt.qc_cases || 0) / cnt.admin_msgs) * 100) : 0,
-      sopCoveragePercent: cov.total ? Math.round((cov.matched / cov.total) * 100) : 0,
+      qaCoveragePercent: cnt.admin_msgs
+        ? Math.round(((cnt.qc_cases || 0) / cnt.admin_msgs) * 100)
+        : 0,
+      sopCoveragePercent: cov.total
+        ? Math.round((cov.matched / cov.total) * 100)
+        : 0,
       avgResponseSec: kpiRows[0]?.avg_response_sec || 0,
       slaPassPercent: slaExceptionSummary[0]?.sla_pass_pct ?? 0,
       fatalCount: (fatalCases || []).length,
@@ -429,7 +461,9 @@ export async function GET(req) {
       },
       coachingSummary: {
         recent: coachingSummary,
-        lowest_categories: [...(categorySummary || [])].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3),
+        lowest_categories: [...(categorySummary || [])]
+          .sort((a, b) => a.avg_score - b.avg_score)
+          .slice(0, 3),
         repeated_fail_reasons: repeatedFails,
       },
       disputeSummary: {
@@ -437,7 +471,10 @@ export async function GET(req) {
         approved: dispMap.approved || 0,
         rejected: dispMap.rejected || 0,
       },
-      commissionSummary: { tiers: commissionSummary[0] || {}, per_admin: commissionPerAdmin },
+      commissionSummary: {
+        tiers: commissionSummary[0] || {},
+        per_admin: commissionPerAdmin,
+      },
       adminCategoryRanking,
       slaExceptionSummary: slaExceptionSummary[0] || {},
       marketingSummary,
@@ -445,6 +482,9 @@ export async function GET(req) {
     });
   } catch (err) {
     console.error("Dashboard fatal:", err);
-    return Response.json({ error: String(err.message || err) }, { status: 500 });
+    return Response.json(
+      { error: String(err.message || err) },
+      { status: 500 },
+    );
   }
 }

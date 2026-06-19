@@ -186,16 +186,24 @@ function detectIntent(text = "") {
   }
 
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  if (!ranked.length) return { intent: "general", confidence: 0, scores: {}, matched: [] };
+  if (!ranked.length)
+    return { intent: "general", confidence: 0, scores: {}, matched: [] };
 
   const [bestIntent, bestScore] = ranked[0];
   // confidence: คะแนนเด่นชัดแค่ไหน (เทียบกับ threshold ~3 + ห่างอันดับ 2)
   const second = ranked[1] ? ranked[1][1] : 0;
   const dominance = bestScore / (bestScore + second || 1); // 0.5-1
   const strength = Math.min(1, bestScore / 4); // อิ่มตัวที่ ~4
-  const confidence = Math.round(Math.min(100, (strength * 0.6 + dominance * 0.4) * 100));
+  const confidence = Math.round(
+    Math.min(100, (strength * 0.6 + dominance * 0.4) * 100),
+  );
 
-  return { intent: bestIntent, confidence, scores, matched: matched.filter((m) => m.intent === bestIntent) };
+  return {
+    intent: bestIntent,
+    confidence,
+    scores,
+    matched: matched.filter((m) => m.intent === bestIntent),
+  };
 }
 
 module.exports = { INTENTS, INTENT_KEYWORDS, detectIntent, normalize };

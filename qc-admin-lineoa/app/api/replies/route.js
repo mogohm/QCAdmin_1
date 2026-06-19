@@ -15,7 +15,10 @@ export async function GET(req) {
   const dateFrom = searchParams.get("from") || "2000-01-01";
   const dateTo = searchParams.get("to") || "2099-12-31";
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
+  const limit = Math.min(
+    100,
+    Math.max(1, parseInt(searchParams.get("limit") || "20")),
+  );
   const customer = (searchParams.get("customer") || "").trim();
   const admin = (searchParams.get("admin") || "").trim();
   const sortKey = searchParams.get("sort") || "date";
@@ -80,6 +83,9 @@ export async function GET(req) {
     });
   } catch (err) {
     console.error("replies:", err);
-    return Response.json({ error: String(err.message || err) }, { status: 500 });
+    return Response.json(
+      { error: String(err.message || err) },
+      { status: 500 },
+    );
   }
 }

@@ -8,7 +8,10 @@ export async function POST(req) {
   const b = await req.json().catch(() => ({}));
   const { period_start, period_end, rows } = b;
   if (!period_start || !period_end || !Array.isArray(rows))
-    return Response.json({ error: "period_start, period_end, rows[] required" }, { status: 400 });
+    return Response.json(
+      { error: "period_start, period_end, rows[] required" },
+      { status: 400 },
+    );
 
   try {
     // ลบ snapshot เดิมของ period นี้ก่อน (กันซ้ำ)
@@ -22,7 +25,8 @@ export async function POST(req) {
         continue;
       }
       // ข้าม admin ที่ไม่มีในระบบ (กัน FK error)
-      const exists = await query`SELECT 1 FROM qc_admins WHERE id=${r.admin_id} LIMIT 1`;
+      const exists =
+        await query`SELECT 1 FROM qc_admins WHERE id=${r.admin_id} LIMIT 1`;
       if (!exists[0]) {
         skipped++;
         continue;
@@ -32,7 +36,12 @@ export async function POST(req) {
                 ${r.base_salary ?? 0}, ${r.upsell_amount ?? 0}, ${r.commission ?? 0})`;
       saved++;
     }
-    return Response.json({ ok: true, saved, skipped, period: { period_start, period_end } });
+    return Response.json({
+      ok: true,
+      saved,
+      skipped,
+      period: { period_start, period_end },
+    });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }
@@ -40,7 +49,12 @@ export async function POST(req) {
 
 // GET — ดู snapshot ที่บันทึกไว้
 export async function GET(req) {
-  const g = guard(req, "commission.view.own", "commission.view.team", "commission.view.all");
+  const g = guard(
+    req,
+    "commission.view.own",
+    "commission.view.team",
+    "commission.view.all",
+  );
   if (g) return g;
   const rows = await query`SELECT ac.*, a.member_name FROM admin_commissions ac
     LEFT JOIN qc_admins a ON a.id=ac.admin_id ORDER BY ac.period_end DESC, ac.commission DESC LIMIT 500`.catch(

@@ -25,11 +25,32 @@ function Gated({ need, perms, role, children }) {
   if (allowed) return children;
   return (
     <div style={{ position: "relative", overflow: "hidden", borderRadius: 18 }}>
-      <div style={{ filter: "blur(8px)", pointerEvents: "none", userSelect: "none", opacity: 0.45 }}>{children}</div>
-      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+      <div
+        style={{
+          filter: "blur(8px)",
+          pointerEvents: "none",
+          userSelect: "none",
+          opacity: 0.45,
+        }}
+      >
+        {children}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "grid",
+          placeItems: "center",
+        }}
+      >
         <div
           className="glass glow"
-          style={{ padding: "14px 20px", color: "#f6c65b", textAlign: "center", fontWeight: 700 }}
+          style={{
+            padding: "14px 20px",
+            color: "#f6c65b",
+            textAlign: "center",
+            fontWeight: 700,
+          }}
         >
           🔒 ไม่มีสิทธิ์เข้าดูข้อมูลนี้
         </div>
@@ -81,11 +102,20 @@ export default function Dashboard() {
     load(f, t);
   };
 
-  const ranking = useMemo(() => (d?.ranking || []).filter((a) => a.cases > 0), [d]);
+  const ranking = useMemo(
+    () => (d?.ranking || []).filter((a) => a.cases > 0),
+    [d],
+  );
   const acr = d?.adminCategoryRanking || [];
-  const skillById = useMemo(() => Object.fromEntries(acr.map((a) => [a.admin_id, a])), [acr]);
+  const skillById = useMemo(
+    () => Object.fromEntries(acr.map((a) => [a.admin_id, a])),
+    [acr],
+  );
   const commById = useMemo(
-    () => Object.fromEntries((d?.commissionSummary?.per_admin || []).map((a) => [a.admin_id, a])),
+    () =>
+      Object.fromEntries(
+        (d?.commissionSummary?.per_admin || []).map((a) => [a.admin_id, a]),
+      ),
     [d],
   );
   const k = d?.kpiExt || {};
@@ -114,7 +144,9 @@ export default function Dashboard() {
     window.location.href = "/login";
   };
   // horizontal nav บนหัวบอร์ด (ไม่มี sidebar) — เฉพาะเมนูที่มีสิทธิ์
-  const navItems = me?.authenticated ? filterMenuByPermissions(me, MENU).filter((i) => i.href !== "/") : [];
+  const navItems = me?.authenticated
+    ? filterMenuByPermissions(me, MENU).filter((i) => i.href !== "/")
+    : [];
 
   // ===== Fullscreen Executive Board (ไม่มี sidebar) =====
   return (
@@ -129,13 +161,27 @@ export default function Dashboard() {
           <QF id="yesterday" label="เมื่อวาน" />
           <QF id="7d" label="7 วัน" />
           <QF id="month" label="เดือนนี้" />
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 140 }} />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 140 }} />
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            style={{ width: 140 }}
+          />
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            style={{ width: 140 }}
+          />
           <button onClick={() => load()}>{loading ? "..." : "🔄 ดู"}</button>
           {me?.authenticated && (
             <span className="exec-user">
               👤 {me.name} <span className="exec-role">{me.role}</span>
-              <button onClick={logout} className="ghost" style={{ marginLeft: 8, padding: "4px 10px", fontSize: 12 }}>
+              <button
+                onClick={logout}
+                className="ghost"
+                style={{ marginLeft: 8, padding: "4px 10px", fontSize: 12 }}
+              >
                 ออกจากระบบ
               </button>
             </span>
@@ -166,9 +212,15 @@ export default function Dashboard() {
             title="🧑‍💼 Admin Dashboard"
             tag="รายบุคคล"
             glow
-            empty={!ranking.length && !loading && "ยังไม่มีข้อมูลในช่วงวันที่นี้"}
+            empty={
+              !ranking.length && !loading && "ยังไม่มีข้อมูลในช่วงวันที่นี้"
+            }
           >
-            <select value={selId || ""} onChange={(e) => setPickAdmin(e.target.value)} style={{ marginBottom: 12 }}>
+            <select
+              value={selId || ""}
+              onChange={(e) => setPickAdmin(e.target.value)}
+              style={{ marginBottom: 12 }}
+            >
               {ranking.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.member_name} — {a.avg_score}
@@ -183,35 +235,76 @@ export default function Dashboard() {
                   cases={selAdmin.cases}
                   tier={selComm?.tier}
                 />
-                <div className="grid" style={{ gridTemplateColumns: "1.1fr 1fr 1fr", marginTop: 14, gap: 10 }}>
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: "1.1fr 1fr 1fr",
+                    marginTop: 14,
+                    gap: 10,
+                  }}
+                >
                   <div className="glass" style={{ padding: 10 }}>
-                    <KpiGauge value={selAdmin.avg_score} label="Avg QA Score" size={120} />
+                    <KpiGauge
+                      value={selAdmin.avg_score}
+                      label="Avg QA Score"
+                      size={120}
+                    />
                   </div>
-                  <MetricTile label="Total Cases" value={selAdmin.cases} tone="blue" />
-                  <MetricTile label="ตอบเฉลี่ย" value={fmtSec(selAdmin.avg_response_sec)} tone="blue" />
+                  <MetricTile
+                    label="Total Cases"
+                    value={selAdmin.cases}
+                    tone="blue"
+                  />
+                  <MetricTile
+                    label="ตอบเฉลี่ย"
+                    value={fmtSec(selAdmin.avg_response_sec)}
+                    tone="blue"
+                  />
                 </div>
-                <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 12, gap: 12 }}>
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: "1fr 1fr",
+                    marginTop: 12,
+                    gap: 12,
+                  }}
+                >
                   <div>
                     <div className="panel-title">Skill Radar</div>
                     <RadarChart axes={radarAxes} size={210} />
                   </div>
                   <div>
                     <div className="panel-title">AI Coaching</div>
-                    <MetricTile label="Est. Commission" value={baht(selComm?.estimated_commission)} />
-                    <div className="case" style={{ marginTop: 10, fontSize: 12 }}>
+                    <MetricTile
+                      label="Est. Commission"
+                      value={baht(selComm?.estimated_commission)}
+                    />
+                    <div
+                      className="case"
+                      style={{ marginTop: 10, fontSize: 12 }}
+                    >
                       <b className="muted">มิติที่อ่อนสุด</b>
                       <div>
-                        {(d?.coachingSummary?.lowest_categories || []).slice(0, 3).map((c, i) => (
-                          <span
-                            key={i}
-                            className="badge"
-                            style={{ marginRight: 4, marginTop: 4, display: "inline-block" }}
-                          >
-                            {c.category_code} {c.avg_score}
-                          </span>
-                        )) || "—"}
+                        {(d?.coachingSummary?.lowest_categories || [])
+                          .slice(0, 3)
+                          .map((c, i) => (
+                            <span
+                              key={i}
+                              className="badge"
+                              style={{
+                                marginRight: 4,
+                                marginTop: 4,
+                                display: "inline-block",
+                              }}
+                            >
+                              {c.category_code} {c.avg_score}
+                            </span>
+                          )) || "—"}
                       </div>
-                      <b className="muted" style={{ display: "block", marginTop: 8 }}>
+                      <b
+                        className="muted"
+                        style={{ display: "block", marginTop: 8 }}
+                      >
                         ปัญหาที่พบบ่อย
                       </b>
                       <div style={{ color: "#cfe0ff" }}>
@@ -231,26 +324,60 @@ export default function Dashboard() {
         {/* ===== Panel 2: Manager Dashboard ===== */}
         <Gated need="dashboard.manager.view" perms={perms} role={role}>
           <GlassPanel title="📊 Manager Dashboard" tag="ภาพรวมทีม" glow>
-            <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}
+            >
               <MetricTile
                 label="Avg QA"
                 value={k.avgQaScore ?? 0}
-                tone={k.avgQaScore >= 85 ? "green" : k.avgQaScore >= 70 ? "gold" : "red"}
+                tone={
+                  k.avgQaScore >= 85
+                    ? "green"
+                    : k.avgQaScore >= 70
+                      ? "gold"
+                      : "red"
+                }
               />
-              <MetricTile label="QA Coverage" value={(k.qaCoveragePercent ?? 0) + "%"} tone="blue" />
-              <MetricTile label="SLA Pass" value={(k.slaPassPercent ?? 0) + "%"} tone="green" />
-              <MetricTile label="ตอบเฉลี่ย" value={fmtSec(k.avgResponseSec)} tone="blue" />
+              <MetricTile
+                label="QA Coverage"
+                value={(k.qaCoveragePercent ?? 0) + "%"}
+                tone="blue"
+              />
+              <MetricTile
+                label="SLA Pass"
+                value={(k.slaPassPercent ?? 0) + "%"}
+                tone="green"
+              />
+              <MetricTile
+                label="ตอบเฉลี่ย"
+                value={fmtSec(k.avgResponseSec)}
+                tone="blue"
+              />
             </div>
-            <div className="grid" style={{ gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginTop: 10 }}>
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 10,
+                marginTop: 10,
+              }}
+            >
               <MetricTile label="Fatal" value={k.fatalCount ?? 0} tone="red" />
               <MetricTile label="Minor" value={k.minorCount ?? 0} tone="gold" />
-              <MetricTile label="Pending Disputes" value={k.pendingDisputes ?? 0} tone="gold" />
+              <MetricTile
+                label="Pending Disputes"
+                value={k.pendingDisputes ?? 0}
+                tone="gold"
+              />
             </div>
             <div className="panel-title" style={{ marginTop: 16 }}>
               Team Average & Trend
             </div>
             <MiniLineChart
-              data={[...(d?.weeklySummary || [])].reverse().map((w) => ({ label: w.day, value: w.avg_score }))}
+              data={[...(d?.weeklySummary || [])]
+                .reverse()
+                .map((w) => ({ label: w.day, value: w.avg_score }))}
               height={140}
             />
             <div className="panel-title" style={{ marginTop: 12 }}>
@@ -258,7 +385,10 @@ export default function Dashboard() {
             </div>
             <BarChart
               rows={[...(d?.categorySummary || [])]
-                .filter((c) => !["minorError", "fatalError"].includes(c.category_code))
+                .filter(
+                  (c) =>
+                    !["minorError", "fatalError"].includes(c.category_code),
+                )
                 .sort((a, b) => (b.fail_count || 0) - (a.fail_count || 0))
                 .slice(0, 5)
                 .map((c) => ({
@@ -273,15 +403,34 @@ export default function Dashboard() {
 
         {/* ===== Panel 3: Leaderboard ===== */}
         <Gated need="dashboard.leaderboard.view" perms={perms} role={role}>
-          <GlassPanel title="🏆 Leaderboard" tag="อันดับ" glow empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}>
+          <GlassPanel
+            title="🏆 Leaderboard"
+            tag="อันดับ"
+            glow
+            empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}
+          >
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
               {ranking.slice(0, 3).map((a, i) => (
-                <div key={a.id} className="glass" style={{ flex: 1, padding: 12, textAlign: "center" }}>
-                  <span className={`medal ${["g", "s", "b"][i]}`} style={{ margin: "0 auto 6px" }}>
+                <div
+                  key={a.id}
+                  className="glass"
+                  style={{ flex: 1, padding: 12, textAlign: "center" }}
+                >
+                  <span
+                    className={`medal ${["g", "s", "b"][i]}`}
+                    style={{ margin: "0 auto 6px" }}
+                  >
                     {i + 1}
                   </span>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: "#eef4ff" }}>{a.member_name}</div>
-                  <div className={`score ${sc(a.avg_score)}`} style={{ fontSize: 20 }}>
+                  <div
+                    style={{ fontWeight: 800, fontSize: 13, color: "#eef4ff" }}
+                  >
+                    {a.member_name}
+                  </div>
+                  <div
+                    className={`score ${sc(a.avg_score)}`}
+                    style={{ fontSize: 20 }}
+                  >
                     {a.avg_score}
                   </div>
                   <div className="muted" style={{ fontSize: 11 }}>
@@ -290,7 +439,10 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-            <LeaderboardTable rows={ranking.slice(0, 10)} onPick={(a) => setPickAdmin(a.id)} />
+            <LeaderboardTable
+              rows={ranking.slice(0, 10)}
+              onPick={(a) => setPickAdmin(a.id)}
+            />
             <div className="panel-title" style={{ marginTop: 14 }}>
               📈 Most Improved <span className="tag">7 วัน vs ก่อนหน้า</span>
             </div>
@@ -298,11 +450,22 @@ export default function Dashboard() {
               (d.mostImproved || []).slice(0, 5).map((m, i) => (
                 <div
                   key={i}
-                  style={{ display: "flex", justifyContent: "space-between", padding: "6px 4px", fontSize: 13 }}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "6px 4px",
+                    fontSize: 13,
+                  }}
                 >
                   <span style={{ color: "#dbe7ff" }}>{m.admin}</span>
-                  <span style={{ color: m.delta >= 0 ? "var(--green)" : "var(--red)", fontWeight: 800 }}>
-                    {m.delta >= 0 ? "▲" : "▼"} {Math.abs(m.delta)} ({m.previous}→{m.current})
+                  <span
+                    style={{
+                      color: m.delta >= 0 ? "var(--green)" : "var(--red)",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {m.delta >= 0 ? "▲" : "▼"} {Math.abs(m.delta)} ({m.previous}
+                    →{m.current})
                   </span>
                 </div>
               ))
@@ -317,8 +480,15 @@ export default function Dashboard() {
           <GlassPanel title="📣 Marketing Dashboard" tag="การตลาด" glow>
             {(() => {
               const m = d?.marketingSummary || {};
-              const hasData = (m.registration || 0) + (m.deposit_count || 0) + (m.kyc_total || 0) > 0;
-              if (!hasData && !loading) return <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>;
+              const hasData =
+                (m.registration || 0) +
+                  (m.deposit_count || 0) +
+                  (m.kyc_total || 0) >
+                0;
+              if (!hasData && !loading)
+                return (
+                  <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>
+                );
               return (
                 <>
                   <div className="panel-title">Registration Funnel</div>
@@ -327,10 +497,21 @@ export default function Dashboard() {
                       { label: "สมัคร", value: m.registration || 0 },
                       { label: "สมัครสำเร็จ", value: m.registration_pass || 0 },
                       { label: "KYC ผ่าน", value: m.kyc_pass || 0 },
-                      { label: "ล้มเหลว", value: m.registration_fail || 0, color: "#ef4444" },
+                      {
+                        label: "ล้มเหลว",
+                        value: m.registration_fail || 0,
+                        color: "#ef4444",
+                      },
                     ]}
                   />
-                  <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                  <div
+                    className="grid"
+                    style={{
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 10,
+                      marginTop: 12,
+                    }}
+                  >
                     <MetricTile
                       label="Deposit รวม"
                       value={baht(m.deposit_total)}
@@ -349,16 +530,31 @@ export default function Dashboard() {
                   </div>
                   <BarChart
                     rows={[
-                      { label: "ผ่าน KYC", value: m.kyc_pass || 0, color: "linear-gradient(90deg,#22c55e,#38bdf8)" },
+                      {
+                        label: "ผ่าน KYC",
+                        value: m.kyc_pass || 0,
+                        color: "linear-gradient(90deg,#22c55e,#38bdf8)",
+                      },
                       { label: "ทั้งหมด", value: m.kyc_total || 0 },
                     ]}
                   />
                   <div className="panel-title" style={{ marginTop: 14 }}>
                     Promotion
                   </div>
-                  <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <MetricTile label="ผู้ร่วมโปร" value={m.promotion_participants || 0} tone="blue" />
-                    <MetricTile label="ยอดฝากจากโปร" value={baht(m.promotion_deposit)} tone="gold" />
+                  <div
+                    className="grid"
+                    style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}
+                  >
+                    <MetricTile
+                      label="ผู้ร่วมโปร"
+                      value={m.promotion_participants || 0}
+                      tone="blue"
+                    />
+                    <MetricTile
+                      label="ยอดฝากจากโปร"
+                      value={baht(m.promotion_deposit)}
+                      tone="gold"
+                    />
                   </div>
                 </>
               );

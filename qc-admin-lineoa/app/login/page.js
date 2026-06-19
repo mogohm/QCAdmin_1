@@ -8,7 +8,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   // แสดงข้อความเมื่อถูกส่งมาจาก session หมดอายุ (?expired=1)
   useEffect(() => {
-    if (new URLSearchParams(location.search).get("expired")) setErr("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+    if (new URLSearchParams(location.search).get("expired"))
+      setErr("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
   }, []);
 
   const submit = async (e) => {
@@ -46,7 +47,8 @@ export default function Login() {
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
-        background: "radial-gradient(1200px 600px at 50% -10%,#1b3a6b,#0a1424 60%)",
+        background:
+          "radial-gradient(1200px 600px at 50% -10%,#1b3a6b,#0a1424 60%)",
         fontFamily: "Inter,'Noto Sans Thai',sans-serif",
       }}
     >
@@ -62,11 +64,26 @@ export default function Login() {
           color: "#dbe7fb",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 6, fontSize: 13, letterSpacing: 1, color: "#5fd0ff" }}>
+        <div
+          style={{
+            textAlign: "center",
+            marginBottom: 6,
+            fontSize: 13,
+            letterSpacing: 1,
+            color: "#5fd0ff",
+          }}
+        >
           AI QC PROGRAM
         </div>
         <h2 style={{ textAlign: "center", margin: "0 0 4px" }}>เข้าสู่ระบบ</h2>
-        <p style={{ textAlign: "center", color: "#7d92b5", fontSize: 12, marginTop: 0 }}>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#7d92b5",
+            fontSize: 12,
+            marginTop: 0,
+          }}
+        >
           ระบบแดชบอร์ด AI ควบคุมคุณภาพ
         </p>
         <label style={{ fontSize: 12, color: "#9fb3d6" }}>Username</label>
@@ -78,8 +95,17 @@ export default function Login() {
           style={inp}
         />
         <label style={{ fontSize: 12, color: "#9fb3d6" }}>Password</label>
-        <input type="password" value={p} onChange={(e) => setP(e.target.value)} style={inp} />
-        {err && <div style={{ color: "#ff8585", fontSize: 13, margin: "6px 0" }}>⚠️ {err}</div>}
+        <input
+          type="password"
+          value={p}
+          onChange={(e) => setP(e.target.value)}
+          style={inp}
+        />
+        {err && (
+          <div style={{ color: "#ff8585", fontSize: 13, margin: "6px 0" }}>
+            ⚠️ {err}
+          </div>
+        )}
         <button
           disabled={busy}
           style={{
@@ -101,14 +127,23 @@ export default function Login() {
             ยังไม่มีบัญชี? สมัครขอเข้าใช้งาน
           </a>
         </div>
-        <div style={{ marginTop: 12, fontSize: 11, color: "#6b80a6", lineHeight: 1.6 }}>
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: 11,
+            color: "#6b80a6",
+            lineHeight: 1.6,
+          }}
+        >
           <b>บัญชีเริ่มต้น:</b>
           <br />
           ผู้ดูแลระบบ: <code>sysadmin / sysadmin123</code>
           <br />
-          ผู้จัดการ: <code>manager / manager123</code> · หัวหน้า: <code>leader / leader123</code>
+          ผู้จัดการ: <code>manager / manager123</code> · หัวหน้า:{" "}
+          <code>leader / leader123</code>
           <br />
-          การตลาด: <code>marketing / marketing123</code> · แอดมิน: <code>slug / pk1234</code>
+          การตลาด: <code>marketing / marketing123</code> · แอดมิน:{" "}
+          <code>slug / pk1234</code>
         </div>
       </form>
     </div>

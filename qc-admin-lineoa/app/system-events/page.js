@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 
-const nowLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const nowLocal = () =>
+  new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
 const empty = () => ({
   title: "",
   description: "",
@@ -61,7 +64,8 @@ export default function SystemEvents() {
     load();
   };
 
-  const isLive = (e) => e.is_active && (!e.ends_at || new Date(e.ends_at) >= new Date());
+  const isLive = (e) =>
+    e.is_active && (!e.ends_at || new Date(e.ends_at) >= new Date());
 
   return (
     <AppShell
@@ -70,7 +74,10 @@ export default function SystemEvents() {
       actions={
         <span
           className="badge"
-          style={{ background: active.length ? "#fee2e2" : "#dcfce7", color: active.length ? "#dc2626" : "#16a34a" }}
+          style={{
+            background: active.length ? "#fee2e2" : "#dcfce7",
+            color: active.length ? "#dc2626" : "#16a34a",
+          }}
         >
           {active.length} active
         </span>
@@ -92,9 +99,13 @@ export default function SystemEvents() {
           >
             <span style={{ fontSize: 22 }}>🛡️</span>
             <div>
-              <b style={{ color: "#dc2626" }}>มี System Event ทำงานอยู่ {active.length} รายการ</b> — Response time
-              จะไม่ถูกหักเต็มในช่วงนี้
-              <div style={{ fontSize: 12, color: "#7c2d12" }}>{active.map((e) => e.title).join(" · ")}</div>
+              <b style={{ color: "#dc2626" }}>
+                มี System Event ทำงานอยู่ {active.length} รายการ
+              </b>{" "}
+              — Response time จะไม่ถูกหักเต็มในช่วงนี้
+              <div style={{ fontSize: 12, color: "#7c2d12" }}>
+                {active.map((e) => e.title).join(" · ")}
+              </div>
             </div>
           </div>
         )}
@@ -108,8 +119,17 @@ export default function SystemEvents() {
               placeholder="เช่น ธนาคารกรุงไทยล่ม"
             />
             <label style={lbl}>ประเภท</label>
-            <select value={form.event_type} onChange={(e) => setForm({ ...form, event_type: e.target.value })}>
-              {["bank_delay", "system_down", "maintenance", "network", "other"].map((t) => (
+            <select
+              value={form.event_type}
+              onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+            >
+              {[
+                "bank_delay",
+                "system_down",
+                "maintenance",
+                "network",
+                "other",
+              ].map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -119,7 +139,9 @@ export default function SystemEvents() {
             <textarea
               rows={2}
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
             />
             <div className="cols">
               <div>
@@ -127,7 +149,9 @@ export default function SystemEvents() {
                 <input
                   type="datetime-local"
                   value={form.starts_at}
-                  onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, starts_at: e.target.value })
+                  }
                 />
               </div>
               <div>
@@ -135,33 +159,70 @@ export default function SystemEvents() {
                 <input
                   type="datetime-local"
                   value={form.ends_at}
-                  onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, ends_at: e.target.value })
+                  }
                 />
               </div>
             </div>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", width: "auto", margin: "8px 0" }}>
+            <label
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                width: "auto",
+                margin: "8px 0",
+              }}
+            >
               <input
                 type="checkbox"
                 style={{ width: "auto" }}
                 checked={form.affects_sla}
-                onChange={(e) => setForm({ ...form, affects_sla: e.target.checked })}
+                onChange={(e) =>
+                  setForm({ ...form, affects_sla: e.target.checked })
+                }
               />{" "}
               กระทบ SLA (ไม่หัก response time เต็ม)
             </label>
-            {msg && <div style={{ color: msg[0] === "⚠" ? "#ef4444" : "#16a34a", marginBottom: 8 }}>{msg}</div>}
+            {msg && (
+              <div
+                style={{
+                  color: msg[0] === "⚠" ? "#ef4444" : "#16a34a",
+                  marginBottom: 8,
+                }}
+              >
+                {msg}
+              </div>
+            )}
             <button onClick={create}>สร้าง Event</button>
           </div>
 
           <div className="card">
             <h3 style={{ marginTop: 0 }}>Events ({events.length})</h3>
             {events.map((e) => (
-              <div key={e.id} className="case" style={{ borderLeft: `3px solid ${isLive(e) ? "#ef4444" : "#cbd5e1"}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div
+                key={e.id}
+                className="case"
+                style={{
+                  borderLeft: `3px solid ${isLive(e) ? "#ef4444" : "#cbd5e1"}`,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <b>{e.title}</b>
                   {isLive(e) ? (
                     <button
                       onClick={() => deactivate(e.id)}
-                      style={{ background: "#ef4444", padding: "4px 10px", fontSize: 11 }}
+                      style={{
+                        background: "#ef4444",
+                        padding: "4px 10px",
+                        fontSize: 11,
+                      }}
                     >
                       ปิด
                     </button>
@@ -174,10 +235,16 @@ export default function SystemEvents() {
                 <div className="muted" style={{ fontSize: 12 }}>
                   {e.event_type} {e.affects_sla && "· 🛡️ SLA exception"}
                 </div>
-                {e.description && <div style={{ fontSize: 12, color: "#555" }}>{e.description}</div>}
+                {e.description && (
+                  <div style={{ fontSize: 12, color: "#555" }}>
+                    {e.description}
+                  </div>
+                )}
                 <div style={{ fontSize: 11, color: "#888" }}>
                   {new Date(e.starts_at).toLocaleString("th-TH")} →{" "}
-                  {e.ends_at ? new Date(e.ends_at).toLocaleString("th-TH") : "ต่อเนื่อง"}
+                  {e.ends_at
+                    ? new Date(e.ends_at).toLocaleString("th-TH")
+                    : "ต่อเนื่อง"}
                 </div>
               </div>
             ))}

@@ -20,9 +20,16 @@ export async function PATCH(req, { params }) {
   const { id } = await params;
   const b = await req.json().catch(() => ({}));
 
-  const kw = b.keywords !== undefined ? JSON.stringify(toArray(b.keywords) || []) : null;
-  const rq = b.required_keywords !== undefined ? JSON.stringify(toArray(b.required_keywords) || []) : null;
-  const fb = b.forbidden_keywords !== undefined ? JSON.stringify(toArray(b.forbidden_keywords) || []) : null;
+  const kw =
+    b.keywords !== undefined ? JSON.stringify(toArray(b.keywords) || []) : null;
+  const rq =
+    b.required_keywords !== undefined
+      ? JSON.stringify(toArray(b.required_keywords) || [])
+      : null;
+  const fb =
+    b.forbidden_keywords !== undefined
+      ? JSON.stringify(toArray(b.forbidden_keywords) || [])
+      : null;
 
   try {
     const rows = await query`
@@ -57,8 +64,10 @@ export async function DELETE(req, { params }) {
 
   try {
     if (hard) {
-      const rows = await query`DELETE FROM sop_scripts WHERE id = ${id} RETURNING id, topic`;
-      if (!rows[0]) return Response.json({ error: "not found" }, { status: 404 });
+      const rows =
+        await query`DELETE FROM sop_scripts WHERE id = ${id} RETURNING id, topic`;
+      if (!rows[0])
+        return Response.json({ error: "not found" }, { status: 404 });
       return Response.json({ ok: true, hard_deleted: rows[0] });
     }
     const rows = await query`

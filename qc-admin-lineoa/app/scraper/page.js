@@ -2,7 +2,8 @@
 import { useEffect, useState, useRef } from "react";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const yesterday = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+const yesterday = () =>
+  new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
 function statusColor(s) {
   return s === "done"
@@ -60,25 +61,73 @@ function fmtDateTH(iso) {
 function ScrapeDiagram() {
   const box = (label, num, color, x, y, w, h, desc) => (
     <g key={num}>
-      <rect x={x} y={y} width={w} height={h} rx={6} fill="none" stroke={color} strokeWidth={2.5} />
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height={h}
+        rx={6}
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+      />
       <rect x={x + 6} y={y - 10} width={22} height={20} rx={4} fill={color} />
-      <text x={x + 17} y={y + 4} textAnchor="middle" fill="#fff" fontSize={11} fontWeight="bold">
+      <text
+        x={x + 17}
+        y={y + 4}
+        textAnchor="middle"
+        fill="#fff"
+        fontSize={11}
+        fontWeight="bold"
+      >
         {num}
       </text>
-      <text x={x + w / 2} y={y + h + 16} textAnchor="middle" fill={color} fontSize={10} fontWeight="600">
+      <text
+        x={x + w / 2}
+        y={y + h + 16}
+        textAnchor="middle"
+        fill={color}
+        fontSize={10}
+        fontWeight="600"
+      >
         {desc}
       </text>
     </g>
   );
   return (
-    <div style={{ background: "#0f172a", borderRadius: 12, padding: 20, marginBottom: 20, overflowX: "auto" }}>
-      <div style={{ color: "#94a3b8", fontSize: 11, marginBottom: 8, fontFamily: "monospace" }}>
+    <div
+      style={{
+        background: "#0f172a",
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 20,
+        overflowX: "auto",
+      }}
+    >
+      <div
+        style={{
+          color: "#94a3b8",
+          fontSize: 11,
+          marginBottom: 8,
+          fontFamily: "monospace",
+        }}
+      >
         ▼ แผนผัง: LINE Official Account Manager — จุดที่ Scraper ดึงข้อมูล
       </div>
-      <svg viewBox="0 0 780 260" style={{ width: "100%", maxWidth: 780, display: "block" }}>
+      <svg
+        viewBox="0 0 780 260"
+        style={{ width: "100%", maxWidth: 780, display: "block" }}
+      >
         <rect width={780} height={260} rx={8} fill="#1e293b" />
         <rect x={4} y={4} width={55} height={252} rx={6} fill="#0a1628" />
-        <text x={31} y={28} textAnchor="middle" fill="#3b82f6" fontSize={8} fontWeight="bold">
+        <text
+          x={31}
+          y={28}
+          textAnchor="middle"
+          fill="#3b82f6"
+          fontSize={8}
+          fontWeight="bold"
+        >
           LINE
         </text>
         <text x={31} y={42} textAnchor="middle" fill="#64748b" fontSize={7}>
@@ -98,14 +147,37 @@ function ScrapeDiagram() {
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
           <g key={i}>
             <circle cx={82} cy={44 + i * 32} r={10} fill="#1e3a5f" />
-            <rect x={96} y={36 + i * 32} width={110} height={8} rx={3} fill="#1e3a5f" />
-            <rect x={96} y={48 + i * 32} width={80} height={6} rx={3} fill="#0f2440" />
+            <rect
+              x={96}
+              y={36 + i * 32}
+              width={110}
+              height={8}
+              rx={3}
+              fill="#1e3a5f"
+            />
+            <rect
+              x={96}
+              y={48 + i * 32}
+              width={80}
+              height={6}
+              rx={3}
+              fill="#0f2440"
+            />
             <text x={163} y={42 + i * 32} fill="#64748b" fontSize={7}>
               10:2{i}
             </text>
           </g>
         ))}
-        <rect x={64} y={68} width={161} height={30} rx={3} fill="#1d4ed820" stroke="#3b82f6" strokeWidth={1} />
+        <rect
+          x={64}
+          y={68}
+          width={161}
+          height={30}
+          rx={3}
+          fill="#1d4ed820"
+          stroke="#3b82f6"
+          strokeWidth={1}
+        />
         <rect x={590} y={4} width={186} height={80} rx={4} fill="#162032" />
         <circle cx={618} cy={28} r={14} fill="#1e3a5f" />
         <text x={618} y={32} textAnchor="middle" fill="#3b82f6" fontSize={9}>
@@ -160,7 +232,14 @@ function ScrapeDiagram() {
           Enter: Send message, Shift+Enter: New line
         </text>
         <rect x={556} y={220} width={26} height={18} rx={4} fill="#22c55e" />
-        <text x={569} y={231} textAnchor="middle" fill="#fff" fontSize={8} fontWeight="bold">
+        <text
+          x={569}
+          y={231}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={8}
+          fontWeight="bold"
+        >
           Send
         </text>
         <rect x={590} y={88} width={186} height={168} rx={4} fill="#162032" />
@@ -251,7 +330,9 @@ export default function ScraperPage() {
       // auto-refresh report when a job just finished
       const prev = prevJobsRef.current;
       const justDone = newJobs.find(
-        (j) => j.status === "done" && prev.find((p) => p.id === j.id && p.status !== "done"),
+        (j) =>
+          j.status === "done" &&
+          prev.find((p) => p.id === j.id && p.status !== "done"),
       );
       if (justDone) loadReportRef.current?.();
       prevJobsRef.current = newJobs;
@@ -271,7 +352,8 @@ export default function ScraperPage() {
     pollRef.current = setInterval(loadJobs, 3000);
     tickRef.current = setInterval(() => {
       const c2 = readCfg();
-      if (c2?.on && c2.nextRun) setCountdown(Math.max(0, c2.nextRun - Date.now()));
+      if (c2?.on && c2.nextRun)
+        setCountdown(Math.max(0, c2.nextRun - Date.now()));
     }, 1000);
     return () => {
       clearInterval(pollRef.current);
@@ -346,7 +428,10 @@ export default function ScraperPage() {
     }
     if (!confirm("ยืนยันยกเลิก Scrape?")) return;
     try {
-      const r = await fetch("/api/scraper/job", { method: "DELETE", headers: { "x-api-key": key } });
+      const r = await fetch("/api/scraper/job", {
+        method: "DELETE",
+        headers: { "x-api-key": key },
+      });
       const d = await r.json();
       if (d.ok) {
         setMsg(`🚫 ยกเลิกแล้ว (${d.cancelled} job)`);
@@ -366,7 +451,9 @@ export default function ScraperPage() {
   }
 
   const scheduleOn = cfg?.on === true;
-  const activeJob = jobs.find((j) => j.status === "running" || j.status === "pending");
+  const activeJob = jobs.find(
+    (j) => j.status === "running" || j.status === "pending",
+  );
 
   return (
     <div className="shell">
@@ -396,13 +483,27 @@ export default function ScraperPage() {
               border: `1px solid ${scheduleOn ? "#86efac" : "#e5e7eb"}`,
             }}
           >
-            <div style={{ fontWeight: 600, color: scheduleOn ? "#16a34a" : "#888", marginBottom: 4 }}>
+            <div
+              style={{
+                fontWeight: 600,
+                color: scheduleOn ? "#16a34a" : "#888",
+                marginBottom: 4,
+              }}
+            >
               {scheduleOn ? "⏰ Auto-Schedule ON" : "⏰ Auto-Schedule OFF"}
             </div>
             {scheduleOn && (
               <>
                 <div style={{ color: "#555" }}>ทุก {cfg.intervalMin} นาที</div>
-                <div style={{ color: "#2196f3", fontWeight: 700, fontFamily: "monospace", fontSize: 16, marginTop: 4 }}>
+                <div
+                  style={{
+                    color: "#2196f3",
+                    fontWeight: 700,
+                    fontFamily: "monospace",
+                    fontSize: 16,
+                    marginTop: 4,
+                  }}
+                >
                   {fmtCountdown(countdown)}
                 </div>
               </>
@@ -423,15 +524,29 @@ export default function ScraperPage() {
         {activeJob ? (
           <div
             style={{
-              background: activeJob.status === "running" ? "#eff6ff" : "#fffbeb",
+              background:
+                activeJob.status === "running" ? "#eff6ff" : "#fffbeb",
               border: `2px solid ${activeJob.status === "running" ? "#2196f3" : "#f59e0b"}`,
               borderRadius: 12,
               padding: 20,
               marginBottom: 20,
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: statusColor(activeJob.status) }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: statusColor(activeJob.status),
+                }}
+              >
                 {statusLabel(activeJob.status)}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -457,7 +572,14 @@ export default function ScraperPage() {
             </div>
             {activeJob.total_chats > 0 && (
               <>
-                <div style={{ display: "flex", gap: 24, fontSize: 13, marginBottom: 6 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 24,
+                    fontSize: 13,
+                    marginBottom: 6,
+                  }}
+                >
                   <span>
                     📂 ห้อง chat ทั้งหมด <b>{activeJob.total_chats}</b> ห้อง
                   </span>
@@ -466,7 +588,14 @@ export default function ScraperPage() {
                   </span>
                 </div>
                 {activeJob.status === "running" && (
-                  <div style={{ background: "#dbeafe", borderRadius: 6, height: 8, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      background: "#dbeafe",
+                      borderRadius: 6,
+                      height: 8,
+                      overflow: "hidden",
+                    }}
+                  >
                     <div
                       style={{
                         background: "#2196f3",
@@ -485,14 +614,29 @@ export default function ScraperPage() {
                 🔍 chat ปัจจุบัน: {activeJob.current_chat}
               </div>
             )}
-            <div style={{ fontSize: 12, marginTop: 6, color: activeJob.status === "running" ? "#16a34a" : "#a16207" }}>
+            <div
+              style={{
+                fontSize: 12,
+                marginTop: 6,
+                color: activeJob.status === "running" ? "#16a34a" : "#a16207",
+              }}
+            >
               {activeJob.status === "running"
                 ? "🟢 scraper ออนไลน์ — กำลังทำงาน"
                 : "🟡 รอ scraper รับงาน (เปิด npm run scraper:watch บนเครื่อง)"}
               {activeJob.started_at && (
-                <span style={{ color: "#888" }}> · เริ่ม {new Date(activeJob.started_at).toLocaleString("th-TH")}</span>
+                <span style={{ color: "#888" }}>
+                  {" "}
+                  · เริ่ม{" "}
+                  {new Date(activeJob.started_at).toLocaleString("th-TH")}
+                </span>
               )}
-              {activeJob.error_text && <span style={{ color: "#ef4444" }}> · ⚠️ {activeJob.error_text}</span>}
+              {activeJob.error_text && (
+                <span style={{ color: "#ef4444" }}>
+                  {" "}
+                  · ⚠️ {activeJob.error_text}
+                </span>
+              )}
             </div>
           </div>
         ) : (
@@ -514,13 +658,23 @@ export default function ScraperPage() {
             <span>ไม่มี job กำลังทำงาน</span>
             {scheduleOn && (
               <span style={{ marginLeft: "auto", color: "#555" }}>
-                รันครั้งหน้าใน <b style={{ fontFamily: "monospace" }}>{fmtCountdown(countdown)}</b>
+                รันครั้งหน้าใน{" "}
+                <b style={{ fontFamily: "monospace" }}>
+                  {fmtCountdown(countdown)}
+                </b>
               </span>
             )}
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 16,
+            marginBottom: 20,
+          }}
+        >
           {/* ===== AUTO SCHEDULE ===== */}
           <div
             className="card"
@@ -542,7 +696,14 @@ export default function ScraperPage() {
                 }}
               />
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
               <h2 style={{ margin: 0 }}>⏰ Auto-Schedule</h2>
               {scheduleOn && (
                 <span
@@ -564,8 +725,17 @@ export default function ScraperPage() {
                 <div style={{ fontSize: 13, color: "#555", marginBottom: 8 }}>
                   สร้าง job อัตโนมัติทุก <b>{cfg.intervalMin} นาที</b>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, color: "#888" }}>รันครั้งหน้าใน:</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: "#888" }}>
+                    รันครั้งหน้าใน:
+                  </div>
                   <div
                     style={{
                       fontSize: 28,
@@ -577,7 +747,14 @@ export default function ScraperPage() {
                     {fmtCountdown(countdown)}
                   </div>
                 </div>
-                <div style={{ background: "#e5e7eb", borderRadius: 4, height: 6, marginBottom: 16 }}>
+                <div
+                  style={{
+                    background: "#e5e7eb",
+                    borderRadius: 4,
+                    height: 6,
+                    marginBottom: 16,
+                  }}
+                >
                   <div
                     style={{
                       background: "#22c55e",
@@ -609,14 +786,36 @@ export default function ScraperPage() {
                 <div style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>
                   เปิดให้ scraper สร้าง job อัตโนมัติโดยไม่ต้องกดเอง
                   <br />
-                  <span style={{ fontSize: 12, color: "#999" }}>ทำงานตลอดที่แอปเปิดอยู่</span>
+                  <span style={{ fontSize: 12, color: "#999" }}>
+                    ทำงานตลอดที่แอปเปิดอยู่
+                  </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <label style={{ fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>ทำงานทุก</label>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 12,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: 13,
+                      color: "#555",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ทำงานทุก
+                  </label>
                   <select
                     value={intervalMin}
                     onChange={(e) => setIntervalMin(Number(e.target.value))}
-                    style={{ flex: 1, padding: "6px 8px", border: "1px solid #d1d5db", borderRadius: 6 }}
+                    style={{
+                      flex: 1,
+                      padding: "6px 8px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: 6,
+                    }}
                   >
                     {[15, 30, 45, 60, 90, 120].map((m) => (
                       <option key={m} value={m}>
@@ -649,7 +848,16 @@ export default function ScraperPage() {
           <div className="card">
             <h2>▶ Scrape ทันที</h2>
             <div style={{ marginBottom: 10 }}>
-              <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>ADMIN_API_KEY</label>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  color: "#666",
+                  marginBottom: 4,
+                }}
+              >
+                ADMIN_API_KEY
+              </label>
               <input
                 type="password"
                 value={key}
@@ -664,11 +872,33 @@ export default function ScraperPage() {
                 }}
               />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                marginBottom: 12,
+              }}
+            >
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 2 }}>จาก</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    color: "#666",
+                    marginBottom: 2,
+                  }}
+                >
+                  จาก
+                </label>
                 <div
-                  style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, fontFamily: "monospace" }}
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#374151",
+                    marginBottom: 4,
+                    fontFamily: "monospace",
+                  }}
                 >
                   {fmtDateTH(dateFrom)}
                 </div>
@@ -686,9 +916,24 @@ export default function ScraperPage() {
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 2 }}>ถึง</label>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 12,
+                    color: "#666",
+                    marginBottom: 2,
+                  }}
+                >
+                  ถึง
+                </label>
                 <div
-                  style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, fontFamily: "monospace" }}
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#374151",
+                    marginBottom: 4,
+                    fontFamily: "monospace",
+                  }}
                 >
                   {fmtDateTH(dateTo)}
                 </div>
@@ -717,7 +962,11 @@ export default function ScraperPage() {
                 cursor: loading || activeJob ? "not-allowed" : "pointer",
               }}
             >
-              {loading ? "..." : activeJob ? "มี job อยู่แล้ว" : "▶ เริ่ม Scrape"}
+              {loading
+                ? "..."
+                : activeJob
+                  ? "มี job อยู่แล้ว"
+                  : "▶ เริ่ม Scrape"}
             </button>
             {msg && (
               <div
@@ -726,8 +975,16 @@ export default function ScraperPage() {
                   padding: "8px 10px",
                   borderRadius: 6,
                   fontSize: 12,
-                  background: msg.startsWith("✅") ? "#f0fdf4" : msg.startsWith("⏹") ? "#f8fafc" : "#fef2f2",
-                  color: msg.startsWith("✅") ? "#16a34a" : msg.startsWith("⏹") ? "#555" : "#dc2626",
+                  background: msg.startsWith("✅")
+                    ? "#f0fdf4"
+                    : msg.startsWith("⏹")
+                      ? "#f8fafc"
+                      : "#fef2f2",
+                  color: msg.startsWith("✅")
+                    ? "#16a34a"
+                    : msg.startsWith("⏹")
+                      ? "#555"
+                      : "#dc2626",
                 }}
               >
                 {msg}
@@ -758,18 +1015,33 @@ export default function ScraperPage() {
                 {jobs.map((j) => {
                   const sec =
                     j.started_at && j.finished_at
-                      ? Math.round((new Date(j.finished_at) - new Date(j.started_at)) / 1000)
+                      ? Math.round(
+                          (new Date(j.finished_at) - new Date(j.started_at)) /
+                            1000,
+                        )
                       : null;
                   return (
                     <tr key={j.id}>
-                      <td style={{ fontSize: 11, color: "#888", whiteSpace: "nowrap" }}>
+                      <td
+                        style={{
+                          fontSize: 11,
+                          color: "#888",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {new Date(j.created_at).toLocaleString("th-TH")}
                       </td>
                       <td style={{ fontSize: 12 }}>
                         {j.date_from} — {j.date_to}
                       </td>
                       <td>
-                        <span style={{ color: statusColor(j.status), fontWeight: 600, fontSize: 12 }}>
+                        <span
+                          style={{
+                            color: statusColor(j.status),
+                            fontWeight: 600,
+                            fontSize: 12,
+                          }}
+                        >
                           {statusLabel(j.status)}
                         </span>
                       </td>
@@ -782,8 +1054,18 @@ export default function ScraperPage() {
                       >
                         {j.logged_count || "—"}
                       </td>
-                      <td style={{ fontSize: 12 }}>{sec !== null ? `${sec}s` : j.started_at ? "..." : "—"}</td>
-                      <td style={{ fontSize: 12, color: "#ef4444", maxWidth: 160 }}>{j.error_text || ""}</td>
+                      <td style={{ fontSize: 12 }}>
+                        {sec !== null ? `${sec}s` : j.started_at ? "..." : "—"}
+                      </td>
+                      <td
+                        style={{
+                          fontSize: 12,
+                          color: "#ef4444",
+                          maxWidth: 160,
+                        }}
+                      >
+                        {j.error_text || ""}
+                      </td>
                     </tr>
                   );
                 })}
@@ -793,32 +1075,58 @@ export default function ScraperPage() {
         </div>
 
         {/* ===== INSTRUCTIONS ===== */}
-        <div className="card" style={{ marginBottom: 24, background: "#f8fafc", fontSize: 13 }}>
+        <div
+          className="card"
+          style={{ marginBottom: 24, background: "#f8fafc", fontSize: 13 }}
+        >
           <h2>วิธีเปิด Scraper บนเครื่อง</h2>
           <div style={{ fontFamily: "monospace", lineHeight: 2.2 }}>
-            <div style={{ color: "#888" }}># 1) login LINE OA ครั้งแรก (เปิด browser ให้ login แล้ว save session)</div>
+            <div style={{ color: "#888" }}>
+              # 1) login LINE OA ครั้งแรก (เปิด browser ให้ login แล้ว save
+              session)
+            </div>
             <div>npm run scraper:login</div>
-            <div style={{ marginTop: 6, color: "#888" }}># 2) poll งาน + scrape ต่อเนื่อง (รอรับ job จากเว็บ)</div>
+            <div style={{ marginTop: 6, color: "#888" }}>
+              # 2) poll งาน + scrape ต่อเนื่อง (รอรับ job จากเว็บ)
+            </div>
             <div>npm run scraper:watch</div>
             <div style={{ marginTop: 6, color: "#888" }}>
               # หรือรันพร้อม schedule สร้าง job Yesterday อัตโนมัติทุก 30 นาที
             </div>
             <div>node scraper.js --watch --schedule=30</div>
-            <div style={{ marginTop: 6, color: "#888" }}># ดึงวันเดียว / ช่วงวันที่</div>
+            <div style={{ marginTop: 6, color: "#888" }}>
+              # ดึงวันเดียว / ช่วงวันที่
+            </div>
             <div>node scraper.js --date=2026-06-16</div>
             <div>node scraper.js --from=2026-06-10 --to=2026-06-16</div>
           </div>
           <div style={{ marginTop: 10, color: "#888" }}>
-            ENV: <code>QC_API_URL</code> · <code>QC_API_KEY</code> · <code>LINE_OA_URL</code> ·{" "}
-            <code>SCRAPER_HEADLESS</code> · <code>SCRAPER_DEBUG</code> — session เก็บที่{" "}
-            <code>.storage/line-auth.json</code> (debug evidence ที่ <code>.storage/debug/</code>)
+            ENV: <code>QC_API_URL</code> · <code>QC_API_KEY</code> ·{" "}
+            <code>LINE_OA_URL</code> · <code>SCRAPER_HEADLESS</code> ·{" "}
+            <code>SCRAPER_DEBUG</code> — session เก็บที่{" "}
+            <code>.storage/line-auth.json</code> (debug evidence ที่{" "}
+            <code>.storage/debug/</code>)
           </div>
         </div>
 
         {/* ===== DIVIDER ===== */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
           <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#374151", whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#374151",
+              whiteSpace: "nowrap",
+            }}
+          >
             📊 Scrape Report
           </span>
           <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
@@ -826,11 +1134,33 @@ export default function ScraperPage() {
 
         {/* ===== REPORT FILTER ===== */}
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+            }}
+          >
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 2 }}>จากวันที่</label>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  color: "#666",
+                  marginBottom: 2,
+                }}
+              >
+                จากวันที่
+              </label>
               <div
-                style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, fontFamily: "monospace" }}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 4,
+                  fontFamily: "monospace",
+                }}
               >
                 {fmtDateTH(dateFrom)}
               </div>
@@ -838,13 +1168,32 @@ export default function ScraperPage() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                style={{ padding: "7px 10px", border: "1px solid #d1d5db", borderRadius: 6 }}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 2 }}>ถึงวันที่</label>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  color: "#666",
+                  marginBottom: 2,
+                }}
+              >
+                ถึงวันที่
+              </label>
               <div
-                style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4, fontFamily: "monospace" }}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 4,
+                  fontFamily: "monospace",
+                }}
               >
                 {fmtDateTH(dateTo)}
               </div>
@@ -852,7 +1201,11 @@ export default function ScraperPage() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                style={{ padding: "7px 10px", border: "1px solid #d1d5db", borderRadius: 6 }}
+                style={{
+                  padding: "7px 10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                }}
               />
             </div>
             <button
@@ -904,16 +1257,49 @@ export default function ScraperPage() {
         {reportData && !reportData.error && (
           <>
             {/* ---- Summary ---- */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4,1fr)",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
               {[
-                { label: "Jobs", v: reportData.jobs?.length ?? 0, icon: "🔄", c: "#3b82f6" },
-                { label: "Customers", v: reportData.total_customers, icon: "👤", c: "#22c55e" },
-                { label: "Messages", v: reportData.total_messages, icon: "💬", c: "#f59e0b" },
-                { label: "Notes", v: reportData.total_notes, icon: "📝", c: "#a855f7" },
+                {
+                  label: "Jobs",
+                  v: reportData.jobs?.length ?? 0,
+                  icon: "🔄",
+                  c: "#3b82f6",
+                },
+                {
+                  label: "Customers",
+                  v: reportData.total_customers,
+                  icon: "👤",
+                  c: "#22c55e",
+                },
+                {
+                  label: "Messages",
+                  v: reportData.total_messages,
+                  icon: "💬",
+                  c: "#f59e0b",
+                },
+                {
+                  label: "Notes",
+                  v: reportData.total_notes,
+                  icon: "📝",
+                  c: "#a855f7",
+                },
               ].map(({ label, v, icon, c }) => (
-                <div key={label} className="card" style={{ textAlign: "center", borderTop: `3px solid ${c}` }}>
+                <div
+                  key={label}
+                  className="card"
+                  style={{ textAlign: "center", borderTop: `3px solid ${c}` }}
+                >
                   <div style={{ fontSize: 22 }}>{icon}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: c }}>{v}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: c }}>
+                    {v}
+                  </div>
                   <div style={{ fontSize: 12, color: "#666" }}>{label}</div>
                 </div>
               ))}
@@ -938,7 +1324,11 @@ export default function ScraperPage() {
                     {reportData.jobs.map((j) => {
                       const sec =
                         j.started_at && j.finished_at
-                          ? Math.round((new Date(j.finished_at) - new Date(j.started_at)) / 1000)
+                          ? Math.round(
+                              (new Date(j.finished_at) -
+                                new Date(j.started_at)) /
+                                1000,
+                            )
                           : null;
                       const clr =
                         {
@@ -950,18 +1340,35 @@ export default function ScraperPage() {
                         }[j.status] || "#888";
                       return (
                         <tr key={j.id}>
-                          <td style={{ fontSize: 11, color: "#888" }}>{fmtTs(j.started_at || j.date_from)}</td>
+                          <td style={{ fontSize: 11, color: "#888" }}>
+                            {fmtTs(j.started_at || j.date_from)}
+                          </td>
                           <td style={{ fontSize: 12 }}>
                             {j.date_from} — {j.date_to}
                           </td>
                           <td>
-                            <span style={{ color: clr, fontWeight: 700, fontSize: 12 }}>{j.status}</span>
+                            <span
+                              style={{
+                                color: clr,
+                                fontWeight: 700,
+                                fontSize: 12,
+                              }}
+                            >
+                              {j.status}
+                            </span>
                           </td>
                           <td>{j.total_chats || "—"}</td>
-                          <td style={{ fontWeight: 700, color: j.logged_count > 0 ? "#22c55e" : "#999" }}>
+                          <td
+                            style={{
+                              fontWeight: 700,
+                              color: j.logged_count > 0 ? "#22c55e" : "#999",
+                            }}
+                          >
                             {j.logged_count || "—"}
                           </td>
-                          <td style={{ fontSize: 12 }}>{sec !== null ? `${sec}s` : "—"}</td>
+                          <td style={{ fontSize: 12 }}>
+                            {sec !== null ? `${sec}s` : "—"}
+                          </td>
                         </tr>
                       );
                     })}
@@ -972,19 +1379,33 @@ export default function ScraperPage() {
 
             {/* ---- Customers ---- */}
             <div className="card">
-              <h2 style={{ marginTop: 0 }}>👤 ลูกค้าที่ถูก Scrape ({reportData.customers?.length ?? 0})</h2>
+              <h2 style={{ marginTop: 0 }}>
+                👤 ลูกค้าที่ถูก Scrape ({reportData.customers?.length ?? 0})
+              </h2>
               {!reportData.customers?.length ? (
-                <div style={{ color: "#999", padding: "16px 0" }}>ไม่มีข้อมูลในช่วงนี้</div>
+                <div style={{ color: "#999", padding: "16px 0" }}>
+                  ไม่มีข้อมูลในช่วงนี้
+                </div>
               ) : (
                 reportData.customers.map((c) => {
                   const open = expanded.has(c.line_user_id);
                   const avgScr = c.messages.length
-                    ? Math.round(c.messages.reduce((s, m) => s + (m.final_score ?? 0), 0) / c.messages.length)
+                    ? Math.round(
+                        c.messages.reduce(
+                          (s, m) => s + (m.final_score ?? 0),
+                          0,
+                        ) / c.messages.length,
+                      )
                     : null;
                   return (
                     <div
                       key={c.line_user_id}
-                      style={{ border: "1px solid #e5e7eb", borderRadius: 10, marginBottom: 12, overflow: "hidden" }}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 10,
+                        marginBottom: 12,
+                        overflow: "hidden",
+                      }}
                     >
                       <div
                         onClick={() => toggle(c.line_user_id)}
@@ -1002,7 +1423,12 @@ export default function ScraperPage() {
                           <img
                             src={c.picture_url}
                             alt=""
-                            style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
                           />
                         ) : (
                           <div
@@ -1022,10 +1448,21 @@ export default function ScraperPage() {
                           </div>
                         )}
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{c.display_name || c.line_user_id}</div>
-                          <div style={{ fontSize: 11, color: "#888" }}>{c.line_user_id}</div>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>
+                            {c.display_name || c.line_user_id}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#888" }}>
+                            {c.line_user_id}
+                          </div>
                         </div>
-                        <div style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 12 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 16,
+                            alignItems: "center",
+                            fontSize: 12,
+                          }}
+                        >
                           <span title="Messages">💬 {c.messages.length}</span>
                           <span title="Notes">📝 {c.notes.length}</span>
                           {avgScr !== null && (
@@ -1042,7 +1479,9 @@ export default function ScraperPage() {
                               Score {avgScr}
                             </span>
                           )}
-                          <span style={{ fontSize: 16 }}>{open ? "▲" : "▼"}</span>
+                          <span style={{ fontSize: 16 }}>
+                            {open ? "▲" : "▼"}
+                          </span>
                         </div>
                       </div>
 
@@ -1060,15 +1499,42 @@ export default function ScraperPage() {
                                   paddingLeft: 10,
                                 }}
                               >
-                                <span style={{ fontWeight: 700, color: "#f59e0b", fontSize: 13 }}>
-                                  💬 ข้อความ (กรอบ 3) — {c.messages.length} รายการ
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    color: "#f59e0b",
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  💬 ข้อความ (กรอบ 3) — {c.messages.length}{" "}
+                                  รายการ
                                 </span>
                               </div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 8,
+                                  marginBottom: 16,
+                                }}
+                              >
                                 {c.messages.map((msg, mi) => (
-                                  <div key={mi} style={{ background: "#f8fafc", borderRadius: 8, padding: 12 }}>
+                                  <div
+                                    key={mi}
+                                    style={{
+                                      background: "#f8fafc",
+                                      borderRadius: 8,
+                                      padding: 12,
+                                    }}
+                                  >
                                     {msg.customer_text && (
-                                      <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: 10,
+                                          marginBottom: 8,
+                                        }}
+                                      >
                                         <div
                                           style={{
                                             background: "#e5e7eb",
@@ -1078,15 +1544,29 @@ export default function ScraperPage() {
                                             fontSize: 13,
                                           }}
                                         >
-                                          <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>
+                                          <div
+                                            style={{
+                                              fontSize: 10,
+                                              color: "#888",
+                                              marginBottom: 3,
+                                            }}
+                                          >
                                             👤 ลูกค้า{" "}
-                                            {msg.customer_created_at ? `• ${fmtTs(msg.customer_created_at)}` : ""}
+                                            {msg.customer_created_at
+                                              ? `• ${fmtTs(msg.customer_created_at)}`
+                                              : ""}
                                           </div>
                                           {msg.customer_text}
                                         </div>
                                       </div>
                                     )}
-                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "flex-end",
+                                        gap: 10,
+                                      }}
+                                    >
                                       <div
                                         style={{
                                           background: "#1d4ed8",
@@ -1097,16 +1577,33 @@ export default function ScraperPage() {
                                           fontSize: 13,
                                         }}
                                       >
-                                        <div style={{ fontSize: 10, color: "#93c5fd", marginBottom: 3 }}>
+                                        <div
+                                          style={{
+                                            fontSize: 10,
+                                            color: "#93c5fd",
+                                            marginBottom: 3,
+                                          }}
+                                        >
                                           🧑‍💼 {msg.admin_name || "(ไม่รู้ชื่อ)"}
-                                          {msg.created_at ? ` • ${fmtTs(msg.created_at)}` : ""}
+                                          {msg.created_at
+                                            ? ` • ${fmtTs(msg.created_at)}`
+                                            : ""}
                                         </div>
                                         {msg.message_text}
                                         {msg.final_score != null && (
-                                          <div style={{ marginTop: 6, display: "flex", gap: 8, fontSize: 10 }}>
+                                          <div
+                                            style={{
+                                              marginTop: 6,
+                                              display: "flex",
+                                              gap: 8,
+                                              fontSize: 10,
+                                            }}
+                                          >
                                             <span
                                               style={{
-                                                background: scoreColor(msg.final_score),
+                                                background: scoreColor(
+                                                  msg.final_score,
+                                                ),
                                                 color: "#fff",
                                                 padding: "1px 6px",
                                                 borderRadius: 4,
@@ -1116,7 +1613,11 @@ export default function ScraperPage() {
                                               ⭐ {msg.final_score}
                                             </span>
                                             {msg.response_seconds != null && (
-                                              <span style={{ color: "#bfdbfe" }}>⏱ {msg.response_seconds}s</span>
+                                              <span
+                                                style={{ color: "#bfdbfe" }}
+                                              >
+                                                ⏱ {msg.response_seconds}s
+                                              </span>
                                             )}
                                           </div>
                                         )}
@@ -1140,11 +1641,23 @@ export default function ScraperPage() {
                                   paddingLeft: 10,
                                 }}
                               >
-                                <span style={{ fontWeight: 700, color: "#a855f7", fontSize: 13 }}>
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    color: "#a855f7",
+                                    fontSize: 13,
+                                  }}
+                                >
                                   📝 Notes (กรอบ 4) — {c.notes.length} รายการ
                                 </span>
                               </div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 8,
+                                }}
+                              >
                                 {c.notes.map((n, ni) => (
                                   <div
                                     key={ni}
@@ -1167,12 +1680,24 @@ export default function ScraperPage() {
                                       {n.note_text}
                                     </pre>
                                     <div
-                                      style={{ marginTop: 8, fontSize: 11, color: "#9333ea", display: "flex", gap: 12 }}
+                                      style={{
+                                        marginTop: 8,
+                                        fontSize: 11,
+                                        color: "#9333ea",
+                                        display: "flex",
+                                        gap: 12,
+                                      }}
                                     >
-                                      {n.noted_at && <span>📅 {fmtTs(n.noted_at)}</span>}
-                                      {n.noted_by && <span>✍️ {n.noted_by}</span>}
+                                      {n.noted_at && (
+                                        <span>📅 {fmtTs(n.noted_at)}</span>
+                                      )}
+                                      {n.noted_by && (
+                                        <span>✍️ {n.noted_by}</span>
+                                      )}
                                       {n.scraped_at && (
-                                        <span style={{ color: "#c4b5fd" }}>Scraped: {fmtTs(n.scraped_at)}</span>
+                                        <span style={{ color: "#c4b5fd" }}>
+                                          Scraped: {fmtTs(n.scraped_at)}
+                                        </span>
                                       )}
                                     </div>
                                   </div>
@@ -1182,7 +1707,9 @@ export default function ScraperPage() {
                           )}
 
                           {c.messages.length === 0 && c.notes.length === 0 && (
-                            <div style={{ color: "#999", fontSize: 13 }}>ไม่มีข้อมูลในช่วงนี้</div>
+                            <div style={{ color: "#999", fontSize: 13 }}>
+                              ไม่มีข้อมูลในช่วงนี้
+                            </div>
                           )}
                         </div>
                       )}

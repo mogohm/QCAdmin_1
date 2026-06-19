@@ -38,7 +38,8 @@ export {
 // อ่าน role_permissions ของทุก role จาก DB; ถ้า DB ว่าง/ผิดพลาด → fallback canonical ROLE_PERMS
 export async function loadRolePermissions() {
   try {
-    const rows = await query`SELECT role_key, permission_key FROM role_permissions`;
+    const rows =
+      await query`SELECT role_key, permission_key FROM role_permissions`;
     if (!rows.length) return { ...ROLE_PERMS };
     const map = {};
     for (const r of rows) (map[r.role_key] ||= []).push(r.permission_key);
@@ -95,8 +96,10 @@ export function requirePermission(req, ...keys) {
   return hasPermission(u, keys.length === 1 ? keys[0] : keys);
 }
 
-export const unauthorized = (msg = "unauthorized") => Response.json({ error: msg }, { status: 401 });
-export const forbidden = (msg = "forbidden") => Response.json({ error: msg, code: "forbidden" }, { status: 403 });
+export const unauthorized = (msg = "unauthorized") =>
+  Response.json({ error: msg }, { status: 401 });
+export const forbidden = (msg = "forbidden") =>
+  Response.json({ error: msg, code: "forbidden" }, { status: 403 });
 
 // ใช้ใน route handler: const gate = guard(req, "perm.key"); if (gate) return gate;
 //   คืน Response 401 (ยังไม่ login) / 403 (ไม่มีสิทธิ์) / null (ผ่าน)
@@ -105,6 +108,8 @@ export function guard(req, ...keys) {
   const u = getCurrentUser(req);
   if (!u) return unauthorized();
   if (u.role === "system_admin") return null;
-  return hasPermission(u, keys.length === 1 ? keys[0] : keys) ? null : forbidden();
+  return hasPermission(u, keys.length === 1 ? keys[0] : keys)
+    ? null
+    : forbidden();
 }
 // rev: 2026-06-19 file-integrity (LF, multi-line verified)

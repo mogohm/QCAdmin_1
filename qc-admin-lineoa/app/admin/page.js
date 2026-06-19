@@ -51,12 +51,19 @@ export default function Admin() {
       const r = await fetch("/api/admin/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": key },
-        body: JSON.stringify({ conversation_id: conv, admin_id: adminId, text, send_line: sendLine }),
+        body: JSON.stringify({
+          conversation_id: conv,
+          admin_id: adminId,
+          text,
+          send_line: sendLine,
+        }),
       });
       const data = await r.json();
       setResultOk(data.ok);
       if (data.ok) {
-        const mode = sendLine ? "✅ ส่งหาลูกค้าแล้ว + บันทึก QC" : "✅ บันทึก QC แล้ว (ไม่ได้ส่งซ้ำ)";
+        const mode = sendLine
+          ? "✅ ส่งหาลูกค้าแล้ว + บันทึก QC"
+          : "✅ บันทึก QC แล้ว (ไม่ได้ส่งซ้ำ)";
         setResult(mode + "\n\nQC Score:\n" + JSON.stringify(data.qc, null, 2));
         setText("");
         load();
@@ -128,15 +135,28 @@ export default function Admin() {
       <main className="main">
         <h1>Admin Console</h1>
         <p className="muted">
-          ระบบนี้บันทึก + วัด QC การตอบแอดมิน — LINE ไม่ส่ง webhook กลับเมื่อตอบใน OA Manager โดยตรง ใช้ได้ 2 โหมด:{" "}
-          <b>ส่งผ่านระบบ</b> (ส่ง LINE + บันทึก) หรือ <b>บันทึกย้อนหลัง</b> (ตอบใน OA ไปแล้ว มาบันทึก QC)
+          ระบบนี้บันทึก + วัด QC การตอบแอดมิน — LINE ไม่ส่ง webhook
+          กลับเมื่อตอบใน OA Manager โดยตรง ใช้ได้ 2 โหมด: <b>ส่งผ่านระบบ</b>{" "}
+          (ส่ง LINE + บันทึก) หรือ <b>บันทึกย้อนหลัง</b> (ตอบใน OA ไปแล้ว
+          มาบันทึก QC)
         </p>
 
         {/* Health Check */}
         <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 8,
+            }}
+          >
             <h2 style={{ margin: 0 }}>0) ตรวจสอบสถานะระบบ</h2>
-            <button onClick={checkHealth} disabled={healthLoading} style={{ padding: "6px 16px" }}>
+            <button
+              onClick={checkHealth}
+              disabled={healthLoading}
+              style={{ padding: "6px 16px" }}
+            >
               {healthLoading ? "กำลังตรวจสอบ..." : "🔍 เช็คระบบ"}
             </button>
           </div>
@@ -147,8 +167,15 @@ export default function Admin() {
           {/* Import Admins */}
           <div className="card">
             <h2>1) Import Admin จาก Manage permissions</h2>
-            <p className="muted">คัดลอกชื่อ Member จาก LINE OA Manage permissions มาวาง ระบบเก็บเฉพาะชื่อขึ้นต้น PK</p>
-            <input placeholder="ADMIN_API_KEY" value={key} onChange={(e) => setKey(e.target.value)} />
+            <p className="muted">
+              คัดลอกชื่อ Member จาก LINE OA Manage permissions มาวาง
+              ระบบเก็บเฉพาะชื่อขึ้นต้น PK
+            </p>
+            <input
+              placeholder="ADMIN_API_KEY"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
             <textarea
               rows="6"
               placeholder={"PK Golf 🚀\nPK May 🌟\nCS John"}
@@ -220,11 +247,15 @@ export default function Admin() {
                   color: "#92400e",
                 }}
               >
-                โหมดนี้: บันทึก QC อย่างเดียว <b>ไม่ส่งข้อความซ้ำ</b> ใช้เมื่อตอบใน LINE OA Manager ไปแล้ว
+                โหมดนี้: บันทึก QC อย่างเดียว <b>ไม่ส่งข้อความซ้ำ</b>{" "}
+                ใช้เมื่อตอบใน LINE OA Manager ไปแล้ว
               </div>
             )}
 
-            <select value={adminId} onChange={(e) => setAdminId(e.target.value)}>
+            <select
+              value={adminId}
+              onChange={(e) => setAdminId(e.target.value)}
+            >
               <option value="">เลือก Admin ({adminList.length} คน)</option>
               {adminList.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -237,7 +268,9 @@ export default function Admin() {
               <option value="">เลือก Case ({openCases.length} open)</option>
               {openCases.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {(c.display_name || c.line_user_id) + " — " + (c.message_text?.slice(0, 40) || "(ไม่มีข้อความ)")}
+                  {(c.display_name || c.line_user_id) +
+                    " — " +
+                    (c.message_text?.slice(0, 40) || "(ไม่มีข้อความ)")}
                 </option>
               ))}
             </select>
@@ -251,14 +284,24 @@ export default function Admin() {
             <textarea
               rows="5"
               placeholder={
-                sendLine ? "พิมพ์ข้อความที่จะส่งหาลูกค้า..." : "พิมพ์ข้อความที่ตอบไปแล้ว (เพื่อบันทึก QC)..."
+                sendLine
+                  ? "พิมพ์ข้อความที่จะส่งหาลูกค้า..."
+                  : "พิมพ์ข้อความที่ตอบไปแล้ว (เพื่อบันทึก QC)..."
               }
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
 
-            <button onClick={send} disabled={sending} style={{ background: sendLine ? undefined : "#f59e0b" }}>
-              {sending ? "กำลังดำเนินการ..." : sendLine ? "📤 Send + QC Score" : "📋 บันทึก QC"}
+            <button
+              onClick={send}
+              disabled={sending}
+              style={{ background: sendLine ? undefined : "#f59e0b" }}
+            >
+              {sending
+                ? "กำลังดำเนินการ..."
+                : sendLine
+                  ? "📤 Send + QC Score"
+                  : "📋 บันทึก QC"}
             </button>
           </div>
         </div>
@@ -286,16 +329,27 @@ function HealthPanel({ health }) {
   return (
     <div style={{ fontFamily: "monospace", fontSize: 13 }}>
       <div style={{ marginBottom: 8 }}>
-        <b>สถานะ:</b> {health.status} &nbsp;|&nbsp; <b>เวลา:</b> {health.timestamp}
+        <b>สถานะ:</b> {health.status} &nbsp;|&nbsp; <b>เวลา:</b>{" "}
+        {health.timestamp}
       </div>
       <div style={{ marginBottom: 8 }}>
         <b>Environment Variables:</b>
-        <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 4 }}>
+        <table
+          style={{ borderCollapse: "collapse", width: "100%", marginTop: 4 }}
+        >
           <tbody>
             {health.env &&
               Object.entries(health.env).map(([k, v]) => (
                 <tr key={k}>
-                  <td style={{ padding: "2px 12px 2px 0", color: "#666", whiteSpace: "nowrap" }}>{k}</td>
+                  <td
+                    style={{
+                      padding: "2px 12px 2px 0",
+                      color: "#666",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {k}
+                  </td>
                   <td>{v}</td>
                 </tr>
               ))}
@@ -304,13 +358,17 @@ function HealthPanel({ health }) {
       </div>
       <div style={{ marginBottom: 8 }}>
         <b>Database:</b> {health.database?.status}
-        {health.database?.error && <div style={{ color: "red" }}>Error: {health.database.error}</div>}
+        {health.database?.error && (
+          <div style={{ color: "red" }}>Error: {health.database.error}</div>
+        )}
         {health.database?.tables && (
           <table style={{ borderCollapse: "collapse", marginTop: 4 }}>
             <tbody>
               {Object.entries(health.database.tables).map(([t, c]) => (
                 <tr key={t}>
-                  <td style={{ padding: "2px 12px 2px 0", color: "#666" }}>{t}</td>
+                  <td style={{ padding: "2px 12px 2px 0", color: "#666" }}>
+                    {t}
+                  </td>
                   <td>{c} rows</td>
                 </tr>
               ))}
@@ -324,18 +382,35 @@ function HealthPanel({ health }) {
       {health.recentMessages?.length > 0 && (
         <div>
           <b>ข้อความล่าสุด:</b>
-          <table style={{ borderCollapse: "collapse", width: "100%", marginTop: 4 }}>
+          <table
+            style={{ borderCollapse: "collapse", width: "100%", marginTop: 4 }}
+          >
             <tbody>
               {health.recentMessages.map((m, i) => (
                 <tr key={i}>
-                  <td style={{ padding: "2px 8px 2px 0", fontSize: 11, color: "#888" }}>
+                  <td
+                    style={{
+                      padding: "2px 8px 2px 0",
+                      fontSize: 11,
+                      color: "#888",
+                    }}
+                  >
                     {new Date(m.created_at).toLocaleString("th-TH")}
                   </td>
-                  <td style={{ padding: "2px 8px 2px 0" }}>{m.display_name || m.line_user_id}</td>
-                  <td style={{ padding: "2px 8px 2px 0", color: m.direction === "customer" ? "#2196f3" : "#4caf50" }}>
+                  <td style={{ padding: "2px 8px 2px 0" }}>
+                    {m.display_name || m.line_user_id}
+                  </td>
+                  <td
+                    style={{
+                      padding: "2px 8px 2px 0",
+                      color: m.direction === "customer" ? "#2196f3" : "#4caf50",
+                    }}
+                  >
                     {m.direction === "customer" ? "👤" : "🛡"}
                   </td>
-                  <td style={{ fontSize: 12 }}>{m.message_text?.slice(0, 60)}</td>
+                  <td style={{ fontSize: 12 }}>
+                    {m.message_text?.slice(0, 60)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -343,7 +418,9 @@ function HealthPanel({ health }) {
         </div>
       )}
       {health.recentMessages?.length === 0 && (
-        <div style={{ color: "#f59e0b" }}>⚠️ ยังไม่มีข้อความใน database — เช็ค webhook URL ที่ LINE Developers</div>
+        <div style={{ color: "#f59e0b" }}>
+          ⚠️ ยังไม่มีข้อความใน database — เช็ค webhook URL ที่ LINE Developers
+        </div>
       )}
     </div>
   );

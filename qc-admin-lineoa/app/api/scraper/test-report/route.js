@@ -4,10 +4,20 @@ import { requireView, unauthorized } from "@/lib/guard";
 export async function GET(req) {
   if (!requireView(req)) return unauthorized();
   const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from") || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const from =
+    searchParams.get("from") ||
+    new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
 
-  const [jobs, msgStats, customerStats, noteStats, dailyBreakdown, unknownAdminSamples, qcStats] = await Promise.all([
+  const [
+    jobs,
+    msgStats,
+    customerStats,
+    noteStats,
+    dailyBreakdown,
+    unknownAdminSamples,
+    qcStats,
+  ] = await Promise.all([
     query`
       SELECT id, date_from, date_to, status, total_chats, logged_count,
              started_at, finished_at, error_text

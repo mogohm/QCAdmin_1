@@ -15,7 +15,8 @@ async function splitAdmins() {
 }
 
 export async function GET(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const { junk, keep } = await splitAdmins();
   const ids = junk.map((a) => a.id);
   let msgs = 0,
@@ -37,16 +38,25 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const { junk } = await splitAdmins();
   const ids = junk.map((a) => a.id);
-  if (!ids.length) return Response.json({ ok: true, deleted: { admins: 0 }, message: "ไม่มี admin ขยะ" });
+  if (!ids.length)
+    return Response.json({
+      ok: true,
+      deleted: { admins: 0 },
+      message: "ไม่มี admin ขยะ",
+    });
 
   // ลำดับ FK-safe: qc_scores → messages → conversations(null) → qc_admins
-  const s = await query`DELETE FROM qc_scores WHERE admin_id = ANY(${ids}) RETURNING id`;
-  const m = await query`DELETE FROM messages WHERE admin_id = ANY(${ids}) RETURNING id`;
+  const s =
+    await query`DELETE FROM qc_scores WHERE admin_id = ANY(${ids}) RETURNING id`;
+  const m =
+    await query`DELETE FROM messages WHERE admin_id = ANY(${ids}) RETURNING id`;
   await query`UPDATE conversations SET assigned_admin_id = NULL WHERE assigned_admin_id = ANY(${ids})`;
-  const a = await query`DELETE FROM qc_admins WHERE id = ANY(${ids}) RETURNING member_name`;
+  const a =
+    await query`DELETE FROM qc_admins WHERE id = ANY(${ids}) RETURNING member_name`;
 
   return Response.json({
     ok: true,

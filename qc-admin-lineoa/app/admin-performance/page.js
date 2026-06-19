@@ -28,7 +28,11 @@ const CATS = [
 ];
 
 function downloadCSV(filename, rows) {
-  const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = rows
+    .map((r) =>
+      r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","),
+    )
+    .join("\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -60,7 +64,9 @@ export default function AdminPerformance() {
   const skill = Object.fromEntries(skillRows.map((a) => [a.admin_id, a]));
   const sel = pick ? ranking.find((a) => a.id === pick) : null;
   const selSkill = pick ? skill[pick] : null;
-  const coachNeeded = skillRows.filter((a) => CATS.some(([c]) => a[c] != null && a[c] < 70));
+  const coachNeeded = skillRows.filter((a) =>
+    CATS.some(([c]) => a[c] != null && a[c] < 70),
+  );
 
   const exportCSV = () => {
     const header = [
@@ -99,8 +105,18 @@ export default function AdminPerformance() {
 
   const actions = (
     <>
-      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
+      <input
+        type="date"
+        value={from}
+        onChange={(e) => setFrom(e.target.value)}
+        style={{ width: 150, margin: 0 }}
+      />
+      <input
+        type="date"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        style={{ width: 150, margin: 0 }}
+      />
       <button onClick={load}>{loading ? "..." : "ดู"}</button>
       <button onClick={exportCSV} style={{ background: "#16a34a" }}>
         ⬇ CSV
@@ -109,7 +125,11 @@ export default function AdminPerformance() {
   );
 
   return (
-    <AppShell title="Admin Performance" subtitle="คะแนนรายแอดมิน · heatmap · coaching" actions={actions}>
+    <AppShell
+      title="Admin Performance"
+      subtitle="คะแนนรายแอดมิน · heatmap · coaching"
+      actions={actions}
+    >
       <>
         {loading && (
           <div
@@ -146,7 +166,9 @@ export default function AdminPerformance() {
             <tbody>
               {skillRows.map((a) => {
                 const vals = CATS.map(([c]) => a[c]).filter((v) => v != null);
-                const avg = vals.length ? Math.round(vals.reduce((x, y) => x + y, 0) / vals.length) : null;
+                const avg = vals.length
+                  ? Math.round(vals.reduce((x, y) => x + y, 0) / vals.length)
+                  : null;
                 return (
                   <tr key={a.admin_id}>
                     <td style={{ fontWeight: 600 }}>{a.admin}</td>
@@ -168,7 +190,9 @@ export default function AdminPerformance() {
                         </span>
                       </td>
                     ))}
-                    <td style={{ textAlign: "center", fontWeight: 800 }}>{avg ?? "—"}</td>
+                    <td style={{ textAlign: "center", fontWeight: 800 }}>
+                      {avg ?? "—"}
+                    </td>
                   </tr>
                 );
               })}
@@ -202,12 +226,17 @@ export default function AdminPerformance() {
                   <tr
                     key={a.id}
                     onClick={() => setPick(a.id)}
-                    style={{ cursor: "pointer", background: pick === a.id ? "rgba(56,189,248,0.15)" : "" }}
+                    style={{
+                      cursor: "pointer",
+                      background: pick === a.id ? "rgba(56,189,248,0.15)" : "",
+                    }}
                   >
                     <td>{i + 1}</td>
                     <td>{a.member_name}</td>
                     <td>{a.cases}</td>
-                    <td className={`score ${sc(a.avg_score)}`}>{a.avg_score}</td>
+                    <td className={`score ${sc(a.avg_score)}`}>
+                      {a.avg_score}
+                    </td>
                     <td>{fmtSec(a.avg_response_sec)}</td>
                     <td className="score bad">{a.bad || 0}</td>
                   </tr>
@@ -221,19 +250,28 @@ export default function AdminPerformance() {
               <div key={a.admin_id} className="case" style={{ padding: 8 }}>
                 <b>{a.admin}</b>
                 <div>
-                  {CATS.filter(([c]) => a[c] != null && a[c] < 70).map(([c, l]) => (
-                    <span
-                      key={c}
-                      className="badge"
-                      style={{ marginRight: 4, background: "#fef2f2", color: "#dc2626", fontSize: 10 }}
-                    >
-                      {l} {a[c]}
-                    </span>
-                  ))}
+                  {CATS.filter(([c]) => a[c] != null && a[c] < 70).map(
+                    ([c, l]) => (
+                      <span
+                        key={c}
+                        className="badge"
+                        style={{
+                          marginRight: 4,
+                          background: "#fef2f2",
+                          color: "#dc2626",
+                          fontSize: 10,
+                        }}
+                      >
+                        {l} {a[c]}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             ))}
-            {!coachNeeded.length && <div className="muted">ทุกคนผ่านเกณฑ์ 👍</div>}
+            {!coachNeeded.length && (
+              <div className="muted">ทุกคนผ่านเกณฑ์ 👍</div>
+            )}
           </div>
         </section>
 
@@ -241,10 +279,15 @@ export default function AdminPerformance() {
         {sel && (
           <section className="card" style={{ marginTop: 16 }}>
             <h3 style={{ marginTop: 0 }}>🔍 {sel.member_name}</h3>
-            <section className="grid kpis" style={{ gridTemplateColumns: "repeat(6,1fr)" }}>
+            <section
+              className="grid kpis"
+              style={{ gridTemplateColumns: "repeat(6,1fr)" }}
+            >
               <div className="card">
                 <div className="kpi-title">คะแนนเฉลี่ย</div>
-                <div className={`kpi-value score ${sc(sel.avg_score)}`}>{sel.avg_score}</div>
+                <div className={`kpi-value score ${sc(sel.avg_score)}`}>
+                  {sel.avg_score}
+                </div>
               </div>
               <div className="card">
                 <div className="kpi-title">เคส</div>
@@ -265,7 +308,8 @@ export default function AdminPerformance() {
               <div className="card">
                 <div className="kpi-title">สมัคร/ฝาก</div>
                 <div className="kpi-value" style={{ fontSize: 16 }}>
-                  {sel.reg_count || 0}/฿{Number(sel.deposit_sum || 0).toLocaleString()}
+                  {sel.reg_count || 0}/฿
+                  {Number(sel.deposit_sum || 0).toLocaleString()}
                 </div>
               </div>
             </section>

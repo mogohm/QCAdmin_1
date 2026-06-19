@@ -12,7 +12,9 @@ const ok = (n, c, e = "") => {
   console.log(`${c ? "✅" : "❌"} ${n}${e ? " — " + e : ""}`);
 };
 
-const data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"));
+const data = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"),
+);
 const sopScripts = data.scripts.map((s, i) => ({ id: i + 1, ...s }));
 const fatalRules = data.fatal_rules;
 
@@ -24,7 +26,11 @@ const r1 = scoreReply({
   sopScripts,
   fatalRules,
 });
-ok("รับ sopScripts (alias ของ sops)", r1.matchedSop && r1.intent === "deposit", `intent=${r1.intent}`);
+ok(
+  "รับ sopScripts (alias ของ sops)",
+  r1.matchedSop && r1.intent === "deposit",
+  `intent=${r1.intent}`,
+);
 
 const evActive = [
   {
@@ -75,22 +81,38 @@ const need = [
   "commissionTier",
 ];
 for (const f of need) ok(`มี field: ${f}`, r1[f] !== undefined);
-ok("matchedSop มี id + topic (matched_sop_id/topic)", !!(r1.matchedSop?.id && r1.matchedSop?.topic));
-ok("evidence มี matched/missing keywords", Array.isArray(r1.evidence.missing_required_keywords));
+ok(
+  "matchedSop มี id + topic (matched_sop_id/topic)",
+  !!(r1.matchedSop?.id && r1.matchedSop?.topic),
+);
+ok(
+  "evidence มี matched/missing keywords",
+  Array.isArray(r1.evidence.missing_required_keywords),
+);
 
 console.log("\n===== 3) qc_score_details ทุก dimension =====");
 const codes = (r1.details || []).map((d) => d.category_code);
 ok(
   "details ครบ 7 rubric + minor + fatal",
-  ["greetingClosing", "problemSolving", "communicationTone", "responseTime", "minorError", "fatalError"].every((c) =>
-    codes.includes(c),
-  ),
+  [
+    "greetingClosing",
+    "problemSolving",
+    "communicationTone",
+    "responseTime",
+    "minorError",
+    "fatalError",
+  ].every((c) => codes.includes(c)),
   codes.join(","),
 );
 ok(
   "แต่ละ detail มี raw/weighted/max/pass/evidence",
   (r1.details || []).every(
-    (d) => "raw_score" in d && "weighted_score" in d && "max_score" in d && "pass" in d && "evidence" in d,
+    (d) =>
+      "raw_score" in d &&
+      "weighted_score" in d &&
+      "max_score" in d &&
+      "pass" in d &&
+      "evidence" in d,
   ),
 );
 

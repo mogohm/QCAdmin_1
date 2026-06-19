@@ -2,7 +2,8 @@ import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
 export async function PATCH(req, { params }) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
   const body = await req.json();
   const rows = await query`
@@ -20,7 +21,8 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
   await query`DELETE FROM knowledge_rules WHERE id = ${id}`;
   return Response.json({ ok: true });

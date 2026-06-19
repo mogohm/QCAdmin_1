@@ -18,7 +18,9 @@ export default function Sidebar({ active }) {
   };
 
   // กรองตามสิทธิ์: ยังไม่ได้ /api/auth/me → เมนูว่าง (กันเมนูแฟลชให้คนไม่มีสิทธิ์)
-  const visibleMenu = me?.authenticated ? filterMenuByPermissions(me, MENU) : [];
+  const visibleMenu = me?.authenticated
+    ? filterMenuByPermissions(me, MENU)
+    : [];
 
   return (
     <aside className="side">
@@ -28,22 +30,47 @@ export default function Sidebar({ active }) {
       <div className="brand-sub">AI QC PROGRAM</div>
       <nav className="nav">
         {visibleMenu.map((item) => (
-          <a key={item.href} href={item.href} className={active === item.href ? "active" : ""}>
+          <a
+            key={item.href}
+            href={item.href}
+            className={active === item.href ? "active" : ""}
+          >
             <span style={{ marginRight: 8 }}>{item.icon}</span>
             {item.label}
           </a>
         ))}
       </nav>
-      <div style={{ marginTop: "auto", paddingTop: 16, fontSize: 12, color: "#9fb3d6" }}>
+      <div
+        style={{
+          marginTop: "auto",
+          paddingTop: 16,
+          fontSize: 12,
+          color: "#9fb3d6",
+        }}
+      >
         {me?.authenticated ? (
           <>
             <div style={{ marginBottom: 6 }}>
               👤 {me.name}{" "}
-              <span style={{ background: "rgba(255,255,255,.12)", borderRadius: 6, padding: "1px 7px", fontSize: 10 }}>
+              <span
+                style={{
+                  background: "rgba(255,255,255,.12)",
+                  borderRadius: 6,
+                  padding: "1px 7px",
+                  fontSize: 10,
+                }}
+              >
                 {me.role}
               </span>
             </div>
-            <button onClick={logout} style={{ background: "rgba(255,255,255,.12)", fontSize: 12, padding: "6px 12px" }}>
+            <button
+              onClick={logout}
+              style={{
+                background: "rgba(255,255,255,.12)",
+                fontSize: 12,
+                padding: "6px 12px",
+              }}
+            >
               ออกจากระบบ
             </button>
           </>

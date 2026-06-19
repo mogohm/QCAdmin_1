@@ -30,7 +30,20 @@ const DAY_MAP = {
   sat: 6,
   เสาร์: 6,
 };
-const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+const MONTHS = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
+};
 
 // แปลง label วันใน chat list → Date (เที่ยงคืนของวันนั้น). now ใส่ได้เพื่อทดสอบให้ผลคงที่
 function dayLabelToDate(label, now = new Date()) {
@@ -62,7 +75,9 @@ function dayLabelToDate(label, now = new Date()) {
   }
 
   // "May 20" / "May 20, 2026"
-  const md = s.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i);
+  const md = s.match(
+    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i,
+  );
   if (md) {
     const mo = MONTHS[md[1].toLowerCase()];
     const yr = md[3] ? parseInt(md[3]) : today.getFullYear();
@@ -73,14 +88,19 @@ function dayLabelToDate(label, now = new Date()) {
 
   // ISO 2026-05-13
   const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
+  if (iso)
+    return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
 
   // M/D/YYYY หรือ D/M/YYYY หรือ M/D  (ตัวเลข > 12 = วัน)
   const num = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
   if (num) {
     const a = parseInt(num[1]);
     const b = parseInt(num[2]);
-    const yr = num[3] ? (parseInt(num[3]) > 100 ? parseInt(num[3]) : 2000 + parseInt(num[3])) : today.getFullYear();
+    const yr = num[3]
+      ? parseInt(num[3]) > 100
+        ? parseInt(num[3])
+        : 2000 + parseInt(num[3])
+      : today.getFullYear();
     if (b > 12) return new Date(yr, a - 1, b); // a=month, b=day
     if (a > 12) return new Date(yr, b - 1, a); // a=day, b=month (D/M)
     return new Date(yr, a - 1, b); // ค่าเริ่มต้น M/D (LINE OA EN locale)
@@ -99,7 +119,10 @@ function labelInRange(label, fromDate, toDate, now = new Date()) {
   const d = dayLabelToDate(label, now);
   if (!d) return null; // ตัดสินใจไม่ได้
   const t = d.getTime();
-  return t >= new Date(fromDate).setHours(0, 0, 0, 0) && t <= new Date(toDate).setHours(23, 59, 59, 999);
+  return (
+    t >= new Date(fromDate).setHours(0, 0, 0, 0) &&
+    t <= new Date(toDate).setHours(23, 59, 59, 999)
+  );
 }
 
 // label = แชทที่ active ตั้งแต่ fromDate เป็นต้นมา (รวมแชทที่ active วันนี้ ซึ่งอาจมีประวัติของ fromDate)
@@ -114,7 +137,10 @@ function labelOnOrAfter(label, fromDate, now = new Date()) {
 function inDateWindow(created_at, fromDate, toDate) {
   if (!created_at) return false;
   const t = new Date(created_at).getTime();
-  return t >= new Date(fromDate).setHours(0, 0, 0, 0) && t <= new Date(toDate).setHours(23, 59, 59, 999);
+  return (
+    t >= new Date(fromDate).setHours(0, 0, 0, 0) &&
+    t <= new Date(toDate).setHours(23, 59, 59, 999)
+  );
 }
 
 function stripTags(s) {
@@ -139,15 +165,25 @@ function parseChatHTML(html, opts = {}) {
   // หา marker เปิดของ date separator และ bubble ตามลำดับเอกสาร
   //   class ต้องขึ้นต้นด้วย chatsys-date / chat-reverse / chat (ตามด้วยช่องว่างหรือ ") เท่านั้น
   //   เพื่อไม่ให้ <div class="chat-item-text"> (ข้อความ) ถูกจับเป็น bubble แยก
-  const markerRe = /<div\b[^>]*\bclass="((?:chatsys-date|chat-reverse|chat)(?=[ "])[^"]*)"[^>]*>/gi;
+  const markerRe =
+    /<div\b[^>]*\bclass="((?:chatsys-date|chat-reverse|chat)(?=[ "])[^"]*)"[^>]*>/gi;
   const markers = [];
   let m;
-  while ((m = markerRe.exec(html))) markers.push({ index: m.index, end: markerRe.lastIndex, cls: m[1], open: m[0] });
+  while ((m = markerRe.exec(html)))
+    markers.push({
+      index: m.index,
+      end: markerRe.lastIndex,
+      cls: m[1],
+      open: m[0],
+    });
 
   let currentDate = null;
   let lastAdminName = null; // carry-forward — LINE OA แสดงชื่อ admin ครั้งเดียวต่อ sequence
   for (let i = 0; i < markers.length; i++) {
-    const seg = html.slice(markers[i].end, i + 1 < markers.length ? markers[i + 1].index : html.length);
+    const seg = html.slice(
+      markers[i].end,
+      i + 1 < markers.length ? markers[i + 1].index : html.length,
+    );
     const cls = markers[i].cls;
 
     if (/\bchatsys-date\b/.test(cls)) {
@@ -162,21 +198,36 @@ function parseChatHTML(html, opts = {}) {
     let message_type = "text";
     const typeAttr = (markers[i].open.match(/data-mtype="([^"]+)"/) || [])[1];
     if (typeAttr) message_type = typeAttr;
-    else if (/<img[^>]+src="[^"]*sticker/i.test(seg) || /\[sticker\]/i.test(seg)) message_type = "sticker";
-    else if (/\[image\]/i.test(seg) || /<img[^>]+class="[^"]*(photo|image)/i.test(seg)) message_type = "image";
-    else if (/\[file\]/i.test(seg) || /download/i.test(seg)) message_type = "file";
+    else if (
+      /<img[^>]+src="[^"]*sticker/i.test(seg) ||
+      /\[sticker\]/i.test(seg)
+    )
+      message_type = "sticker";
+    else if (
+      /\[image\]/i.test(seg) ||
+      /<img[^>]+class="[^"]*(photo|image)/i.test(seg)
+    )
+      message_type = "image";
+    else if (/\[file\]/i.test(seg) || /download/i.test(seg))
+      message_type = "file";
     else if (/<(audio|video)\b/i.test(seg)) message_type = "media";
 
     // ข้อความ
-    const textM = seg.match(/class="[^"]*\bchat-item-text\b[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|p)>/i);
+    const textM = seg.match(
+      /class="[^"]*\bchat-item-text\b[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|p)>/i,
+    );
     let text = textM ? stripTags(textM[1]) : "";
     if (!text && message_type !== "text") text = `[${message_type}]`;
 
     // เวลา HH:MM (เอาตัวท้ายสุด — เวลาส่งอยู่ท้าย bubble)
     let time = null;
-    const times = seg.match(/>\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s*</gi);
+    const times = seg.match(
+      />\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s*</gi,
+    );
     if (times) {
-      const last = times[times.length - 1].match(/(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)/i);
+      const last = times[times.length - 1].match(
+        /(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)/i,
+      );
       time = last ? last[1] : null;
     }
 
@@ -189,19 +240,33 @@ function parseChatHTML(html, opts = {}) {
         s.trim().length >= 2 &&
         s.trim().length < 50 &&
         /[฀-๿a-zA-Z]/.test(s) &&
-        !/^(photo|image|avatar|icon|sticker|read|seen|delivered|sent|อ่านแล้ว|ส่งแล้ว)$/i.test(s.trim());
-      const segNoText = seg.replace(/class="[^"]*\bchat-item-text\b[^"]*"[^>]*>[\s\S]*?<\/(?:div|span|p)>/gi, "");
+        !/^(photo|image|avatar|icon|sticker|read|seen|delivered|sent|อ่านแล้ว|ส่งแล้ว)$/i.test(
+          s.trim(),
+        );
+      const segNoText = seg.replace(
+        /class="[^"]*\bchat-item-text\b[^"]*"[^>]*>[\s\S]*?<\/(?:div|span|p)>/gi,
+        "",
+      );
       const alt = (seg.match(/<img[^>]+alt="([^"]+)"/i) || [])[1];
-      const titleAttr = (segNoText.match(/(?:title|aria-label)="([^"]+)"/i) || [])[1];
-      const pkName = (segNoText.match(/((?:ᴘᴋ|🅿🅺|🅿️🅺|PK|pk|Pk)[ \-_·.][^\n<>"]{0,25})/) || [])[1];
-      admin_name = [alt, pkName, titleAttr].find(valid)?.trim() || lastAdminName;
+      const titleAttr = (segNoText.match(/(?:title|aria-label)="([^"]+)"/i) ||
+        [])[1];
+      const pkName = (segNoText.match(
+        /((?:ᴘᴋ|🅿🅺|🅿️🅺|PK|pk|Pk)[ \-_·.][^\n<>"]{0,25})/,
+      ) || [])[1];
+      admin_name =
+        [alt, pkName, titleAttr].find(valid)?.trim() || lastAdminName;
       if (admin_name) lastAdminName = admin_name;
     }
 
     const created_at = time ? timeOnDate(time, currentDate || now) : null;
     if (!text) {
       // bubble ที่ดึงข้อความไม่ได้ → เก็บ raw HTML ไว้แก้ selector (ไม่เดา)
-      if (failures) failures.push({ reason: "no_text", direction, html: (markers[i].open + seg).slice(0, 500) });
+      if (failures)
+        failures.push({
+          reason: "no_text",
+          direction,
+          html: (markers[i].open + seg).slice(0, 500),
+        });
       continue;
     }
     if (!created_at && failures)
@@ -225,7 +290,15 @@ function parseChatHTML(html, opts = {}) {
 }
 
 // สรุปคุณภาพการ parse ของ 1 แชท — ใช้ทั้ง dry-run และ audit
-function summarizeChat({ chatIndex, customerName, dateLabel, messages, pairs, dupSkipped = 0, notesCount = 0 }) {
+function summarizeChat({
+  chatIndex,
+  customerName,
+  dateLabel,
+  messages,
+  pairs,
+  dupSkipped = 0,
+  notesCount = 0,
+}) {
   const KNOWN_TYPES = ["text", "image", "sticker", "file", "media"];
   const admin = messages.filter((m) => m.direction === "admin");
   const customer = messages.filter((m) => m.direction === "customer");
@@ -238,8 +311,12 @@ function summarizeChat({ chatIndex, customerName, dateLabel, messages, pairs, du
     admin_message_count: admin.length,
     customer_message_count: customer.length,
     missing_created_at: messages.filter((m) => !m.created_at).length,
-    missing_direction: messages.filter((m) => m.direction !== "admin" && m.direction !== "customer").length,
-    unknown_message_type: messages.filter((m) => !KNOWN_TYPES.includes(m.message_type)).length,
+    missing_direction: messages.filter(
+      (m) => m.direction !== "admin" && m.direction !== "customer",
+    ).length,
+    unknown_message_type: messages.filter(
+      (m) => !KNOWN_TYPES.includes(m.message_type),
+    ).length,
     admin_without_customer_pair: pairs.filter((p) => !p.customer_text).length,
     pairs: pairs.length,
     duplicates: dupSkipped,
@@ -268,14 +345,25 @@ const normalizeText = (s) =>
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
-const hashText = (s) => crypto.createHash("sha1").update(normalizeText(s)).digest("hex").slice(0, 16);
+const hashText = (s) =>
+  crypto.createHash("sha1").update(normalizeText(s)).digest("hex").slice(0, 16);
 
 // dedup key ระดับ message: line_user_id + direction + hash(text) + created_at
-const messageDedupKey = ({ line_user_id, direction, message_text, created_at }) =>
+const messageDedupKey = ({
+  line_user_id,
+  direction,
+  message_text,
+  created_at,
+}) =>
   `${line_user_id || ""}|${direction}|${hashText(message_text)}|${created_at || ""}`;
 
 // dedup key ระดับคู่ QC: line_user_id + customer_created_at + admin_created_at + hash(admin_text)
-const qcPairKey = ({ line_user_id, customer_created_at, admin_created_at, admin_text }) =>
+const qcPairKey = ({
+  line_user_id,
+  customer_created_at,
+  admin_created_at,
+  admin_text,
+}) =>
   `${line_user_id || ""}|${customer_created_at || ""}|${admin_created_at || ""}|${hashText(admin_text)}`;
 
 // จับคู่ customer↔admin สำหรับ QC
@@ -308,7 +396,10 @@ function pairMessages(messages, opts = {}) {
     while (i + 1 < sorted.length && sorted[i + 1].direction === "admin") {
       const prev = group[group.length - 1];
       const next = sorted[i + 1];
-      const dt = prev.created_at && next.created_at ? new Date(next.created_at) - new Date(prev.created_at) : 0;
+      const dt =
+        prev.created_at && next.created_at
+          ? new Date(next.created_at) - new Date(prev.created_at)
+          : 0;
       if (dt <= win) {
         group.push(next);
         i++;
@@ -322,11 +413,20 @@ function pairMessages(messages, opts = {}) {
     //   → carry คำถามล่าสุดเป็น context (กัน "admin ไม่มีคู่") แต่ไม่คิด response_seconds (ไม่ใช่การตอบใหม่)
     const fresh = pendingCust.length > 0;
     const custMsgs = fresh ? pendingCust : lastCustomer ? [lastCustomer] : [];
-    const customer_text = custMsgs.length ? custMsgs.map((c) => c.message_text).join("\n") : null;
-    const customer_created_at = fresh ? pendingCust[pendingCust.length - 1].created_at || null : null;
+    const customer_text = custMsgs.length
+      ? custMsgs.map((c) => c.message_text).join("\n")
+      : null;
+    const customer_created_at = fresh
+      ? pendingCust[pendingCust.length - 1].created_at || null
+      : null;
     let response_seconds = null;
     if (fresh && customer_created_at && admin_created_at)
-      response_seconds = Math.max(0, Math.round((new Date(admin_created_at) - new Date(customer_created_at)) / 1000));
+      response_seconds = Math.max(
+        0,
+        Math.round(
+          (new Date(admin_created_at) - new Date(customer_created_at)) / 1000,
+        ),
+      );
     pairs.push({
       customer_text,
       customer_created_at,
@@ -336,7 +436,9 @@ function pairMessages(messages, opts = {}) {
       response_seconds,
       is_followup: !fresh && !!customer_text, // admin ตอบต่อเนื่องคำถามเดิม
       message_type: group[group.length - 1].message_type || "text",
-      reply_group_id: hashText(group.map((g) => g.message_text + (g.created_at || "")).join("|")),
+      reply_group_id: hashText(
+        group.map((g) => g.message_text + (g.created_at || "")).join("|"),
+      ),
     });
     pendingCust = [];
   }
@@ -349,7 +451,10 @@ function dedupMessages(messages, lineUserId) {
   const unique = [];
   let skipped_duplicate = 0;
   for (const msg of messages) {
-    const key = messageDedupKey({ ...msg, line_user_id: msg.line_user_id || lineUserId });
+    const key = messageDedupKey({
+      ...msg,
+      line_user_id: msg.line_user_id || lineUserId,
+    });
     if (seen.has(key)) {
       skipped_duplicate++;
       continue;

@@ -9,13 +9,24 @@
 const fs = require("fs");
 const path = require("path");
 
-const C = { red: "\x1b[31m", grn: "\x1b[32m", yel: "\x1b[33m", dim: "\x1b[2m", rst: "\x1b[0m", b: "\x1b[1m" };
+const C = {
+  red: "\x1b[31m",
+  grn: "\x1b[32m",
+  yel: "\x1b[33m",
+  dim: "\x1b[2m",
+  rst: "\x1b[0m",
+  b: "\x1b[1m",
+};
 const LOG = path.join(__dirname, "..", ".storage", "debug", "scrape-log.jsonl");
 const pct = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : 0);
 
 if (!fs.existsSync(LOG)) {
-  console.error(`${C.red}❌ ไม่พบ ${path.relative(process.cwd(), LOG)}${C.rst}`);
-  console.error("   รัน dry-run ก่อน:  node scraper.js --date=YYYY-MM-DD --headed --dry-run");
+  console.error(
+    `${C.red}❌ ไม่พบ ${path.relative(process.cwd(), LOG)}${C.rst}`,
+  );
+  console.error(
+    "   รัน dry-run ก่อน:  node scraper.js --date=YYYY-MM-DD --headed --dry-run",
+  );
   process.exit(1);
 }
 
@@ -51,7 +62,9 @@ const unknownType = sum("unknown_message_type");
 const adminNoPair = sum("admin_without_customer_pair");
 const dupCount = sum("duplicates");
 const parseFail = sum("parse_fail");
-const dateLabelFail = entries.filter((e) => e.date_label_parsed === false).length;
+const dateLabelFail = entries.filter(
+  (e) => e.date_label_parsed === false,
+).length;
 
 const createdAtMissingPct = pct(missingCreatedAt, totalMsg);
 const adminNoPairPct = pct(adminNoPair, totalPairs);
@@ -62,10 +75,17 @@ console.log(
   `\n${C.b}===== SCRAPER OUTPUT AUDIT =====${C.rst}  ${C.dim}(${entries.length} chats จาก scrape-log.jsonl)${C.rst}\n`,
 );
 const row = (label, val, detail = "", color = C.rst) =>
-  console.log(`  ${color}${String(val).padStart(7)}${C.rst}  ${label.padEnd(34)} ${C.dim}${detail}${C.rst}`);
+  console.log(
+    `  ${color}${String(val).padStart(7)}${C.rst}  ${label.padEnd(34)} ${C.dim}${detail}${C.rst}`,
+  );
 
 row("total chats scanned", totalChats);
-row("chats with no messages", noMsg, noMsg ? `${pct(noMsg, totalChats)}%` : "", noMsg ? C.yel : C.grn);
+row(
+  "chats with no messages",
+  noMsg,
+  noMsg ? `${pct(noMsg, totalChats)}%` : "",
+  noMsg ? C.yel : C.grn,
+);
 row("total messages", totalMsg, `customer ${totalCust} / admin ${totalAdmin}`);
 row("customer/admin ratio", custAdminRatio);
 row(
@@ -74,7 +94,12 @@ row(
   `${createdAtMissingPct}%`,
   createdAtMissingPct > 5 ? C.red : C.grn,
 );
-row("messages missing direction", missingDirection, "", missingDirection > 0 ? C.red : C.grn);
+row(
+  "messages missing direction",
+  missingDirection,
+  "",
+  missingDirection > 0 ? C.red : C.grn,
+);
 row(
   "admin reply without customer pair",
   adminNoPair,
@@ -83,9 +108,19 @@ row(
 );
 // duplicate rate = scroll overlap ที่ dedup ตัดทิ้งก่อน insert (สูง = scraper กันซ้ำทำงาน, ไม่ถึง DB)
 //   gate จริงของ "ซ้ำ" คือ duplicate ที่ถึง DB = 0 (dedup + unique index + route 7-day) → ดู test-log-reply
-row("duplicate removed pre-insert", dupCount, `${dupRatePct}% (dedup ตัดก่อนเข้า DB — healthy)`, C.dim);
+row(
+  "duplicate removed pre-insert",
+  dupCount,
+  `${dupRatePct}% (dedup ตัดก่อนเข้า DB — healthy)`,
+  C.dim,
+);
 row("unknown message type", unknownType, "", unknownType > 0 ? C.yel : C.grn);
-row("date label parse fail", dateLabelFail, "", dateLabelFail > 0 ? C.yel : C.grn);
+row(
+  "date label parse fail",
+  dateLabelFail,
+  "",
+  dateLabelFail > 0 ? C.yel : C.grn,
+);
 row(
   "parse-fail bubbles (raw saved)",
   parseFail,
@@ -98,13 +133,18 @@ row(
 //   duplicate ไม่เป็น gate เพราะ dedup ตัดก่อน insert (ดู test-log-reply: POST ซ้ำ → ไม่ insert)
 const fails = [];
 const warns = [];
-if (createdAtMissingPct > 5) fails.push(`created_at missing ${createdAtMissingPct}% (>5%)`);
-if (missingDirection > 0) fails.push(`direction unknown = ${missingDirection} (>0)`);
+if (createdAtMissingPct > 5)
+  fails.push(`created_at missing ${createdAtMissingPct}% (>5%)`);
+if (missingDirection > 0)
+  fails.push(`direction unknown = ${missingDirection} (>0)`);
 // admin-without-pair: ใน dry-run window-เดียวอาจสูง (คำถามลูกค้าถูก scroll พ้น) — log-reply จับคู่กับ
 //   conversation เต็มใน DB ตอน insert → เป็น WARN ไม่ใช่ hard fail
 if (adminNoPairPct > 10)
-  warns.push(`admin reply without customer pair ${adminNoPairPct}% (>10% ใน dry-run; log-reply re-pair ตอน insert)`);
-if (parseFail > 0) warns.push(`parse-fail bubbles = ${parseFail} (raw saved → ปรับ selector)`);
+  warns.push(
+    `admin reply without customer pair ${adminNoPairPct}% (>10% ใน dry-run; log-reply re-pair ตอน insert)`,
+  );
+if (parseFail > 0)
+  warns.push(`parse-fail bubbles = ${parseFail} (raw saved → ปรับ selector)`);
 
 console.log("");
 for (const w of warns) console.log(`${C.yel}⚠️  WARN: ${w}${C.rst}`);

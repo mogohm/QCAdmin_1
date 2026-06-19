@@ -6,7 +6,8 @@ export async function GET(req, { params }) {
   if (g) return g;
   try {
     const { line_user_id } = await params;
-    if (!line_user_id) return Response.json({ error: "line_user_id required" }, { status: 400 });
+    if (!line_user_id)
+      return Response.json({ error: "line_user_id required" }, { status: 400 });
 
     const [customer, events, conversations, stats, notes] = await Promise.all([
       query`SELECT * FROM line_customers WHERE line_user_id = ${line_user_id}`,
@@ -72,6 +73,9 @@ export async function GET(req, { params }) {
     });
   } catch (err) {
     console.error("Customer API error:", err);
-    return Response.json({ error: String(err.message || err) }, { status: 500 });
+    return Response.json(
+      { error: String(err.message || err) },
+      { status: 500 },
+    );
   }
 }

@@ -7,7 +7,8 @@ export async function GET(req) {
   if (g) return g;
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") || "pending";
-  const rows = await query`SELECT id, username, display_name, email, requested_role, linked_admin_name, note, status,
+  const rows =
+    await query`SELECT id, username, display_name, email, requested_role, linked_admin_name, note, status,
                                   reviewed_by, reviewed_at, created_at
        FROM user_registration_requests
        WHERE (${status}::text = 'all' OR status = ${status})

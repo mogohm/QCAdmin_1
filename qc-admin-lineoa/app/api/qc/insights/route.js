@@ -7,16 +7,22 @@ import { readSession } from "@/lib/session";
 //   GET /api/qc/insights?from=..&to=..
 export async function GET(req) {
   const session = readSession(req);
-  if (!session && !requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!session && !requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const to = searchParams.get("to") || new Date().toISOString().slice(0, 10);
-  const from = searchParams.get("from") || new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const from =
+    searchParams.get("from") ||
+    new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const fromTs = `${from} 00:00:00`,
     toTs = `${to} 23:59:59`;
 
   // scope: role=admin บังคับดูเฉพาะตัวเอง; อื่นๆ ดูทั้งทีม (af = null)
-  const af = session?.role === "admin" ? session.adminId || "00000000-0000-0000-0000-000000000000" : null;
+  const af =
+    session?.role === "admin"
+      ? session.adminId || "00000000-0000-0000-0000-000000000000"
+      : null;
 
   try {
     const [
@@ -115,7 +121,9 @@ export async function GET(req) {
       trend,
       commission_distribution: commissionDist[0] || {},
       category_scores: categoryScores,
-      bottleneck: [...categoryScores].sort((a, b) => a.avg_score - b.avg_score).slice(0, 3),
+      bottleneck: [...categoryScores]
+        .sort((a, b) => a.avg_score - b.avg_score)
+        .slice(0, 3),
       sop_coverage: {
         total: cov.total,
         matched: cov.matched,
@@ -130,6 +138,9 @@ export async function GET(req) {
       marketing: { events: marketing },
     });
   } catch (e) {
-    return Response.json({ error: e.message, hint: "อาจยังไม่ได้รัน POST /api/admin/import-sop" }, { status: 500 });
+    return Response.json(
+      { error: e.message, hint: "อาจยังไม่ได้รัน POST /api/admin/import-sop" },
+      { status: 500 },
+    );
   }
 }

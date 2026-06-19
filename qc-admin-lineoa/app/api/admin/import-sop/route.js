@@ -5,7 +5,8 @@ import sopData from "@/data/sop-data.json";
 // นำเข้า SOP knowledge base เข้า Postgres (รัน migration v3 + insert จาก data/sop-data.json)
 // เรียกครั้งเดียวหลัง deploy:  POST /api/admin/import-sop
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   try {
     // ---- migration v3 (idempotent) ----
     await query`CREATE TABLE IF NOT EXISTS sop_categories (
@@ -133,7 +134,8 @@ export async function POST(req) {
 
 // GET: ดูสถานะ knowledge base ปัจจุบัน
 export async function GET(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const [cats, scripts, pats, fatals] = await Promise.all([
     query`SELECT count(*)::int n FROM sop_categories`.catch(() => [{ n: 0 }]),
     query`SELECT count(*)::int n FROM sop_scripts`.catch(() => [{ n: 0 }]),

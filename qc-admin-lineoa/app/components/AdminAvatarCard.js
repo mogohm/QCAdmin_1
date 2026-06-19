@@ -26,8 +26,17 @@ export default function AdminAvatarCard({ name = "—", score, cases, tier }) {
         {initial.toUpperCase()}
       </div>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 16, color: "#f1f6ff" }}>{name}</div>
-        <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: "#f1f6ff" }}>
+          {name}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: 4,
+            alignItems: "center",
+          }}
+        >
           {score != null && (
             <span className={`score ${sc(score)}`} style={{ fontSize: 18 }}>
               {score}

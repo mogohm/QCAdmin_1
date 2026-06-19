@@ -14,14 +14,34 @@ export async function GET(req) {
   };
 
   const out = {
-    messages_total: await one(() => query`SELECT count(*)::int n FROM messages`),
-    messages_scraper: await one(() => query`SELECT count(*)::int n FROM messages WHERE source = 'scraper'`),
-    qc_scores_total: await one(() => query`SELECT count(*)::int n FROM qc_scores`),
-    qc_scores_scraper: await one(() => query`SELECT count(*)::int n FROM qc_scores WHERE source = 'scraper'`),
-    qc_score_details_total: await one(() => query`SELECT count(*)::int n FROM qc_score_details`),
-    line_customers_total: await one(() => query`SELECT count(*)::int n FROM line_customers`),
-    latest_message_at: await one(() => query`SELECT max(created_at) t FROM messages`, null),
-    latest_qc_score_at: await one(() => query`SELECT max(created_at) t FROM qc_scores`, null),
+    messages_total: await one(
+      () => query`SELECT count(*)::int n FROM messages`,
+    ),
+    messages_scraper: await one(
+      () =>
+        query`SELECT count(*)::int n FROM messages WHERE source = 'scraper'`,
+    ),
+    qc_scores_total: await one(
+      () => query`SELECT count(*)::int n FROM qc_scores`,
+    ),
+    qc_scores_scraper: await one(
+      () =>
+        query`SELECT count(*)::int n FROM qc_scores WHERE source = 'scraper'`,
+    ),
+    qc_score_details_total: await one(
+      () => query`SELECT count(*)::int n FROM qc_score_details`,
+    ),
+    line_customers_total: await one(
+      () => query`SELECT count(*)::int n FROM line_customers`,
+    ),
+    latest_message_at: await one(
+      () => query`SELECT max(created_at) t FROM messages`,
+      null,
+    ),
+    latest_qc_score_at: await one(
+      () => query`SELECT max(created_at) t FROM qc_scores`,
+      null,
+    ),
     qc_by_day:
       await query`SELECT created_at::date::text d, count(*)::int n FROM qc_scores GROUP BY 1 ORDER BY 1 DESC LIMIT 7`.catch(
         () => [],

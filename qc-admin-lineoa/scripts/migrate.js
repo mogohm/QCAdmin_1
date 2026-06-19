@@ -10,7 +10,10 @@ const path = require("path");
     process.exit(1);
   }
   const db = neon(process.env.DATABASE_URL);
-  const sql = fs.readFileSync(path.join(__dirname, "..", "sql", "schema.sql"), "utf8");
+  const sql = fs.readFileSync(
+    path.join(__dirname, "..", "sql", "schema.sql"),
+    "utf8",
+  );
   const parts = sql
     .split(/;\s*\n/)
     .map((x) => x.trim())
@@ -29,5 +32,7 @@ const path = require("path");
       }
     }
   }
-  console.log(`✅ migrate เสร็จ: รัน ${ok} statements (ข้าม/มีอยู่แล้ว ${skip})`);
+  console.log(
+    `✅ migrate เสร็จ: รัน ${ok} statements (ข้าม/มีอยู่แล้ว ${skip})`,
+  );
 })();

@@ -7,7 +7,12 @@ const path = require("path");
 const API_DIR = path.join(__dirname, "..", "app", "api");
 
 // route ที่เป็น public ตั้งใจ (ไม่ต้อง guard)
-const PUBLIC = ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/auth/logout"];
+const PUBLIC = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/me",
+  "/api/auth/logout",
+];
 // route ที่ใช้ x-api-key (service) ผ่าน requireAdmin ได้ (ถือว่า authed)
 const APIKEY_OK = ["/api/auth/setup"];
 // route สำคัญที่ "ต้อง" มี guard/requirePermission (ถ้าไม่มี = CRITICAL)
@@ -42,23 +47,35 @@ function walk(dir) {
 }
 
 function routePath(file) {
-  const rel = path.relative(path.join(__dirname, ".."), file).replace(/\\/g, "/");
+  const rel = path
+    .relative(path.join(__dirname, ".."), file)
+    .replace(/\\/g, "/");
   return "/" + rel.replace(/^app\//, "").replace(/\/route\.js$/, "");
 }
 
 function analyze(src) {
-  const methods = [...src.matchAll(/export\s+async\s+function\s+(GET|POST|PATCH|PUT|DELETE)\s*\(/g)].map((m) => m[1]);
-  const hasGuard = /\bguard\s*\(/.test(src) || /\brequirePermission\s*\(/.test(src) || /\brequireRole\s*\(/.test(src);
+  const methods = [
+    ...src.matchAll(
+      /export\s+async\s+function\s+(GET|POST|PATCH|PUT|DELETE)\s*\(/g,
+    ),
+  ].map((m) => m[1]);
+  const hasGuard =
+    /\bguard\s*\(/.test(src) ||
+    /\brequirePermission\s*\(/.test(src) ||
+    /\brequireRole\s*\(/.test(src);
   const legacy =
     /\brequireAdmin\s*\(/.test(src) ||
     /\brequireView\s*\(/.test(src) ||
     /\brequireManager\s*\(/.test(src) ||
     /\breadSession\s*\(/.test(src);
   // webhook สาธารณะที่ยืนยันด้วย LINE signature (HMAC) = ปลอดภัยแบบ signature
-  const signature = /x-line-signature/i.test(src) || /verifySignature\s*\(/.test(src);
+  const signature =
+    /x-line-signature/i.test(src) || /verifySignature\s*\(/.test(src);
   // ดึง permission key จาก guard(req, "x", "y") / requirePermission(req, "x")
   const keys = new Set();
-  for (const m of src.matchAll(/(?:guard|requirePermission)\s*\(\s*req\s*,([^)]*)\)/g)) {
+  for (const m of src.matchAll(
+    /(?:guard|requirePermission)\s*\(\s*req\s*,([^)]*)\)/g,
+  )) {
     for (const k of m[1].matchAll(/["'`]([a-z0-9_.]+)["'`]/g)) keys.add(k[1]);
   }
   return { methods, hasGuard, legacy, signature, keys: [...keys] };
@@ -98,25 +115,53 @@ for (const file of files) {
 
 console.log("== API PERMISSION AUDIT ==\n");
 const pad = (s, n) => String(s).padEnd(n);
-console.log(pad("ROUTE", 44) + pad("METHODS", 18) + pad("GUARD", 8) + pad("RISK", 14) + "PERMISSIONS");
+console.log(
+  pad("ROUTE", 44) +
+    pad("METHODS", 18) +
+    pad("GUARD", 8) +
+    pad("RISK", 14) +
+    "PERMISSIONS",
+);
 console.log("-".repeat(120));
 for (const r of rows.sort(
-  (a, b) => (a.risk === "CRITICAL" ? -1 : 1) - (b.risk === "CRITICAL" ? -1 : 1) || a.route.localeCompare(b.route),
+  (a, b) =>
+    (a.risk === "CRITICAL" ? -1 : 1) - (b.risk === "CRITICAL" ? -1 : 1) ||
+    a.route.localeCompare(b.route),
 )) {
-  const flag = r.risk === "CRITICAL" ? "❌" : ["ok", "public", "api-key", "signature"].includes(r.risk) ? "✅" : "⚠️ ";
-  console.log(flag + " " + pad(r.route, 42) + pad(r.methods, 18) + pad(r.guarded, 8) + pad(r.risk, 14) + r.keys);
+  const flag =
+    r.risk === "CRITICAL"
+      ? "❌"
+      : ["ok", "public", "api-key", "signature"].includes(r.risk)
+        ? "✅"
+        : "⚠️ ";
+  console.log(
+    flag +
+      " " +
+      pad(r.route, 42) +
+      pad(r.methods, 18) +
+      pad(r.guarded, 8) +
+      pad(r.risk, 14) +
+      r.keys,
+  );
 }
 
 // ตรวจ sensitive ครบทุกตัว
 const missing = SENSITIVE.filter((s) => !rows.find((r) => r.route === s));
 console.log("\n" + "-".repeat(120));
-console.log(`รวม ${rows.length} routes · sensitive ${SENSITIVE.length} · critical ${critical}`);
-if (missing.length) console.log("⚠️  sensitive route ที่หาไฟล์ไม่เจอ: " + missing.join(", "));
+console.log(
+  `รวม ${rows.length} routes · sensitive ${SENSITIVE.length} · critical ${critical}`,
+);
+if (missing.length)
+  console.log("⚠️  sensitive route ที่หาไฟล์ไม่เจอ: " + missing.join(", "));
 
 if (critical > 0) {
-  console.log(`\n===== API audit: ❌ FAIL — ${critical} critical route ไม่มี guard =====`);
+  console.log(
+    `\n===== API audit: ❌ FAIL — ${critical} critical route ไม่มี guard =====`,
+  );
   process.exit(1);
 }
-console.log("\n===== API audit: ✅ PASS — ทุก sensitive/write route มี guard =====");
+console.log(
+  "\n===== API audit: ✅ PASS — ทุก sensitive/write route มี guard =====",
+);
 process.exit(0);
 // rev: 2026-06-19 file-integrity (LF, multi-line verified)

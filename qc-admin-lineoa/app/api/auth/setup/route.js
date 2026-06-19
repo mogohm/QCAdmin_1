@@ -6,7 +6,8 @@ import { ALL_PERMISSIONS, ROLE_PERMS, ROLES } from "@/lib/permissions";
 
 // POST /api/auth/setup (x-api-key) — สร้างตาราง RBAC + seed roles/permissions/users (idempotent)
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   try {
     await query`CREATE TABLE IF NOT EXISTS app_users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,7 +60,13 @@ export async function POST(req) {
     }
 
     const seeded = [];
-    const upsert = async (username, pw, role, display_name, qc_admin_id = null) => {
+    const upsert = async (
+      username,
+      pw,
+      role,
+      display_name,
+      qc_admin_id = null,
+    ) => {
       await query`INSERT INTO app_users (username, password_hash, role, display_name, qc_admin_id, status)
                   VALUES (${username}, ${hashPassword(pw)}, ${role}, ${display_name}, ${qc_admin_id}, 'active')
                   ON CONFLICT (username) DO UPDATE SET role=EXCLUDED.role, display_name=EXCLUDED.display_name`;
@@ -70,7 +77,8 @@ export async function POST(req) {
     await upsert("leader", "leader123", "leader", "หัวหน้าทีม");
     await upsert("marketing", "marketing123", "marketing", "ทีมการตลาด");
 
-    const admins = await query`SELECT id, member_name FROM qc_admins WHERE is_active = true`;
+    const admins =
+      await query`SELECT id, member_name FROM qc_admins WHERE is_active = true`;
     const used = new Set();
     for (const a of admins) {
       let slug =
@@ -99,7 +107,8 @@ export async function POST(req) {
 }
 
 export async function GET(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const users =
     await query`SELECT username, role, display_name, status, last_login_at FROM app_users ORDER BY role, username`.catch(
       () => [],

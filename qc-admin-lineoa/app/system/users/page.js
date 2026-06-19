@@ -15,7 +15,11 @@ export default function Users() {
     setLoading(true);
     setErr("");
     fetch(`/api/system/users?q=${encodeURIComponent(q)}`)
-      .then((r) => (r.ok ? r.json() : r.json().then((j) => Promise.reject(j.error || r.status))))
+      .then((r) =>
+        r.ok
+          ? r.json()
+          : r.json().then((j) => Promise.reject(j.error || r.status)),
+      )
       .then((d) => {
         setUsers(d.users || []);
         setRoles(d.roles || []);
@@ -49,7 +53,8 @@ export default function Users() {
     load();
   };
   const act = async (u, action) => {
-    if (action === "reset" && !confirm("รีเซ็ตรหัสผ่าน " + u.username + "?")) return;
+    if (action === "reset" && !confirm("รีเซ็ตรหัสผ่าน " + u.username + "?"))
+      return;
     const r = await fetch(`/api/system/users/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -58,6 +63,23 @@ export default function Users() {
     const j = await r.json();
     if (!r.ok) return alert(j.error || "error");
     if (j.temp_password) alert("รหัสชั่วคราว: " + j.temp_password);
+    load();
+  };
+  // เปลี่ยนรหัสผ่าน: กำหนดรหัสใหม่เองให้ผู้ใช้
+  const setPassword = async (u) => {
+    const pw = prompt(
+      `ตั้งรหัสผ่านใหม่ให้ ${u.username} (อย่างน้อย 6 ตัวอักษร):`,
+    );
+    if (pw === null) return;
+    if (pw.length < 6) return alert("รหัสผ่านต้องอย่างน้อย 6 ตัวอักษร");
+    const r = await fetch(`/api/system/users/${u.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_password: pw }),
+    });
+    const j = await r.json();
+    if (!r.ok) return alert(j.error || "error");
+    alert(`เปลี่ยนรหัสผ่าน ${u.username} เรียบร้อย`);
     load();
   };
 
@@ -71,17 +93,27 @@ export default function Users() {
         style={{ width: 220, margin: 0 }}
       />
       <button onClick={load}>{loading ? "..." : "ค้นหา"}</button>
-      <button onClick={() => setEdit({ role: "admin", status: "active" })} style={{ background: "#16a34a" }}>
+      <button
+        onClick={() => setEdit({ role: "admin", status: "active" })}
+        style={{ background: "#16a34a" }}
+      >
         ➕ สร้างผู้ใช้
       </button>
     </>
   );
 
   return (
-    <AppShell title="User & Role Management" subtitle="จัดการบัญชีผู้ใช้ · บทบาท · สถานะ" actions={actions}>
+    <AppShell
+      title="User & Role Management"
+      subtitle="จัดการบัญชีผู้ใช้ · บทบาท · สถานะ"
+      actions={actions}
+    >
       {err ? (
         <div className="glass glow empty" style={{ color: "#f6c65b" }}>
-          🔒 {err === "forbidden" ? "ไม่มีสิทธิ์เข้าดูข้อมูลนี้ (system.users.view)" : err}
+          🔒{" "}
+          {err === "forbidden"
+            ? "ไม่มีสิทธิ์เข้าดูข้อมูลนี้ (system.users.view)"
+            : err}
         </div>
       ) : (
         <div className="glass">
@@ -108,7 +140,9 @@ export default function Users() {
               {!loading &&
                 users.map((u) => (
                   <tr key={u.id}>
-                    <td style={{ fontWeight: 700, color: "#e7eefc" }}>{u.username}</td>
+                    <td style={{ fontWeight: 700, color: "#e7eefc" }}>
+                      {u.username}
+                    </td>
                     <td>{u.display_name || "—"}</td>
                     <td>
                       <span className="badge">{u.role}</span>
@@ -122,11 +156,26 @@ export default function Users() {
                     </td>
                     <td className="muted">{u.linked_admin || "—"}</td>
                     <td className="muted" style={{ fontSize: 11 }}>
-                      {u.last_login_at ? new Date(u.last_login_at).toLocaleString("th-TH") : "—"}
+                      {u.last_login_at
+                        ? new Date(u.last_login_at).toLocaleString("th-TH")
+                        : "—"}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      <button onClick={() => setEdit(u)} style={{ padding: "3px 8px", fontSize: 11 }}>
+                      <button
+                        onClick={() => setEdit(u)}
+                        style={{ padding: "3px 8px", fontSize: 11 }}
+                      >
                         แก้
+                      </button>{" "}
+                      <button
+                        onClick={() => setPassword(u)}
+                        style={{
+                          padding: "3px 8px",
+                          fontSize: 11,
+                          background: "#0b5cab",
+                        }}
+                      >
+                        เปลี่ยนรหัส
                       </button>{" "}
                       <button
                         onClick={() => act(u, "reset")}
@@ -138,14 +187,22 @@ export default function Users() {
                       {u.status === "active" ? (
                         <button
                           onClick={() => act(u, "disable")}
-                          style={{ padding: "3px 8px", fontSize: 11, background: "#ef4444" }}
+                          style={{
+                            padding: "3px 8px",
+                            fontSize: 11,
+                            background: "#ef4444",
+                          }}
                         >
                           ปิด
                         </button>
                       ) : (
                         <button
                           onClick={() => act(u, "enable")}
-                          style={{ padding: "3px 8px", fontSize: 11, background: "#16a34a" }}
+                          style={{
+                            padding: "3px 8px",
+                            fontSize: 11,
+                            background: "#16a34a",
+                          }}
                         >
                           เปิด
                         </button>
@@ -177,21 +234,34 @@ export default function Users() {
             zIndex: 1000,
           }}
         >
-          <div className="glass glow" onClick={(e) => e.stopPropagation()} style={{ width: 380, maxWidth: "92vw" }}>
-            <h3 style={{ marginTop: 0 }}>{edit.id ? "แก้ไขผู้ใช้: " + edit.username : "สร้างผู้ใช้ใหม่"}</h3>
+          <div
+            className="glass glow"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 380, maxWidth: "92vw" }}
+          >
+            <h3 style={{ marginTop: 0 }}>
+              {edit.id ? "แก้ไขผู้ใช้: " + edit.username : "สร้างผู้ใช้ใหม่"}
+            </h3>
             {!edit.id && (
               <>
                 <label style={{ fontSize: 12 }} className="muted">
                   Username
                 </label>
-                <input value={edit.username || ""} onChange={(e) => setEdit({ ...edit, username: e.target.value })} />
+                <input
+                  value={edit.username || ""}
+                  onChange={(e) =>
+                    setEdit({ ...edit, username: e.target.value })
+                  }
+                />
                 <label style={{ fontSize: 12 }} className="muted">
                   Password
                 </label>
                 <input
                   type="password"
                   value={edit.password || ""}
-                  onChange={(e) => setEdit({ ...edit, password: e.target.value })}
+                  onChange={(e) =>
+                    setEdit({ ...edit, password: e.target.value })
+                  }
                 />
               </>
             )}
@@ -200,16 +270,24 @@ export default function Users() {
             </label>
             <input
               value={edit.display_name || ""}
-              onChange={(e) => setEdit({ ...edit, display_name: e.target.value })}
+              onChange={(e) =>
+                setEdit({ ...edit, display_name: e.target.value })
+              }
             />
             <label style={{ fontSize: 12 }} className="muted">
               Email
             </label>
-            <input value={edit.email || ""} onChange={(e) => setEdit({ ...edit, email: e.target.value })} />
+            <input
+              value={edit.email || ""}
+              onChange={(e) => setEdit({ ...edit, email: e.target.value })}
+            />
             <label style={{ fontSize: 12 }} className="muted">
               Role
             </label>
-            <select value={edit.role || "admin"} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>
+            <select
+              value={edit.role || "admin"}
+              onChange={(e) => setEdit({ ...edit, role: e.target.value })}
+            >
               {roles.map((r) => (
                 <option key={r} value={r}>
                   {r}
@@ -221,7 +299,9 @@ export default function Users() {
             </label>
             <select
               value={edit.linked_admin_id || ""}
-              onChange={(e) => setEdit({ ...edit, linked_admin_id: e.target.value || null })}
+              onChange={(e) =>
+                setEdit({ ...edit, linked_admin_id: e.target.value || null })
+              }
             >
               <option value="">— ไม่ผูก —</option>
               {admins.map((a) => (

@@ -21,6 +21,9 @@ export async function GET(req) {
     `;
     return Response.json(rows, { headers: CORS });
   } catch (err) {
-    return Response.json({ error: String(err.message || err) }, { status: 500, headers: CORS });
+    return Response.json(
+      { error: String(err.message || err) },
+      { status: 500, headers: CORS },
+    );
   }
 }

@@ -36,7 +36,12 @@ export async function runQc({
 
   const sopMatch = matchSOP(customerText || adminText, sops);
   const sop = sopMatch.sop || null;
-  const coaching = generateCoaching({ customerText, adminText, scoreResult: qc, sop });
+  const coaching = generateCoaching({
+    customerText,
+    adminText,
+    scoreResult: qc,
+    sop,
+  });
 
   const row = await query`
     INSERT INTO qc_scores (
@@ -63,18 +68,30 @@ export async function runQc({
   for (const d of qc.details || []) {
     await query`INSERT INTO qc_score_details (qc_score_id, category_code, raw_score, weighted_score, max_score, pass, evidence, fail_reason, suggestion)
       VALUES (${qc.id}, ${d.category_code}, ${d.raw_score}, ${d.weighted_score}, ${d.max_score}, ${d.pass},
-              ${JSON.stringify(d.evidence || {})}, ${d.fail_reason || null}, ${d.suggestion || null})`.catch(() => {});
+              ${JSON.stringify(d.evidence || {})}, ${d.fail_reason || null}, ${d.suggestion || null})`.catch(
+      () => {},
+    );
   }
 
   // นับ used_count ของ SOP
   if (sop?.id)
-    await query`UPDATE sop_scripts SET used_count = COALESCE(used_count,0) + 1 WHERE id = ${sop.id}`.catch(() => {});
+    await query`UPDATE sop_scripts SET used_count = COALESCE(used_count,0) + 1 WHERE id = ${sop.id}`.catch(
+      () => {},
+    );
 
   // Telegram
-  const slaFail = !sla.active && qc.dimensions?.responseTime != null && qc.dimensions.responseTime < 60;
+  const slaFail =
+    !sla.active &&
+    qc.dimensions?.responseTime != null &&
+    qc.dimensions.responseTime < 60;
   if (qc.isFatal || qc.finalScore < 70 || slaFail) {
     const failedCats = (qc.details || [])
-      .filter((x) => x.applicable && x.pass === false && !["minorError", "fatalError"].includes(x.category_code))
+      .filter(
+        (x) =>
+          x.applicable &&
+          x.pass === false &&
+          !["minorError", "fatalError"].includes(x.category_code),
+      )
       .map((x) => x.category_code);
     qcAlert({
       kind: qc.isFatal ? "FATAL" : slaFail ? "SLA FAIL" : "FAIL",

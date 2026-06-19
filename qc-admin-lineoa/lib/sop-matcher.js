@@ -11,7 +11,8 @@ function tokens(text = "") {
   const thBigrams = [];
   for (const c of thChunks) {
     if (c.length <= 2) thBigrams.push(c);
-    else for (let i = 0; i < c.length - 1; i++) thBigrams.push(c.slice(i, i + 2));
+    else
+      for (let i = 0; i < c.length - 1; i++) thBigrams.push(c.slice(i, i + 2));
   }
   return new Set([...en, ...thBigrams]);
 }
@@ -36,7 +37,8 @@ function keywordScore(text, sop) {
 // หา SOP ที่ตรงที่สุดสำหรับข้อความ (ปกติคือข้อความลูกค้า)
 //   sops: array จาก DB/JSON (มี topic, keywords, intent, answer, required_keywords)
 function matchSOP(text, sops = [], opts = {}) {
-  if (!text || !sops.length) return { sop: null, confidence: 0, method: "none", intent: "general" };
+  if (!text || !sops.length)
+    return { sop: null, confidence: 0, method: "none", intent: "general" };
   const det = opts.intent ? { intent: opts.intent } : detectIntent(text);
   const tset = tokens(text);
   const nt = normalize(text);
@@ -46,21 +48,37 @@ function matchSOP(text, sops = [], opts = {}) {
     const topic = normalize(sop.topic || sop.question || "");
     // 1) Exact: ข้อความ ⊇ topic หรือ topic ⊇ ข้อความ
     let exact = 0;
-    if (topic && (nt.includes(topic) || (topic.length > 6 && topic.includes(nt)))) exact = 1;
+    if (
+      topic &&
+      (nt.includes(topic) || (topic.length > 6 && topic.includes(nt)))
+    )
+      exact = 1;
     // 2) Keyword
     const kw = keywordScore(text, sop);
     // 3) Fuzzy (Dice ของ token)
-    const fz = dice(tset, tokens((sop.topic || "") + " " + (sop.keywords || []).join(" ")));
+    const fz = dice(
+      tset,
+      tokens((sop.topic || "") + " " + (sop.keywords || []).join(" ")),
+    );
     // intent ตรงกัน → โบนัส
-    const intentBonus = sop.intent && det.intent && sop.intent === det.intent ? 0.15 : 0;
+    const intentBonus =
+      sop.intent && det.intent && sop.intent === det.intent ? 0.15 : 0;
 
     const raw = Math.max(exact, kw * 0.9, fz) + intentBonus;
     const method = exact ? "exact" : kw >= fz ? "keyword" : "fuzzy";
     const confidence = Math.round(Math.min(100, raw * 100));
     if (!best || confidence > best.confidence)
-      best = { sop, confidence, method, intent: det.intent, _raw: { exact, kw: +kw.toFixed(2), fz: +fz.toFixed(2) } };
+      best = {
+        sop,
+        confidence,
+        method,
+        intent: det.intent,
+        _raw: { exact, kw: +kw.toFixed(2), fz: +fz.toFixed(2) },
+      };
   }
-  return best || { sop: null, confidence: 0, method: "none", intent: det.intent };
+  return (
+    best || { sop: null, confidence: 0, method: "none", intent: det.intent }
+  );
 }
 
 // วัดความใกล้เคียงคำตอบ admin กับคำตอบ SOP (สำหรับ QC SOP-accuracy) 0-100
@@ -70,9 +88,13 @@ function answerSimilarity(adminText, sop) {
   const b = tokens(sop.answer || "");
   const sim = dice(a, b); // ความเหมือนเนื้อหา
   // required keyword coverage
-  const req = (sop.required_keywords || []).map((k) => normalize(k)).filter(Boolean);
+  const req = (sop.required_keywords || [])
+    .map((k) => normalize(k))
+    .filter(Boolean);
   const at = normalize(adminText);
-  const reqCov = req.length ? req.filter((k) => at.includes(k)).length / req.length : null;
+  const reqCov = req.length
+    ? req.filter((k) => at.includes(k)).length / req.length
+    : null;
   // รวม: เน้น required ถ้ามี
   const score = reqCov === null ? sim : reqCov * 0.6 + sim * 0.4;
   return Math.round(Math.min(100, score * 100));

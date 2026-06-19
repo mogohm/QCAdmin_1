@@ -23,22 +23,36 @@ export default function ScraperStatusFloat() {
       try {
         const r = await fetch("/api/scraper/job");
         const jobs = await r.json();
-        if (Array.isArray(jobs)) activeJob = jobs.find((j) => j.status === "running" || j.status === "pending");
+        if (Array.isArray(jobs))
+          activeJob = jobs.find(
+            (j) => j.status === "running" || j.status === "pending",
+          );
       } catch {}
 
       if (activeJob?.status === "running") {
         const pct =
-          activeJob.total_chats > 0 ? Math.round((activeJob.logged_count / activeJob.total_chats) * 100) : null;
+          activeJob.total_chats > 0
+            ? Math.round((activeJob.logged_count / activeJob.total_chats) * 100)
+            : null;
         setState({
           mode: "running",
           label: `🔄 Scraping${pct !== null ? ` ${pct}%` : "..."}`,
-          sub: activeJob.current_chat ? `กำลังดึง: ${activeJob.current_chat}` : null,
+          sub: activeJob.current_chat
+            ? `กำลังดึง: ${activeJob.current_chat}`
+            : null,
           pct,
         });
       } else if (activeJob?.status === "pending") {
-        setState({ mode: "pending", label: "⏳ รอ scraper รับงาน", sub: null, pct: null });
+        setState({
+          mode: "pending",
+          label: "⏳ รอ scraper รับงาน",
+          sub: null,
+          pct: null,
+        });
       } else if (cfg?.on) {
-        const remaining = cfg.nextRun ? Math.max(0, cfg.nextRun - Date.now()) : 0;
+        const remaining = cfg.nextRun
+          ? Math.max(0, cfg.nextRun - Date.now())
+          : 0;
         setState({
           mode: "scheduled",
           label: `⏰ Auto ON — รันใน ${fmtCountdown(remaining)}`,
@@ -57,7 +71,12 @@ export default function ScraperStatusFloat() {
 
   if (!state) return null;
 
-  const bg = state.mode === "running" ? "#2196f3" : state.mode === "pending" ? "#f59e0b" : "#22c55e";
+  const bg =
+    state.mode === "running"
+      ? "#2196f3"
+      : state.mode === "pending"
+        ? "#f59e0b"
+        : "#22c55e";
 
   return (
     <div
@@ -77,16 +96,39 @@ export default function ScraperStatusFloat() {
         transition: "opacity 0.3s",
       }}
     >
-      <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap" }}>{state.label}</div>
-      {state.sub && <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>{state.sub}</div>}
+      <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: "nowrap" }}>
+        {state.label}
+      </div>
+      {state.sub && (
+        <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+          {state.sub}
+        </div>
+      )}
       {state.pct !== null && (
-        <div style={{ marginTop: 6, background: "rgba(255,255,255,0.3)", borderRadius: 4, height: 4 }}>
+        <div
+          style={{
+            marginTop: 6,
+            background: "rgba(255,255,255,0.3)",
+            borderRadius: 4,
+            height: 4,
+          }}
+        >
           <div
-            style={{ background: "#fff", borderRadius: 4, height: 4, width: `${state.pct}%`, transition: "width 0.5s" }}
+            style={{
+              background: "#fff",
+              borderRadius: 4,
+              height: 4,
+              width: `${state.pct}%`,
+              transition: "width 0.5s",
+            }}
           />
         </div>
       )}
-      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4, textAlign: "right" }}>คลิกเพื่อดูรายละเอียด</div>
+      <div
+        style={{ fontSize: 10, opacity: 0.7, marginTop: 4, textAlign: "right" }}
+      >
+        คลิกเพื่อดูรายละเอียด
+      </div>
     </div>
   );
 }

@@ -14,7 +14,11 @@ function timeAgo(iso) {
   if (s < 60) return `${s}s ที่แล้ว`;
   if (s < 3600) return `${Math.floor(s / 60)}m ที่แล้ว`;
   if (s < 86400) return `${Math.floor(s / 3600)}h ที่แล้ว`;
-  return new Date(iso).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -30,8 +34,18 @@ function scoreColor(v) {
   return v >= 85 ? "#22c55e" : v >= 70 ? "#f59e0b" : "#ef4444";
 }
 
-const statusLabel = { unknown: "❓ ไม่ทราบ", pass: "✅ ผ่าน", fail: "❌ ไม่ผ่าน", pending: "⏳ รอดำเนินการ" };
-const eventIcon = { register: "📝", kyc: "🪪", deposit: "💰", withdrawal: "💸" };
+const statusLabel = {
+  unknown: "❓ ไม่ทราบ",
+  pass: "✅ ผ่าน",
+  fail: "❌ ไม่ผ่าน",
+  pending: "⏳ รอดำเนินการ",
+};
+const eventIcon = {
+  register: "📝",
+  kyc: "🪪",
+  deposit: "💰",
+  withdrawal: "💸",
+};
 
 export default function CustomerProfile() {
   const params = useParams();
@@ -58,14 +72,28 @@ export default function CustomerProfile() {
       });
   }, [line_user_id]);
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>กำลังโหลด...</div>;
-  if (error) return <div style={{ padding: 40, color: "#ef4444" }}>เกิดข้อผิดพลาด: {error}</div>;
+  if (loading)
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>
+        กำลังโหลด...
+      </div>
+    );
+  if (error)
+    return (
+      <div style={{ padding: 40, color: "#ef4444" }}>
+        เกิดข้อผิดพลาด: {error}
+      </div>
+    );
 
   const { customer, events, conversations, stats } = data || {};
   const name = customer?.display_name || line_user_id;
 
-  const regEvent = events?.find((e) => e.event_type === "register" && e.status === "pass");
-  const kycEvent = events?.find((e) => e.event_type === "kyc" && e.status === "pass");
+  const regEvent = events?.find(
+    (e) => e.event_type === "register" && e.status === "pass",
+  );
+  const kycEvent = events?.find(
+    (e) => e.event_type === "kyc" && e.status === "pass",
+  );
   const deposits = events?.filter((e) => e.event_type === "deposit") || [];
   const totalDep = deposits.reduce((s, e) => s + Number(e.amount || 0), 0);
 
@@ -89,12 +117,28 @@ export default function CustomerProfile() {
       </aside>
       <main className="main" style={{ maxWidth: 1100 }}>
         {/* Back + Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-          <a href="/" style={{ color: "#6b7280", textDecoration: "none", fontSize: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 24,
+          }}
+        >
+          <a
+            href="/"
+            style={{ color: "#6b7280", textDecoration: "none", fontSize: 20 }}
+          >
             ←
           </a>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>👤 {name}</h1>
-          <span style={{ fontSize: 12, color: "#9ca3af", fontFamily: "monospace" }}>{line_user_id}</span>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+            👤 {name}
+          </h1>
+          <span
+            style={{ fontSize: 12, color: "#9ca3af", fontFamily: "monospace" }}
+          >
+            {line_user_id}
+          </span>
           <button
             onClick={() => setChatUser({ line_user_id, name })}
             style={{
@@ -113,7 +157,14 @@ export default function CustomerProfile() {
         </div>
 
         {/* Status badges */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            marginBottom: 20,
+          }}
+        >
           <span
             style={{
               background: regEvent ? "#dcfce7" : "#f1f5f9",
@@ -137,13 +188,25 @@ export default function CustomerProfile() {
             🪪 KYC: {kycEvent ? statusLabel.pass : statusLabel.unknown}
           </span>
           <span
-            style={{ background: "#fef3c7", color: "#92400e", padding: "4px 14px", borderRadius: 20, fontSize: 13 }}
+            style={{
+              background: "#fef3c7",
+              color: "#92400e",
+              padding: "4px 14px",
+              borderRadius: 20,
+              fontSize: 13,
+            }}
           >
             💰 เติมรวม: {totalDep.toLocaleString()} บาท
           </span>
           {customer?.first_seen_at && (
             <span
-              style={{ background: "#f1f5f9", color: "#6b7280", padding: "4px 14px", borderRadius: 20, fontSize: 13 }}
+              style={{
+                background: "#f1f5f9",
+                color: "#6b7280",
+                padding: "4px 14px",
+                borderRadius: 20,
+                fontSize: 13,
+              }}
             >
               🕒 พบครั้งแรก: {timeAgo(customer.first_seen_at)}
             </span>
@@ -160,8 +223,16 @@ export default function CustomerProfile() {
           }}
         >
           {[
-            { label: "Conversations", value: conversations?.length || 0, icon: "💬" },
-            { label: "ข้อความ QC ทั้งหมด", value: stats?.total_scores || 0, icon: "📊" },
+            {
+              label: "Conversations",
+              value: conversations?.length || 0,
+              icon: "💬",
+            },
+            {
+              label: "ข้อความ QC ทั้งหมด",
+              value: stats?.total_scores || 0,
+              icon: "📊",
+            },
             {
               label: "QC Score เฉลี่ย",
               value: stats?.avg_score ? `${stats.avg_score}` : "—",
@@ -170,7 +241,9 @@ export default function CustomerProfile() {
             },
             {
               label: "เวลาตอบเฉลี่ย",
-              value: stats?.avg_response_sec ? fmtSec(stats.avg_response_sec) : "—",
+              value: stats?.avg_response_sec
+                ? fmtSec(stats.avg_response_sec)
+                : "—",
               icon: "⏱️",
             },
           ].map((s, i) => (
@@ -184,20 +257,46 @@ export default function CustomerProfile() {
               }}
             >
               <div style={{ fontSize: 22 }}>{s.icon}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: s.color || "#111827", marginTop: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{s.label}</div>
+              <div
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: s.color || "#111827",
+                  marginTop: 4,
+                }}
+              >
+                {s.value}
+              </div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                {s.label}
+              </div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+        >
           {/* Events timeline */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 16 }}>📅 Event Timeline</h2>
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 20,
+              boxShadow: "0 1px 4px rgba(0,0,0,.06)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 16px", fontSize: 16 }}>
+              📅 Event Timeline
+            </h2>
             {!events || events.length === 0 ? (
-              <div style={{ color: "#9ca3af", fontSize: 14 }}>ยังไม่มี events</div>
+              <div style={{ color: "#9ca3af", fontSize: 14 }}>
+                ยังไม่มี events
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
                 {events.map((e, i) => (
                   <div
                     key={i}
@@ -209,16 +308,24 @@ export default function CustomerProfile() {
                       borderBottom: "1px solid #f1f5f9",
                     }}
                   >
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{eventIcon[e.event_type] || "📌"}</span>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>
+                      {eventIcon[e.event_type] || "📌"}
+                    </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>
                         {e.event_type}
-                        {e.status ? ` — ${statusLabel[e.status] || e.status}` : ""}
+                        {e.status
+                          ? ` — ${statusLabel[e.status] || e.status}`
+                          : ""}
                       </div>
                       {e.amount && (
-                        <div style={{ color: "#2563eb", fontSize: 13 }}>฿ {Number(e.amount).toLocaleString()}</div>
+                        <div style={{ color: "#2563eb", fontSize: 13 }}>
+                          ฿ {Number(e.amount).toLocaleString()}
+                        </div>
                       )}
-                      <div style={{ color: "#9ca3af", fontSize: 11 }}>{fmtDate(e.created_at)}</div>
+                      <div style={{ color: "#9ca3af", fontSize: 11 }}>
+                        {fmtDate(e.created_at)}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -227,16 +334,37 @@ export default function CustomerProfile() {
           </div>
 
           {/* Conversations */}
-          <div style={{ background: "#fff", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,.06)" }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 16 }}>💬 Conversations ({conversations?.length || 0})</h2>
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: 20,
+              boxShadow: "0 1px 4px rgba(0,0,0,.06)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 16px", fontSize: 16 }}>
+              💬 Conversations ({conversations?.length || 0})
+            </h2>
             {!conversations || conversations.length === 0 ? (
-              <div style={{ color: "#9ca3af", fontSize: 14 }}>ยังไม่มี conversation</div>
+              <div style={{ color: "#9ca3af", fontSize: 14 }}>
+                ยังไม่มี conversation
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 420, overflowY: "auto" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  maxHeight: 420,
+                  overflowY: "auto",
+                }}
+              >
                 {conversations.map((c, i) => (
                   <div
                     key={i}
-                    onClick={() => setExpandConv(expandConv === c.id ? null : c.id)}
+                    onClick={() =>
+                      setExpandConv(expandConv === c.id ? null : c.id)
+                    }
                     style={{
                       border: "1px solid #e5e7eb",
                       borderRadius: 10,
@@ -245,11 +373,18 @@ export default function CustomerProfile() {
                       background: expandConv === c.id ? "#f0f9ff" : "#fafafa",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
                       <div>
                         <span
                           style={{
-                            background: c.status === "open" ? "#dcfce7" : "#f1f5f9",
+                            background:
+                              c.status === "open" ? "#dcfce7" : "#f1f5f9",
                             color: c.status === "open" ? "#166534" : "#6b7280",
                             fontSize: 11,
                             padding: "2px 8px",
@@ -259,15 +394,31 @@ export default function CustomerProfile() {
                         >
                           {c.status === "open" ? "🟢 open" : "⚫ closed"}
                         </span>
-                        <span style={{ fontSize: 12, color: "#6b7280", marginLeft: 8 }}>{c.admin_name || "—"}</span>
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "#6b7280",
+                            marginLeft: 8,
+                          }}
+                        >
+                          {c.admin_name || "—"}
+                        </span>
                       </div>
                       {c.avg_score > 0 && (
-                        <span style={{ fontWeight: 700, color: scoreColor(c.avg_score), fontSize: 14 }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color: scoreColor(c.avg_score),
+                            fontSize: 14,
+                          }}
+                        >
                           {c.avg_score}
                         </span>
                       )}
                     </div>
-                    <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+                    <div
+                      style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}
+                    >
                       {fmtDate(c.opened_at)}
                       {c.closed_at && <> – {fmtDate(c.closed_at)}</>}
                     </div>
@@ -296,7 +447,9 @@ export default function CustomerProfile() {
           </div>
         </div>
 
-        {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
+        {chatUser && (
+          <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
+        )}
       </main>
     </div>
   );

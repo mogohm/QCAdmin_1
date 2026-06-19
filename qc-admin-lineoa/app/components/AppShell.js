@@ -39,9 +39,12 @@ export default function AppShell({ title, subtitle, actions, children }) {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
   };
-  const active = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const active = (href) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
   // กรองเมนูตามสิทธิ์จริง (system_admin เห็นทั้งหมด) — ใช้ helper ชุดเดียวกับ Sidebar/permissions.js
-  const visibleMenu = me?.authenticated ? filterMenuByPermissions(me, MENU) : [];
+  const visibleMenu = me?.authenticated
+    ? filterMenuByPermissions(me, MENU)
+    : [];
 
   return (
     <div className="shell">
@@ -63,20 +66,36 @@ export default function AppShell({ title, subtitle, actions, children }) {
             </a>
           ))}
         </nav>
-        <div style={{ marginTop: "auto", paddingTop: 16, fontSize: 12, color: "#9fb3d6" }}>
+        <div
+          style={{
+            marginTop: "auto",
+            paddingTop: 16,
+            fontSize: 12,
+            color: "#9fb3d6",
+          }}
+        >
           {me?.authenticated ? (
             <>
               <div style={{ marginBottom: 8 }}>
                 👤 {me.name}{" "}
                 <span
-                  style={{ background: "rgba(255,255,255,.12)", borderRadius: 6, padding: "1px 7px", fontSize: 10 }}
+                  style={{
+                    background: "rgba(255,255,255,.12)",
+                    borderRadius: 6,
+                    padding: "1px 7px",
+                    fontSize: 10,
+                  }}
                 >
                   {me.role}
                 </span>
               </div>
               <button
                 onClick={logout}
-                style={{ background: "rgba(255,255,255,.12)", fontSize: 12, padding: "6px 12px" }}
+                style={{
+                  background: "rgba(255,255,255,.12)",
+                  fontSize: 12,
+                  padding: "6px 12px",
+                }}
               >
                 ออกจากระบบ
               </button>
@@ -102,7 +121,11 @@ export default function AppShell({ title, subtitle, actions, children }) {
       <main className="main">
         <div className="top">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button className="burger" onClick={() => setOpen((v) => !v)} style={{ display: "none" }}>
+            <button
+              className="burger"
+              onClick={() => setOpen((v) => !v)}
+              style={{ display: "none" }}
+            >
               ☰
             </button>
             <div>
@@ -114,7 +137,18 @@ export default function AppShell({ title, subtitle, actions, children }) {
               )}
             </div>
           </div>
-          {actions && <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>}
+          {actions && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              {actions}
+            </div>
+          )}
         </div>
         {children}
       </main>

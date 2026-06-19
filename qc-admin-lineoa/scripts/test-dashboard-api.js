@@ -1,8 +1,13 @@
 // test-dashboard-api.js — ตรวจว่า /api/dashboard ส่ง field ครบตาม Phase 3
 //   npm run test:dashboard-api   (ยิงไปที่ deployed URL หรือ DASHBOARD_URL)
-const BASE = process.env.DASHBOARD_URL || process.env.APP_BASE_URL || "https://qc-admin-1.vercel.app";
+const BASE =
+  process.env.DASHBOARD_URL ||
+  process.env.APP_BASE_URL ||
+  "https://qc-admin-1.vercel.app";
 // dashboard ถูกป้องกันด้วย guard (session หรือ api-key) — ส่ง x-api-key ถ้ามี
-const AUTH = process.env.ADMIN_API_KEY ? { "x-api-key": process.env.ADMIN_API_KEY } : {};
+const AUTH = process.env.ADMIN_API_KEY
+  ? { "x-api-key": process.env.ADMIN_API_KEY }
+  : {};
 
 let pass = 0,
   fail = 0;
@@ -15,7 +20,10 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 (async () => {
   let d, status;
   try {
-    const r = await fetch(`${BASE}/api/dashboard?from=2026-06-01&to=2026-06-30`, { headers: AUTH });
+    const r = await fetch(
+      `${BASE}/api/dashboard?from=2026-06-01&to=2026-06-30`,
+      { headers: AUTH },
+    );
     status = r.status;
     d = await r.json();
   } catch (e) {
@@ -25,8 +33,12 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 
   // /api/dashboard ถูกป้องกันด้วย guard — ถ้าไม่มี ADMIN_API_KEY และโดน 401 ให้ข้าม (ไม่ fail uat:check)
   if (status === 401 && !process.env.ADMIN_API_KEY) {
-    console.log("⏭️  ข้าม test:dashboard-api — /api/dashboard ต้องมี session/ADMIN_API_KEY");
-    console.log("    (ตั้ง ADMIN_API_KEY=… ก่อนรันเพื่อทดสอบ dashboard + SOP CRUD แบบเต็ม)");
+    console.log(
+      "⏭️  ข้าม test:dashboard-api — /api/dashboard ต้องมี session/ADMIN_API_KEY",
+    );
+    console.log(
+      "    (ตั้ง ADMIN_API_KEY=… ก่อนรันเพื่อทดสอบ dashboard + SOP CRUD แบบเต็ม)",
+    );
     process.exit(0);
   }
 
@@ -60,7 +72,9 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
   ok("minorCases number", typeof d.minorCases === "number");
   ok(
     "sopCoverage {matched,unmatched,percent,top_unmatched_intents}",
-    has(d.sopCoverage, "matched") && has(d.sopCoverage, "unmatched") && has(d.sopCoverage, "top_unmatched_intents"),
+    has(d.sopCoverage, "matched") &&
+      has(d.sopCoverage, "unmatched") &&
+      has(d.sopCoverage, "top_unmatched_intents"),
   );
   ok(
     "coachingSummary {recent,lowest_categories,repeated_fail_reasons}",
@@ -70,7 +84,9 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
   );
   ok(
     "disputeSummary {pending,approved,rejected}",
-    has(d.disputeSummary, "pending") && has(d.disputeSummary, "approved") && has(d.disputeSummary, "rejected"),
+    has(d.disputeSummary, "pending") &&
+      has(d.disputeSummary, "approved") &&
+      has(d.disputeSummary, "rejected"),
   );
   ok(
     "commissionSummary {tiers,per_admin}",
@@ -79,7 +95,10 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
       Array.isArray(d.commissionSummary.per_admin),
   );
   ok("adminCategoryRanking array", Array.isArray(d.adminCategoryRanking));
-  ok("slaExceptionSummary {sla_pass_pct}", has(d.slaExceptionSummary, "sla_pass_pct"));
+  ok(
+    "slaExceptionSummary {sla_pass_pct}",
+    has(d.slaExceptionSummary, "sla_pass_pct"),
+  );
   ok("ranking array", Array.isArray(d.ranking));
   ok("pendingReply array", Array.isArray(d.pendingReply));
 
@@ -103,7 +122,12 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
         await fetch(`${BASE}/api/sop`, {
           method: "POST",
           headers: H,
-          body: JSON.stringify({ topic, answer: "test answer", intent: "deposit", required_keywords: "ลิงก์,ยอด" }),
+          body: JSON.stringify({
+            topic,
+            answer: "test answer",
+            intent: "deposit",
+            required_keywords: "ลิงก์,ยอด",
+          }),
         })
       ).json();
       ok("SOP POST create", c.ok && c.sop?.id, c.error || "");
@@ -113,17 +137,30 @@ const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
           await fetch(`${BASE}/api/sop/${sid}`, {
             method: "PATCH",
             headers: H,
-            body: JSON.stringify({ answer: "updated", forbidden_keywords: "โง่" }),
+            body: JSON.stringify({
+              answer: "updated",
+              forbidden_keywords: "โง่",
+            }),
           })
         ).json();
         ok("SOP PATCH update", p.ok && p.sop?.answer === "updated");
-        const sd = await (await fetch(`${BASE}/api/sop/${sid}`, { method: "DELETE", headers: H })).json();
+        const sd = await (
+          await fetch(`${BASE}/api/sop/${sid}`, {
+            method: "DELETE",
+            headers: H,
+          })
+        ).json();
         ok(
           "SOP DELETE = soft (is_active=false)",
           sd.ok && sd.soft_deleted?.is_active === false,
           JSON.stringify(sd).slice(0, 80),
         );
-        const hd = await (await fetch(`${BASE}/api/sop/${sid}?hard=true`, { method: "DELETE", headers: H })).json();
+        const hd = await (
+          await fetch(`${BASE}/api/sop/${sid}?hard=true`, {
+            method: "DELETE",
+            headers: H,
+          })
+        ).json();
         ok("SOP DELETE ?hard=true = hard delete", hd.ok && !!hd.hard_deleted);
       }
     } catch (e) {

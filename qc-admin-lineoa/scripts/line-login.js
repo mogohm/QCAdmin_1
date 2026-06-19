@@ -16,21 +16,28 @@ async function main() {
   try {
     ({ chromium } = require("playwright"));
   } catch {
-    console.error("\n❌ ไม่พบ playwright — รัน: npm install playwright && npx playwright install chromium");
+    console.error(
+      "\n❌ ไม่พบ playwright — รัน: npm install playwright && npx playwright install chromium",
+    );
     process.exit(1);
   }
 
-  if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
+  if (!fs.existsSync(STORAGE_DIR))
+    fs.mkdirSync(STORAGE_DIR, { recursive: true });
 
   console.log("\n🔐 เปิด browser เพื่อ login LINE OA Manager");
   console.log(`   → ${LINE_OA_URL}`);
   console.log("   1) login ด้วยบัญชีที่มีสิทธิ์ดูแชท");
-  console.log("   2) เมื่อเห็นรายการแชทแล้ว กลับมาที่หน้าต่างนี้แล้วกด Enter\n");
+  console.log(
+    "   2) เมื่อเห็นรายการแชทแล้ว กลับมาที่หน้าต่างนี้แล้วกด Enter\n",
+  );
 
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(LINE_OA_URL, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await page
+    .goto(LINE_OA_URL, { waitUntil: "domcontentloaded" })
+    .catch(() => {});
 
   // ตรวจอัตโนมัติ: ถ้าเจอ chat list ให้ save ทันที, หรือรอผู้ใช้กด Enter
   const waitList = page
@@ -49,7 +56,9 @@ async function main() {
   }
 
   await context.storageState({ path: AUTH_FILE });
-  console.log(`\n💾 บันทึก session แล้ว: ${path.relative(process.cwd(), AUTH_FILE)}`);
+  console.log(
+    `\n💾 บันทึก session แล้ว: ${path.relative(process.cwd(), AUTH_FILE)}`,
+  );
   console.log("   ต่อไปรัน: npm run scraper:watch\n");
 
   await browser.close().catch(() => {});

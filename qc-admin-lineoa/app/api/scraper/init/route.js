@@ -3,7 +3,8 @@ import { requireAdmin } from "@/lib/auth";
 
 // เรียกครั้งเดียวเพื่อสร้างตาราง scraper_jobs
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   await query`
     CREATE TABLE IF NOT EXISTS scraper_jobs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

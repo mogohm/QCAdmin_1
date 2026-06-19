@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from "react";
 
 function fmtTime(iso) {
   if (!iso) return "";
-  return new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 function fmtDateSep(iso) {
   if (!iso) return "";
@@ -39,7 +42,11 @@ function tryParseObj(v) {
 function sameDay(a, b) {
   const da = new Date(a),
     db = new Date(b);
-  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
 }
 
 export default function ChatModal({ user, onClose }) {
@@ -63,7 +70,11 @@ export default function ChatModal({ user, onClose }) {
       body: JSON.stringify({ qc_score_id: qcScoreId, reason: disputeReason }),
     });
     const j = await r.json();
-    setDisputeMsg(j.ok ? "✅ ส่งคำโต้แย้งแล้ว รอ Manager ตรวจ" : "⚠️ " + (j.error || "error"));
+    setDisputeMsg(
+      j.ok
+        ? "✅ ส่งคำโต้แย้งแล้ว รอ Manager ตรวจ"
+        : "⚠️ " + (j.error || "error"),
+    );
     if (j.ok) {
       setDisputeReason("");
       setTimeout(() => {
@@ -97,7 +108,11 @@ export default function ChatModal({ user, onClose }) {
   }, [user?.line_user_id]);
 
   useEffect(() => {
-    if (data) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+    if (data)
+      setTimeout(
+        () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+        80,
+      );
   }, [data]);
 
   // Close on Escape
@@ -115,7 +130,9 @@ export default function ChatModal({ user, onClose }) {
   const customer = data?.customer;
   const adminMsgs = msgs.filter((m) => m.final_score != null);
   const avgScore = adminMsgs.length
-    ? Math.round(adminMsgs.reduce((s, m) => s + m.final_score, 0) / adminMsgs.length)
+    ? Math.round(
+        adminMsgs.reduce((s, m) => s + m.final_score, 0) / adminMsgs.length,
+      )
     : null;
 
   return (
@@ -210,12 +227,26 @@ export default function ChatModal({ user, onClose }) {
               {customer?.display_name || user.name || user.line_user_id}
             </div>
             <div
-              style={{ fontSize: 10, opacity: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              style={{
+                fontSize: 10,
+                opacity: 0.8,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
             >
               {user.line_user_id}
             </div>
           </div>
-          <div style={{ fontSize: 11, textAlign: "right", opacity: 0.9, lineHeight: 1.5, flexShrink: 0 }}>
+          <div
+            style={{
+              fontSize: 11,
+              textAlign: "right",
+              opacity: 0.9,
+              lineHeight: 1.5,
+              flexShrink: 0,
+            }}
+          >
             <div>{msgs.length} ข้อความ</div>
             {avgScore != null && (
               <div
@@ -238,12 +269,30 @@ export default function ChatModal({ user, onClose }) {
         {/* Messages */}
         <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px 16px" }}>
           {loading && (
-            <div style={{ textAlign: "center", padding: 48, color: "#555", fontSize: 14 }}>⏳ กำลังโหลด...</div>
+            <div
+              style={{
+                textAlign: "center",
+                padding: 48,
+                color: "#555",
+                fontSize: 14,
+              }}
+            >
+              ⏳ กำลังโหลด...
+            </div>
           )}
           {!loading && error && (
-            <div style={{ textAlign: "center", padding: 32, color: "#dc2626", fontSize: 13 }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: 32,
+                color: "#dc2626",
+                fontSize: 13,
+              }}
+            >
               <div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>เกิดข้อผิดพลาด</div>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>
+                เกิดข้อผิดพลาด
+              </div>
               <div
                 style={{
                   fontFamily: "monospace",
@@ -259,10 +308,19 @@ export default function ChatModal({ user, onClose }) {
             </div>
           )}
           {!loading && !error && msgs.length === 0 && (
-            <div style={{ textAlign: "center", padding: 48, color: "#666", fontSize: 14 }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: 48,
+                color: "#666",
+                fontSize: 14,
+              }}
+            >
               <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
               <div>ไม่พบข้อมูลแชท</div>
-              <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>{user?.line_user_id}</div>
+              <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>
+                {user?.line_user_id}
+              </div>
             </div>
           )}
 
@@ -276,8 +334,21 @@ export default function ChatModal({ user, onClose }) {
               <div key={msg.id}>
                 {/* Date separator */}
                 {showDate && (
-                  <div style={{ textAlign: "center", margin: "14px 0 8px", fontSize: 11, color: "#555" }}>
-                    <span style={{ background: "rgba(0,0,0,0.1)", borderRadius: 100, padding: "3px 12px" }}>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      margin: "14px 0 8px",
+                      fontSize: 11,
+                      color: "#555",
+                    }}
+                  >
+                    <span
+                      style={{
+                        background: "rgba(0,0,0,0.1)",
+                        borderRadius: 100,
+                        padding: "3px 12px",
+                      }}
+                    >
                       {fmtDateSep(msg.created_at)}
                     </span>
                   </div>
@@ -323,7 +394,14 @@ export default function ChatModal({ user, onClose }) {
                   >
                     {/* Admin name */}
                     {isAdmin && msg.admin_name && (
-                      <div style={{ fontSize: 10, color: "#444", marginBottom: 1, marginRight: 2 }}>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "#444",
+                          marginBottom: 1,
+                          marginRight: 2,
+                        }}
+                      >
                         {msg.admin_name}
                       </div>
                     )}
@@ -364,25 +442,43 @@ export default function ChatModal({ user, onClose }) {
 
                       {/* Bubble */}
                       <div
-                        onClick={() => isAdmin && msg.final_score != null && setActiveId(isActive ? null : msg.id)}
+                        onClick={() =>
+                          isAdmin &&
+                          msg.final_score != null &&
+                          setActiveId(isActive ? null : msg.id)
+                        }
                         style={{
                           background: isAdmin ? "#c8f7c5" : "#fff",
-                          borderRadius: isAdmin ? "16px 3px 16px 16px" : "3px 16px 16px 16px",
+                          borderRadius: isAdmin
+                            ? "16px 3px 16px 16px"
+                            : "3px 16px 16px 16px",
                           padding: "9px 13px",
                           fontSize: 13,
                           lineHeight: 1.5,
                           color: "#1a1a1a",
                           wordBreak: "break-word",
                           boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-                          cursor: isAdmin && msg.final_score != null ? "pointer" : "default",
-                          border: isActive ? `2px solid ${scoreColor(msg.final_score)}` : "2px solid transparent",
+                          cursor:
+                            isAdmin && msg.final_score != null
+                              ? "pointer"
+                              : "default",
+                          border: isActive
+                            ? `2px solid ${scoreColor(msg.final_score)}`
+                            : "2px solid transparent",
                         }}
                       >
                         {msg.message_text}
                       </div>
 
                       {/* Time */}
-                      <div style={{ fontSize: 9, color: "#888", marginBottom: 2, whiteSpace: "nowrap" }}>
+                      <div
+                        style={{
+                          fontSize: 9,
+                          color: "#888",
+                          marginBottom: 2,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {fmtTime(msg.created_at)}
                       </div>
                     </div>
@@ -399,8 +495,13 @@ export default function ChatModal({ user, onClose }) {
                         ? msg.dimension_scores
                         : tryParseObj(msg.dimension_scores)) || {};
                     const coaching =
-                      (typeof msg.coaching === "object" ? msg.coaching : tryParseObj(msg.coaching)) || null;
-                    const ev = (typeof msg.evidence === "object" ? msg.evidence : tryParseObj(msg.evidence)) || {};
+                      (typeof msg.coaching === "object"
+                        ? msg.coaching
+                        : tryParseObj(msg.coaching)) || null;
+                    const ev =
+                      (typeof msg.evidence === "object"
+                        ? msg.evidence
+                        : tryParseObj(msg.evidence)) || {};
                     const DIM_LABELS = {
                       greetingClosing: "Greeting/Closing",
                       problemSolving: "Problem Solving",
@@ -425,12 +526,26 @@ export default function ChatModal({ user, onClose }) {
                       >
                         {/* header flags */}
                         <div
-                          style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            marginBottom: 8,
+                            flexWrap: "wrap",
+                          }}
                         >
-                          <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(msg.final_score) }}>
+                          <div
+                            style={{
+                              fontSize: 22,
+                              fontWeight: 800,
+                              color: scoreColor(msg.final_score),
+                            }}
+                          >
                             {msg.final_score}
                           </div>
-                          <span style={{ fontSize: 10, color: "#666" }}>Final</span>
+                          <span style={{ fontSize: 10, color: "#666" }}>
+                            Final
+                          </span>
                           {msg.intent && (
                             <span
                               style={{
@@ -480,9 +595,32 @@ export default function ChatModal({ user, onClose }) {
                           {Object.keys(DIM_LABELS)
                             .filter((k) => dims[k] != null)
                             .map((k) => (
-                              <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, margin: "2px 0" }}>
-                                <span style={{ width: 92, fontSize: 10, color: "#666" }}>{DIM_LABELS[k]}</span>
-                                <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 5, height: 7 }}>
+                              <div
+                                key={k}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  margin: "2px 0",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: 92,
+                                    fontSize: 10,
+                                    color: "#666",
+                                  }}
+                                >
+                                  {DIM_LABELS[k]}
+                                </span>
+                                <div
+                                  style={{
+                                    flex: 1,
+                                    background: "#f1f5f9",
+                                    borderRadius: 5,
+                                    height: 7,
+                                  }}
+                                >
                                   <div
                                     style={{
                                       width: dims[k] + "%",
@@ -492,7 +630,14 @@ export default function ChatModal({ user, onClose }) {
                                     }}
                                   />
                                 </div>
-                                <b style={{ width: 22, textAlign: "right", fontSize: 10, color: scoreColor(dims[k]) }}>
+                                <b
+                                  style={{
+                                    width: 22,
+                                    textAlign: "right",
+                                    fontSize: 10,
+                                    color: scoreColor(dims[k]),
+                                  }}
+                                >
                                   {dims[k]}
                                 </b>
                               </div>
@@ -500,7 +645,13 @@ export default function ChatModal({ user, onClose }) {
                         </div>
 
                         {fmtSec(msg.response_seconds) && (
-                          <div style={{ color: "#555", marginBottom: 6, fontSize: 11 }}>
+                          <div
+                            style={{
+                              color: "#555",
+                              marginBottom: 6,
+                              fontSize: 11,
+                            }}
+                          >
                             🕐 ตอบใน <b>{fmtSec(msg.response_seconds)}</b>
                           </div>
                         )}
@@ -515,19 +666,36 @@ export default function ChatModal({ user, onClose }) {
                               marginBottom: 6,
                             }}
                           >
-                            <div style={{ fontSize: 9, color: "#1d4ed8", fontWeight: 700, marginBottom: 2 }}>
+                            <div
+                              style={{
+                                fontSize: 9,
+                                color: "#1d4ed8",
+                                fontWeight: 700,
+                                marginBottom: 2,
+                              }}
+                            >
                               ❓ คำถามลูกค้า
                             </div>
-                            <div style={{ color: "#1e3a8a", fontSize: 12 }}>{msg.paired_customer_text}</div>
+                            <div style={{ color: "#1e3a8a", fontSize: 12 }}>
+                              {msg.paired_customer_text}
+                            </div>
                           </div>
                         )}
 
                         {msg.matched_sop_topic && (
                           <div style={{ marginBottom: 6 }}>
-                            <div style={{ fontSize: 10, color: "#0369a1", fontWeight: 700 }}>
+                            <div
+                              style={{
+                                fontSize: 10,
+                                color: "#0369a1",
+                                fontWeight: 700,
+                              }}
+                            >
                               📋 SOP: {msg.matched_sop_topic}{" "}
                               {msg.sop_confidence != null && (
-                                <span style={{ color: "#888" }}>({msg.sop_confidence}%)</span>
+                                <span style={{ color: "#888" }}>
+                                  ({msg.sop_confidence}%)
+                                </span>
                               )}
                             </div>
                             {msg.expected_sop_answer && (
@@ -541,22 +709,28 @@ export default function ChatModal({ user, onClose }) {
                                   marginTop: 3,
                                 }}
                               >
-                                ควรตอบ: {String(msg.expected_sop_answer).slice(0, 160)}…
+                                ควรตอบ:{" "}
+                                {String(msg.expected_sop_answer).slice(0, 160)}…
                               </div>
                             )}
                           </div>
                         )}
 
                         {/* evidence */}
-                        {(ev.missing_required_keywords?.length > 0 || ev.forbidden_keyword_hit?.length > 0) && (
+                        {(ev.missing_required_keywords?.length > 0 ||
+                          ev.forbidden_keyword_hit?.length > 0) && (
                           <div style={{ fontSize: 10, marginBottom: 6 }}>
                             {ev.missing_required_keywords?.length > 0 && (
                               <div style={{ color: "#b45309" }}>
-                                ขาดคำสำคัญ: {ev.missing_required_keywords.join(", ")}
+                                ขาดคำสำคัญ:{" "}
+                                {ev.missing_required_keywords.join(", ")}
                               </div>
                             )}
                             {ev.forbidden_keyword_hit?.length > 0 && (
-                              <div style={{ color: "#dc2626" }}>คำต้องห้าม: {ev.forbidden_keyword_hit.join(", ")}</div>
+                              <div style={{ color: "#dc2626" }}>
+                                คำต้องห้าม:{" "}
+                                {ev.forbidden_keyword_hit.join(", ")}
+                              </div>
                             )}
                           </div>
                         )}
@@ -566,7 +740,10 @@ export default function ChatModal({ user, onClose }) {
                             {tryParse(msg.fail_reasons)
                               .slice(0, 5)
                               .map((r, j) => (
-                                <div key={j} style={{ color: "#dc2626", fontSize: 11 }}>
+                                <div
+                                  key={j}
+                                  style={{ color: "#dc2626", fontSize: 11 }}
+                                >
                                   ⚠️ {r}
                                 </div>
                               ))}
@@ -583,7 +760,15 @@ export default function ChatModal({ user, onClose }) {
                               marginTop: 4,
                             }}
                           >
-                            <div style={{ fontSize: 9, color: "#16a34a", fontWeight: 800 }}>✅ ตัวอย่างที่ดีกว่า</div>
+                            <div
+                              style={{
+                                fontSize: 9,
+                                color: "#16a34a",
+                                fontWeight: 800,
+                              }}
+                            >
+                              ✅ ตัวอย่างที่ดีกว่า
+                            </div>
                             <div style={{ fontSize: 11, color: "#166534" }}>
                               {String(coaching.suggested_reply).slice(0, 220)}
                             </div>
@@ -611,10 +796,18 @@ export default function ChatModal({ user, onClose }) {
                         ) : (
                           msg.qc_score_id &&
                           (disputeFor === msg.qc_score_id ? (
-                            <div style={{ marginTop: 8, borderTop: "1px dashed #ddd", paddingTop: 8 }}>
+                            <div
+                              style={{
+                                marginTop: 8,
+                                borderTop: "1px dashed #ddd",
+                                paddingTop: 8,
+                              }}
+                            >
                               <textarea
                                 value={disputeReason}
-                                onChange={(e) => setDisputeReason(e.target.value)}
+                                onChange={(e) =>
+                                  setDisputeReason(e.target.value)
+                                }
                                 placeholder="เหตุผลที่โต้แย้งผล AI..."
                                 rows={2}
                                 style={{
@@ -626,11 +819,25 @@ export default function ChatModal({ user, onClose }) {
                                 }}
                               />
                               {disputeMsg && (
-                                <div style={{ fontSize: 11, color: disputeMsg[0] === "⚠" ? "#dc2626" : "#16a34a" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color:
+                                      disputeMsg[0] === "⚠"
+                                        ? "#dc2626"
+                                        : "#16a34a",
+                                  }}
+                                >
                                   {disputeMsg}
                                 </div>
                               )}
-                              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 6,
+                                  marginTop: 4,
+                                }}
+                              >
                                 <button
                                   onClick={() => submitDispute(msg.qc_score_id)}
                                   style={{
@@ -711,11 +918,23 @@ export default function ChatModal({ user, onClose }) {
             alignItems: "center",
           }}
         >
-          <span>💬 {msgs.filter((m) => m.direction === "customer").length}</span>
+          <span>
+            💬 {msgs.filter((m) => m.direction === "customer").length}
+          </span>
           <span>🤝 {msgs.filter((m) => m.direction === "admin").length}</span>
-          {customer?.deposit_amount > 0 && <span>💰 {Number(customer.deposit_amount).toLocaleString()} บาท</span>}
-          {avgScore != null && <span style={{ fontWeight: 700, color: scoreColor(avgScore) }}>📊 avg {avgScore}</span>}
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#aaa" }}>คลิกฟองแอดมินเพื่อดูคะแนน</span>
+          {customer?.deposit_amount > 0 && (
+            <span>
+              💰 {Number(customer.deposit_amount).toLocaleString()} บาท
+            </span>
+          )}
+          {avgScore != null && (
+            <span style={{ fontWeight: 700, color: scoreColor(avgScore) }}>
+              📊 avg {avgScore}
+            </span>
+          )}
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#aaa" }}>
+            คลิกฟองแอดมินเพื่อดูคะแนน
+          </span>
         </div>
       </div>
 

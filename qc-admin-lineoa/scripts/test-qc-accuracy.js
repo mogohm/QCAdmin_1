@@ -8,7 +8,9 @@ const { detectIntent } = require("../lib/intent-engine");
 const { matchSOP } = require("../lib/sop-matcher");
 const { scoreReply } = require("../lib/qc-engine");
 
-const data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"));
+const data = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "..", "data", "sop-data.json"), "utf8"),
+);
 const sops = data.scripts.map((s, i) => ({ id: i + 1, ...s }));
 const fatalRules = data.fatal_rules;
 
@@ -19,12 +21,20 @@ const CASES = [
   {
     domain: "สมัคร",
     cust: "สมัครสมาชิกยังไงครับ",
-    admin: "ยินดีต้อนรับค่ะ รบกวนแจ้งเบอร์โทรและบัญชีธนาคารเพื่อสมัครสมาชิกได้เลยนะคะ ดำเนินการให้เรียบร้อยค่ะ",
+    admin:
+      "ยินดีต้อนรับค่ะ รบกวนแจ้งเบอร์โทรและบัญชีธนาคารเพื่อสมัครสมาชิกได้เลยนะคะ ดำเนินการให้เรียบร้อยค่ะ",
     intent: "register",
     expect: "pass",
     sec: 40,
   },
-  { domain: "สมัคร", cust: "อยากเปิดไอดีใหม่", admin: "ไม่รู้", intent: "register", expect: "fail", sec: 60 },
+  {
+    domain: "สมัคร",
+    cust: "อยากเปิดไอดีใหม่",
+    admin: "ไม่รู้",
+    intent: "register",
+    expect: "fail",
+    sec: 60,
+  },
   {
     domain: "สมัคร",
     cust: "ขอสมัคร id หน่อย",
@@ -38,7 +48,8 @@ const CASES = [
   {
     domain: "KYC",
     cust: "บัญชีโดนล็อค ปลดล็อคยังไง",
-    admin: "รบกวนยืนยันตัวตนด้วยบัตรประชาชนและอีเมลที่ลงทะเบียนไว้ เพื่อปลดล็อค id ให้นะคะ",
+    admin:
+      "รบกวนยืนยันตัวตนด้วยบัตรประชาชนและอีเมลที่ลงทะเบียนไว้ เพื่อปลดล็อค id ให้นะคะ",
     intent: "kyc",
     expect: "pass",
     sec: 60,
@@ -51,7 +62,14 @@ const CASES = [
     expect: "pass",
     sec: 80,
   },
-  { domain: "KYC", cust: "โดนล็อคไอดี", admin: "ก็ปลดเองสิ", intent: "kyc", expect: "fail", sec: 120 },
+  {
+    domain: "KYC",
+    cust: "โดนล็อคไอดี",
+    admin: "ก็ปลดเองสิ",
+    intent: "kyc",
+    expect: "fail",
+    sec: 120,
+  },
 
   // --- ฝาก (deposit) ---
   {
@@ -71,14 +89,29 @@ const CASES = [
     expect: "pass",
     sec: 90,
   },
-  { domain: "ฝาก", cust: "เติมเงินยังไง", admin: "เติมเอง", intent: "deposit", expect: "fail", sec: 30 },
-  { domain: "ฝาก", cust: "ฝากเงินไม่เข้า", admin: "ไม่รู้ ไปถามที่อื่น", intent: "deposit", expect: "fatal", sec: 200 },
+  {
+    domain: "ฝาก",
+    cust: "เติมเงินยังไง",
+    admin: "เติมเอง",
+    intent: "deposit",
+    expect: "fail",
+    sec: 30,
+  },
+  {
+    domain: "ฝาก",
+    cust: "ฝากเงินไม่เข้า",
+    admin: "ไม่รู้ ไปถามที่อื่น",
+    intent: "deposit",
+    expect: "fatal",
+    sec: 200,
+  },
 
   // --- ถอน (withdraw) ---
   {
     domain: "ถอน",
     cust: "ขอลิงก์ถอนเงิน",
-    admin: "รบกวนรอสักครู่นะคะ ตรวจสอบยอดและส่งลิงก์ถอนให้ค่ะ ดำเนินการให้เรียบร้อยค่ะ",
+    admin:
+      "รบกวนรอสักครู่นะคะ ตรวจสอบยอดและส่งลิงก์ถอนให้ค่ะ ดำเนินการให้เรียบร้อยค่ะ",
     intent: "withdraw",
     expect: "pass",
     sec: 60,
@@ -91,13 +124,21 @@ const CASES = [
     expect: "pass",
     sec: 120,
   },
-  { domain: "ถอน", cust: "ถอนยังไง", admin: "ถอนเองสิ ง่ายจะตาย", intent: "withdraw", expect: "fail", sec: 60 },
+  {
+    domain: "ถอน",
+    cust: "ถอนยังไง",
+    admin: "ถอนเองสิ ง่ายจะตาย",
+    intent: "withdraw",
+    expect: "fail",
+    sec: 60,
+  },
 
   // --- โปรโมชัน (promotion) ---
   {
     domain: "โปรโมชัน",
     cust: "มีโปรโมชั่นอะไรบ้าง",
-    admin: "ตอนนี้มีโปรฮันนีมูนรับเครดิตเพิ่มค่ะ เงื่อนไขคือฝากขั้นต่ำตามที่กำหนด รับสิทธิ์ได้เลยนะคะ คุ้มมากค่ะ",
+    admin:
+      "ตอนนี้มีโปรฮันนีมูนรับเครดิตเพิ่มค่ะ เงื่อนไขคือฝากขั้นต่ำตามที่กำหนด รับสิทธิ์ได้เลยนะคะ คุ้มมากค่ะ",
     intent: "promotion",
     expect: "pass",
     sec: 50,
@@ -115,7 +156,8 @@ const CASES = [
   {
     domain: "โบนัส",
     cust: "โบนัสคาสิโนรับยังไง",
-    admin: "สำหรับคาสิโน รบกวนติดต่อ Live chat support ทางหน้าเว็บ Natural8 ได้เลยนะคะ ยินดีให้บริการค่ะ",
+    admin:
+      "สำหรับคาสิโน รบกวนติดต่อ Live chat support ทางหน้าเว็บ Natural8 ได้เลยนะคะ ยินดีให้บริการค่ะ",
     intent: "bonus",
     expect: "pass",
     sec: 55,
@@ -133,7 +175,8 @@ const CASES = [
   {
     domain: "Poker",
     cust: "Rush & Cash เล่นยังไง",
-    admin: "Rush & Cash เป็นเกม cash game แบบเร็วค่ะ พับแล้วย้ายโต๊ะใหม่ทันที อธิบายกติกาให้นะคะ ยินดีให้บริการค่ะ",
+    admin:
+      "Rush & Cash เป็นเกม cash game แบบเร็วค่ะ พับแล้วย้ายโต๊ะใหม่ทันที อธิบายกติกาให้นะคะ ยินดีให้บริการค่ะ",
     intent: "poker",
     expect: "pass",
     sec: 80,
@@ -146,13 +189,21 @@ const CASES = [
     expect: "pass",
     sec: 70,
   },
-  { domain: "Poker", cust: "EV cashout คืออะไร", admin: "ไม่รู้เหมือนกัน", intent: "poker", expect: "fail", sec: 60 },
+  {
+    domain: "Poker",
+    cust: "EV cashout คืออะไร",
+    admin: "ไม่รู้เหมือนกัน",
+    intent: "poker",
+    expect: "fail",
+    sec: 60,
+  },
 
   // --- Jackpot ---
   {
     domain: "Jackpot",
     cust: "Bad Beat Jackpot คืออะไร",
-    admin: "Bad Beat Jackpot คือแจ็คพอตเมื่อไพ่แรงแพ้ค่ะ อธิบายเงื่อนไขการรับให้นะคะ ยินดีให้บริการค่ะ",
+    admin:
+      "Bad Beat Jackpot คือแจ็คพอตเมื่อไพ่แรงแพ้ค่ะ อธิบายเงื่อนไขการรับให้นะคะ ยินดีให้บริการค่ะ",
     intent: "jackpot",
     expect: "pass",
     sec: 75,
@@ -170,7 +221,8 @@ const CASES = [
   {
     domain: "Tournament",
     cust: "Spin & Gold เล่นยังไง",
-    admin: "Spin & Gold เป็นทัวร์ 3 คนแบบสุ่มเงินรางวัลค่ะ บายอินตามที่เลือก อธิบายให้นะคะ ยินดีให้บริการค่ะ",
+    admin:
+      "Spin & Gold เป็นทัวร์ 3 คนแบบสุ่มเงินรางวัลค่ะ บายอินตามที่เลือก อธิบายให้นะคะ ยินดีให้บริการค่ะ",
     intent: "tournament",
     expect: "pass",
     sec: 80,
@@ -186,7 +238,8 @@ const CASES = [
   {
     domain: "Tournament",
     cust: "ตั๋วทัวร์ใช้ยังไง",
-    admin: "ใช้ตั๋ว buy-in เข้าทัวร์ได้เลยค่ะ แจ้งขั้นตอนให้นะคะ ยินดีให้บริการค่ะ",
+    admin:
+      "ใช้ตั๋ว buy-in เข้าทัวร์ได้เลยค่ะ แจ้งขั้นตอนให้นะคะ ยินดีให้บริการค่ะ",
     intent: "tournament",
     expect: "pass",
     sec: 60,
@@ -196,7 +249,8 @@ const CASES = [
   {
     domain: "Technical",
     cust: "เข้าเกมไม่ได้ ระบบล่ม",
-    admin: "ขออภัยในความไม่สะดวกนะคะ ระบบกำลังปิดปรับปรุง รบกวนรอสักครู่ เร่งตรวจสอบให้ค่ะ",
+    admin:
+      "ขออภัยในความไม่สะดวกนะคะ ระบบกำลังปิดปรับปรุง รบกวนรอสักครู่ เร่งตรวจสอบให้ค่ะ",
     intent: "technical_issue",
     expect: "pass",
     sec: 90,
@@ -204,7 +258,8 @@ const CASES = [
   {
     domain: "Technical",
     cust: "ดาวน์โหลดโปรแกรมยังไง",
-    admin: "รบกวนดาวน์โหลดผ่านลิงก์ในหน้าเว็บค่ะ รองรับทั้ง iOS และ Android แจ้งขั้นตอนให้นะคะ",
+    admin:
+      "รบกวนดาวน์โหลดผ่านลิงก์ในหน้าเว็บค่ะ รองรับทั้ง iOS และ Android แจ้งขั้นตอนให้นะคะ",
     intent: "technical_issue",
     expect: "pass",
     sec: 70,
@@ -222,7 +277,8 @@ const CASES = [
   {
     domain: "Escalation",
     cust: "ขอติดต่อทีมงาน live chat",
-    admin: "รบกวนติดต่อทีม Live chat support ทางหน้าเว็บได้เลยนะคะ ประสานงานให้เรียบร้อยค่ะ ยินดีให้บริการค่ะ",
+    admin:
+      "รบกวนติดต่อทีม Live chat support ทางหน้าเว็บได้เลยนะคะ ประสานงานให้เรียบร้อยค่ะ ยินดีให้บริการค่ะ",
     intent: "escalation",
     expect: "pass",
     sec: 50,
@@ -245,13 +301,21 @@ const CASES = [
     expect: "fatal",
     sec: 30,
   },
-  { domain: "Rude/Fatal", cust: "สมัครยังไง", admin: "รำคาญ ถามอยู่ได้", intent: "register", expect: "fatal", sec: 40 },
+  {
+    domain: "Rude/Fatal",
+    cust: "สมัครยังไง",
+    admin: "รำคาญ ถามอยู่ได้",
+    intent: "register",
+    expect: "fatal",
+    sec: 40,
+  },
 
   // --- SLA exception (ตอบช้าแต่อยู่ในช่วง system event) ---
   {
     domain: "SLA-exception",
     cust: "ถอนเงินยังไง",
-    admin: "รบกวนรอสักครู่นะคะ ระบบธนาคารปิดปรับปรุง กำลังตรวจสอบยอดถอนให้ค่ะ ขออภัยในความไม่สะดวกนะคะ",
+    admin:
+      "รบกวนรอสักครู่นะคะ ระบบธนาคารปิดปรับปรุง กำลังตรวจสอบยอดถอนให้ค่ะ ขออภัยในความไม่สะดวกนะคะ",
     intent: "withdraw",
     expect: "pass",
     sec: 1800,
@@ -271,7 +335,16 @@ const CASES = [
 let pass = 0,
   fail = 0,
   intentHit = 0;
-const W = { dom: 14, ei: 13, di: 13, sop: 26, conf: 5, exp: 7, score: 6, res: 5 };
+const W = {
+  dom: 14,
+  ei: 13,
+  di: 13,
+  sop: 26,
+  conf: 5,
+  exp: 7,
+  score: 6,
+  res: 5,
+};
 const pad = (s, n) =>
   String(s == null ? "" : s)
     .slice(0, n)
@@ -329,7 +402,9 @@ console.log("-".repeat(100));
 const intentPct = Math.round((intentHit / CASES.length) * 100);
 const outcomePct = Math.round((pass / CASES.length) * 100);
 console.log(`\nIntent accuracy : ${intentHit}/${CASES.length} (${intentPct}%)`);
-console.log(`Outcome accuracy: ${pass}/${CASES.length} (${outcomePct}%) — pass/fail/fatal ตรงตามคาด`);
+console.log(
+  `Outcome accuracy: ${pass}/${CASES.length} (${outcomePct}%) — pass/fail/fatal ตรงตามคาด`,
+);
 console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
 // เกณฑ์ยอมรับ: outcome ≥ 80% และ intent ≥ 80%
 process.exit(outcomePct >= 80 && intentPct >= 80 ? 0 : 1);

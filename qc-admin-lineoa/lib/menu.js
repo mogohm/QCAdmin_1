@@ -89,7 +89,12 @@ export const ROLE_PERMS = {
     "qc.dispute.review",
     "commission.view.team",
   ],
-  marketing: ["dashboard.marketing.view", "marketing.dashboard.view", "marketing.events.view", "commission.view.all"],
+  marketing: [
+    "dashboard.marketing.view",
+    "marketing.dashboard.view",
+    "marketing.events.view",
+    "commission.view.all",
+  ],
 };
 
 export const ROLES = [
@@ -111,16 +116,61 @@ export const ROLE_HOME = {
 
 // ---- เมนู: { href, icon, label, perm: string|string[]|null } (null = ทุกคนที่ login) ----
 export const MENU = [
-  { href: "/", icon: "📊", label: "Executive Dashboard", perm: "dashboard.executive.view" },
-  { href: "/admin-dashboard", icon: "🧑‍💼", label: "Admin Dashboard", perm: "dashboard.admin.view" },
-  { href: "/manager-dashboard", icon: "📈", label: "Manager Dashboard", perm: "dashboard.manager.view" },
-  { href: "/leaderboard", icon: "🏆", label: "Leaderboard", perm: "dashboard.leaderboard.view" },
-  { href: "/marketing-dashboard", icon: "📣", label: "Marketing Dashboard", perm: "dashboard.marketing.view" },
-  { href: "/qc-dashboard", icon: "🎯", label: "QC Monitoring", perm: "qc.monitor.view" },
-  { href: "/chat-review", icon: "💬", label: "Chat Review", perm: ["chat.view.all", "chat.view.own", "chat.review"] },
+  {
+    href: "/",
+    icon: "📊",
+    label: "Executive Dashboard",
+    perm: "dashboard.executive.view",
+  },
+  {
+    href: "/admin-dashboard",
+    icon: "🧑‍💼",
+    label: "Admin Dashboard",
+    perm: "dashboard.admin.view",
+  },
+  {
+    href: "/manager-dashboard",
+    icon: "📈",
+    label: "Manager Dashboard",
+    perm: "dashboard.manager.view",
+  },
+  {
+    href: "/leaderboard",
+    icon: "🏆",
+    label: "Leaderboard",
+    perm: "dashboard.leaderboard.view",
+  },
+  {
+    href: "/marketing-dashboard",
+    icon: "📣",
+    label: "Marketing Dashboard",
+    perm: "dashboard.marketing.view",
+  },
+  {
+    href: "/qc-dashboard",
+    icon: "🎯",
+    label: "QC Monitoring",
+    perm: "qc.monitor.view",
+  },
+  {
+    href: "/chat-review",
+    icon: "💬",
+    label: "Chat Review",
+    perm: ["chat.view.all", "chat.view.own", "chat.review"],
+  },
   { href: "/sop", icon: "📚", label: "SOP Knowledge Base", perm: "sop.view" },
-  { href: "/disputes", icon: "⚖️", label: "Disputes", perm: ["qc.dispute.review", "qc.dispute.create"] },
-  { href: "/system-events", icon: "🛠️", label: "System Events", perm: "system.events.manage" },
+  {
+    href: "/disputes",
+    icon: "⚖️",
+    label: "Disputes",
+    perm: ["qc.dispute.review", "qc.dispute.create"],
+  },
+  {
+    href: "/system-events",
+    icon: "🛠️",
+    label: "System Events",
+    perm: "system.events.manage",
+  },
   {
     href: "/admin-performance",
     icon: "🏅",
@@ -131,12 +181,31 @@ export const MENU = [
     href: "/commission",
     icon: "💰",
     label: "Commission",
-    perm: ["commission.view.own", "commission.view.team", "commission.view.all"],
+    perm: [
+      "commission.view.own",
+      "commission.view.team",
+      "commission.view.all",
+    ],
   },
   { href: "/scraper", icon: "🛰️", label: "Scraper", perm: "scraper.view" },
-  { href: "/system/users", icon: "👥", label: "User & Role Mgmt", perm: "system.users.view" },
-  { href: "/system/roles", icon: "🔐", label: "Role Permissions", perm: "system.roles.manage" },
-  { href: "/system/registration-requests", icon: "📝", label: "Registration Requests", perm: "system.users.create" },
+  {
+    href: "/system/users",
+    icon: "👥",
+    label: "User & Role Mgmt",
+    perm: "system.users.view",
+  },
+  {
+    href: "/system/roles",
+    icon: "🔐",
+    label: "Role Permissions",
+    perm: "system.roles.manage",
+  },
+  {
+    href: "/system/registration-requests",
+    icon: "📝",
+    label: "Registration Requests",
+    perm: "system.users.create",
+  },
   { href: "/docs", icon: "📄", label: "Docs", perm: null },
 ];
 
@@ -181,7 +250,9 @@ export function canViewRoute(user, route) {
   if (user.role === "system_admin") return true;
   // หา prefix ที่ยาวสุดที่ตรง
   const match = Object.keys(ROUTE_PERMS)
-    .filter((p) => (p === "/" ? route === "/" : route === p || route.startsWith(p + "/")))
+    .filter((p) =>
+      p === "/" ? route === "/" : route === p || route.startsWith(p + "/"),
+    )
     .sort((a, b) => b.length - a.length)[0];
   if (match === undefined) return true; // route ที่ไม่ระบุ = ให้ผ่าน (มี session แล้ว)
   const req = need(ROUTE_PERMS[match]);

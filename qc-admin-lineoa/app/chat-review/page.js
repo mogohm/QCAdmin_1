@@ -36,14 +36,33 @@ export default function ChatReview() {
   }, [sort, order]);
 
   return (
-    <AppShell title="Chat Review" subtitle="ตรวจรีวิวคำตอบแอดมิน — คลิกเพื่อดูแชท + QC evidence">
+    <AppShell
+      title="Chat Review"
+      subtitle="ตรวจรีวิวคำตอบแอดมิน — คลิกเพื่อดูแชท + QC evidence"
+    >
       <>
         <div
           className="card"
-          style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+          style={{
+            marginBottom: 12,
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
         >
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            style={{ width: 150, margin: 0 }}
+          />
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            style={{ width: 150, margin: 0 }}
+          />
           <input
             placeholder="ค้นชื่อลูกค้า"
             value={cust}
@@ -82,7 +101,11 @@ export default function ChatReview() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan="6" className="muted" style={{ textAlign: "center", padding: 24 }}>
+                  <td
+                    colSpan="6"
+                    className="muted"
+                    style={{ textAlign: "center", padding: 24 }}
+                  >
                     <span className="spin" style={{ marginRight: 8 }}>
                       ⏳
                     </span>
@@ -108,14 +131,18 @@ export default function ChatReview() {
                     </td>
                     <td>
                       {r.final_score != null ? (
-                        <span className={`score ${sc(r.final_score)}`}>{r.final_score}</span>
+                        <span className={`score ${sc(r.final_score)}`}>
+                          {r.final_score}
+                        </span>
                       ) : (
                         "—"
                       )}
                     </td>
                     <td>
                       <button
-                        onClick={() => setChatUser({ line_user_id: r.line_user_id })}
+                        onClick={() =>
+                          setChatUser({ line_user_id: r.line_user_id })
+                        }
                         style={{ padding: "3px 10px", fontSize: 11 }}
                       >
                         ดูแชท
@@ -125,14 +152,25 @@ export default function ChatReview() {
                 ))}
               {!loading && err && (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", padding: 20, color: "#dc2626" }}>
+                  <td
+                    colSpan="6"
+                    style={{
+                      textAlign: "center",
+                      padding: 20,
+                      color: "#dc2626",
+                    }}
+                  >
                     ⚠️ {err}
                   </td>
                 </tr>
               )}
               {!loading && !err && !rows.length && (
                 <tr>
-                  <td colSpan="6" className="muted" style={{ textAlign: "center", padding: 20 }}>
+                  <td
+                    colSpan="6"
+                    className="muted"
+                    style={{ textAlign: "center", padding: 20 }}
+                  >
                     ไม่พบข้อมูลในช่วงวันที่นี้ — ลองขยายช่วงวันที่
                   </td>
                 </tr>
@@ -140,7 +178,9 @@ export default function ChatReview() {
             </tbody>
           </table>
         </div>
-        {chatUser && <ChatModal user={chatUser} onClose={() => setChatUser(null)} />}
+        {chatUser && (
+          <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
+        )}
       </>
     </AppShell>
   );

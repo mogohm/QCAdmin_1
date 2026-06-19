@@ -45,7 +45,10 @@ function TagEditor({ value, onChange, placeholder, color = "#0b5cab" }) {
           }}
         >
           {t}
-          <span onClick={() => rm(t)} style={{ cursor: "pointer", fontWeight: 800 }}>
+          <span
+            onClick={() => rm(t)}
+            style={{ cursor: "pointer", fontWeight: 800 }}
+          >
             ×
           </span>
         </span>
@@ -61,7 +64,15 @@ function TagEditor({ value, onChange, placeholder, color = "#0b5cab" }) {
         }}
         onBlur={add}
         placeholder={placeholder}
-        style={{ border: 0, outline: "none", flex: 1, minWidth: 100, margin: 0, padding: 4, background: "transparent" }}
+        style={{
+          border: 0,
+          outline: "none",
+          flex: 1,
+          minWidth: 100,
+          margin: 0,
+          padding: 4,
+          background: "transparent",
+        }}
       />
     </div>
   );
@@ -112,7 +123,9 @@ export default function SOPManager() {
   }, [tab]);
 
   const filtered = list.filter(
-    (s) => activeFilter === "all" || (activeFilter === "active" ? s.is_active : !s.is_active),
+    (s) =>
+      activeFilter === "all" ||
+      (activeFilter === "active" ? s.is_active : !s.is_active),
   );
 
   const save = async () => {
@@ -132,7 +145,8 @@ export default function SOPManager() {
     setTimeout(() => setMsg(""), 2500);
   };
   const del = async (id) => {
-    if (!confirm("ลบ SOP นี้ถาวร? (หรือใช้ปุ่ม ON/off เพื่อปิดใช้งานแทน)")) return;
+    if (!confirm("ลบ SOP นี้ถาวร? (หรือใช้ปุ่ม ON/off เพื่อปิดใช้งานแทน)"))
+      return;
     await fetch(`/api/sop/${id}?hard=true`, { method: "DELETE" });
     load();
   };
@@ -173,11 +187,16 @@ export default function SOPManager() {
     <AppShell
       title="SOP Knowledge Base"
       subtitle={`${summary.active ?? 0}/${summary.total ?? 0} active · escalation ${summary.escalation ?? 0} · ขาด required keyword ${summary.missing_required ?? 0}`}
-      actions={<button onClick={() => setEdit({ ...empty })}>+ เพิ่ม SOP</button>}
+      actions={
+        <button onClick={() => setEdit({ ...empty })}>+ เพิ่ม SOP</button>
+      }
     >
       <>
         {/* import status card */}
-        <section className="grid kpis" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 12 }}>
+        <section
+          className="grid kpis"
+          style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 12 }}
+        >
           <div className="card">
             <div className="kpi-title">ทั้งหมด</div>
             <div className="kpi-value">{summary.total ?? 0}</div>
@@ -192,18 +211,31 @@ export default function SOPManager() {
           </div>
           <div className="card">
             <div className="kpi-title">⚠️ ขาด Required KW</div>
-            <div className="kpi-value score warn">{summary.missing_required ?? 0}</div>
+            <div className="kpi-value score warn">
+              {summary.missing_required ?? 0}
+            </div>
           </div>
         </section>
 
         {/* category tabs */}
         <div className="card" style={{ marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              marginBottom: 10,
+            }}
+          >
             <button onClick={() => setTab("")} style={tab === "" ? {} : ghost}>
               ทั้งหมด
             </button>
             {cats.map((c) => (
-              <button key={c.code} onClick={() => setTab(c.code)} style={tab === c.code ? {} : ghost}>
+              <button
+                key={c.code}
+                onClick={() => setTab(c.code)}
+                style={tab === c.code ? {} : ghost}
+              >
                 {c.code}
               </button>
             ))}
@@ -228,19 +260,38 @@ export default function SOPManager() {
             <button onClick={load}>{loading ? "..." : "ค้นหา"}</button>
           </div>
           {sel.size > 0 && (
-            <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
               <span className="muted">เลือก {sel.size}:</span>
-              <button onClick={() => bulk(true)} style={{ background: "#16a34a" }}>
+              <button
+                onClick={() => bulk(true)}
+                style={{ background: "#16a34a" }}
+              >
                 เปิดใช้
               </button>
-              <button onClick={() => bulk(false)} style={{ background: "#9ca3af" }}>
+              <button
+                onClick={() => bulk(false)}
+                style={{ background: "#9ca3af" }}
+              >
                 ปิด
               </button>
             </div>
           )}
         </div>
         {msg && (
-          <div className="card" style={{ marginBottom: 12, color: msg[0] === "⚠" ? "#ef4444" : "#16a34a" }}>
+          <div
+            className="card"
+            style={{
+              marginBottom: 12,
+              color: msg[0] === "⚠" ? "#ef4444" : "#16a34a",
+            }}
+          >
             {msg}
           </div>
         )}
@@ -281,11 +332,20 @@ export default function SOPManager() {
                     </span>
                   </td>
                   <td style={{ fontWeight: 600, maxWidth: 150 }}>{s.topic}</td>
-                  <td style={{ maxWidth: 200, color: "#555" }}>{String(s.answer).slice(0, 60)}…</td>
-                  <td style={{ maxWidth: 120, color: joinKw(s.required_keywords) ? "#555" : "#ef4444" }}>
+                  <td style={{ maxWidth: 200, color: "#555" }}>
+                    {String(s.answer).slice(0, 60)}…
+                  </td>
+                  <td
+                    style={{
+                      maxWidth: 120,
+                      color: joinKw(s.required_keywords) ? "#555" : "#ef4444",
+                    }}
+                  >
                     {joinKw(s.required_keywords).slice(0, 30) || "⚠️ ไม่มี"}
                   </td>
-                  <td style={{ maxWidth: 100, color: "#888" }}>{joinKw(s.forbidden_keywords).slice(0, 24)}</td>
+                  <td style={{ maxWidth: 100, color: "#888" }}>
+                    {joinKw(s.forbidden_keywords).slice(0, 24)}
+                  </td>
                   <td>{s.escalation ? "🔺" : ""}</td>
                   <td>
                     <span
@@ -300,12 +360,18 @@ export default function SOPManager() {
                     </span>
                   </td>
                   <td style={{ fontSize: 10, color: "#888" }}>
-                    {s.last_matched_at ? new Date(s.last_matched_at).toLocaleDateString("th-TH") : "—"}
+                    {s.last_matched_at
+                      ? new Date(s.last_matched_at).toLocaleDateString("th-TH")
+                      : "—"}
                   </td>
                   <td>
                     <button
                       onClick={() => setActive(s.id, !s.is_active)}
-                      style={{ background: s.is_active ? "#16a34a" : "#9ca3af", padding: "3px 9px", fontSize: 10 }}
+                      style={{
+                        background: s.is_active ? "#16a34a" : "#9ca3af",
+                        padding: "3px 9px",
+                        fontSize: 10,
+                      }}
                     >
                       {s.is_active ? "ON" : "off"}
                     </button>
@@ -324,12 +390,23 @@ export default function SOPManager() {
                     >
                       แก้
                     </button>{" "}
-                    <button onClick={() => dup(s)} style={{ padding: "3px 8px", fontSize: 10, background: "#64748b" }}>
+                    <button
+                      onClick={() => dup(s)}
+                      style={{
+                        padding: "3px 8px",
+                        fontSize: 10,
+                        background: "#64748b",
+                      }}
+                    >
                       คัดลอก
                     </button>{" "}
                     <button
                       onClick={() => del(s.id)}
-                      style={{ background: "#ef4444", padding: "3px 8px", fontSize: 10 }}
+                      style={{
+                        background: "#ef4444",
+                        padding: "3px 8px",
+                        fontSize: 10,
+                      }}
                     >
                       ลบ
                     </button>
@@ -338,7 +415,11 @@ export default function SOPManager() {
               ))}
               {!filtered.length && (
                 <tr>
-                  <td colSpan="12" className="muted" style={{ textAlign: "center", padding: 20 }}>
+                  <td
+                    colSpan="12"
+                    className="muted"
+                    style={{ textAlign: "center", padding: 20 }}
+                  >
                     ไม่พบ SOP
                   </td>
                 </tr>
@@ -351,7 +432,12 @@ export default function SOPManager() {
         {edit && (
           <div
             onClick={() => setEdit(null)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              zIndex: 1000,
+            }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -367,11 +453,18 @@ export default function SOPManager() {
                 boxShadow: "-4px 0 24px rgba(0,0,0,.2)",
               }}
             >
-              <h3 style={{ marginTop: 0 }}>{edit.id ? "แก้ไข SOP" : "เพิ่ม SOP"}</h3>
+              <h3 style={{ marginTop: 0 }}>
+                {edit.id ? "แก้ไข SOP" : "เพิ่ม SOP"}
+              </h3>
               {edit.id && (
-                <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                <div
+                  className="muted"
+                  style={{ fontSize: 12, marginBottom: 8 }}
+                >
                   ใช้งานแล้ว {edit.used_count || 0} ครั้ง · อัปเดต{" "}
-                  {edit.updated_at ? new Date(edit.updated_at).toLocaleString("th-TH") : "-"}
+                  {edit.updated_at
+                    ? new Date(edit.updated_at).toLocaleString("th-TH")
+                    : "-"}
                 </div>
               )}
               {[
@@ -382,7 +475,12 @@ export default function SOPManager() {
               ].map(([key, label]) => (
                 <div key={key}>
                   <label style={lbl}>{label}</label>
-                  <input value={edit[key] || ""} onChange={(e) => setEdit({ ...edit, [key]: e.target.value })} />
+                  <input
+                    value={edit[key] || ""}
+                    onChange={(e) =>
+                      setEdit({ ...edit, [key]: e.target.value })
+                    }
+                  />
                 </div>
               ))}
               <label style={lbl}>Answer (คำตอบมาตรฐาน)</label>
@@ -391,7 +489,9 @@ export default function SOPManager() {
                 value={edit.answer || ""}
                 onChange={(e) => setEdit({ ...edit, answer: e.target.value })}
               />
-              <label style={lbl}>✅ Required Keywords — คำตอบที่ดีควรมี (Enter เพื่อเพิ่ม)</label>
+              <label style={lbl}>
+                ✅ Required Keywords — คำตอบที่ดีควรมี (Enter เพื่อเพิ่ม)
+              </label>
               <TagEditor
                 value={edit.required_keywords}
                 onChange={(v) => setEdit({ ...edit, required_keywords: v })}
@@ -412,28 +512,49 @@ export default function SOPManager() {
                 placeholder="พิมพ์แล้ว Enter"
               />
               <div style={{ display: "flex", gap: 16, margin: "10px 0" }}>
-                <label style={{ display: "flex", gap: 6, alignItems: "center", width: "auto" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    width: "auto",
+                  }}
+                >
                   <input
                     type="checkbox"
                     style={{ width: "auto" }}
                     checked={!!edit.escalation}
-                    onChange={(e) => setEdit({ ...edit, escalation: e.target.checked })}
+                    onChange={(e) =>
+                      setEdit({ ...edit, escalation: e.target.checked })
+                    }
                   />{" "}
                   Escalation
                 </label>
-                <label style={{ display: "flex", gap: 6, alignItems: "center", width: "auto" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    width: "auto",
+                  }}
+                >
                   <input
                     type="checkbox"
                     style={{ width: "auto" }}
                     checked={edit.is_active !== false}
-                    onChange={(e) => setEdit({ ...edit, is_active: e.target.checked })}
+                    onChange={(e) =>
+                      setEdit({ ...edit, is_active: e.target.checked })
+                    }
                   />{" "}
                   Active
                 </label>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={save}>บันทึก</button>
-                <button onClick={() => setEdit(null)} style={{ background: "#9ca3af" }}>
+                <button
+                  onClick={() => setEdit(null)}
+                  style={{ background: "#9ca3af" }}
+                >
                   ปิด
                 </button>
               </div>
@@ -444,5 +565,9 @@ export default function SOPManager() {
     </AppShell>
   );
 }
-const ghost = { background: "#fff", color: "#65758b", border: "1px solid #dce6f2" };
+const ghost = {
+  background: "#fff",
+  color: "#65758b",
+  border: "1px solid #dce6f2",
+};
 const lbl = { fontSize: 12, color: "#666" };

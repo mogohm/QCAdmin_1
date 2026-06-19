@@ -21,12 +21,17 @@ export default function Roles() {
 
   const load = () =>
     fetch("/api/system/roles")
-      .then((r) => (r.ok ? r.json() : r.json().then((j) => Promise.reject(j.error || r.status))))
+      .then((r) =>
+        r.ok
+          ? r.json()
+          : r.json().then((j) => Promise.reject(j.error || r.status)),
+      )
       .then((d) => {
         setRoles(d.roles || []);
         setAll(d.all_permissions || []);
         if (!sel && d.roles?.length) {
-          const first = d.roles.find((r) => r.role_key !== "system_admin") || d.roles[0];
+          const first =
+            d.roles.find((r) => r.role_key !== "system_admin") || d.roles[0];
           setSel(first.role_key);
           setDraft(first.permissions || []);
         }
@@ -41,7 +46,8 @@ export default function Roles() {
     setDraft(r.permissions || []);
     setMsg("");
   };
-  const toggle = (p) => setDraft((d) => (d.includes(p) ? d.filter((x) => x !== p) : [...d, p]));
+  const toggle = (p) =>
+    setDraft((d) => (d.includes(p) ? d.filter((x) => x !== p) : [...d, p]));
   const save = async () => {
     const r = await fetch(`/api/system/roles/${sel}`, {
       method: "PATCH",
@@ -67,11 +73,21 @@ export default function Roles() {
     );
 
   return (
-    <AppShell title="Role Permissions" subtitle="กำหนดสิทธิ์ต่อบทบาท (server-enforced)">
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+    <AppShell
+      title="Role Permissions"
+      subtitle="กำหนดสิทธิ์ต่อบทบาท (server-enforced)"
+    >
+      <div
+        style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}
+      >
         {roles.map((r) => (
-          <span key={r.role_key} className={`chip ${sel === r.role_key ? "on" : ""}`} onClick={() => pickRole(r)}>
-            {r.role_name} <span className="muted">({(r.permissions || []).length})</span>
+          <span
+            key={r.role_key}
+            className={`chip ${sel === r.role_key ? "on" : ""}`}
+            onClick={() => pickRole(r)}
+          >
+            {r.role_name}{" "}
+            <span className="muted">({(r.permissions || []).length})</span>
           </span>
         ))}
       </div>
@@ -81,10 +97,19 @@ export default function Roles() {
         </div>
       )}
       <div className="glass glow">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 10,
+          }}
+        >
           <div className="panel-title" style={{ margin: 0 }}>
             สิทธิ์ของ {selRole?.role_name || sel}
-            {sel === "system_admin" && <span className="tag">มีทุกสิทธิ์ — แก้ไม่ได้</span>}
+            {sel === "system_admin" && (
+              <span className="tag">มีทุกสิทธิ์ — แก้ไม่ได้</span>
+            )}
           </div>
           {sel !== "system_admin" && <button onClick={save}>💾 บันทึก</button>}
         </div>
@@ -92,7 +117,12 @@ export default function Roles() {
           <div key={mod} style={{ marginBottom: 12 }}>
             <div
               className="muted"
-              style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}
+              style={{
+                fontSize: 11,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 4,
+              }}
             >
               {mod}
             </div>
@@ -108,7 +138,8 @@ export default function Roles() {
                       className={`chip ${on ? "on" : ""}`}
                       style={{
                         cursor: sel === "system_admin" ? "default" : "pointer",
-                        borderColor: DANGER.includes(p) && on ? "#ef4444" : undefined,
+                        borderColor:
+                          DANGER.includes(p) && on ? "#ef4444" : undefined,
                       }}
                       title={DANGER.includes(p) ? "⚠️ สิทธิ์อันตราย" : ""}
                     >

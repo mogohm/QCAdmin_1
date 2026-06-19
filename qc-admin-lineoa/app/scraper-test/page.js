@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 
 const today = () => new Date().toISOString().slice(0, 10);
-const weekAgo = () => new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+const weekAgo = () =>
+  new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
 function pct(a, b) {
   if (!b || b === 0) return "—";
@@ -31,20 +32,52 @@ function statusColor(s) {
 /* ─── SVG: LINE OA UI diagram with 4 labeled boxes ─── */
 function LineOADiagram() {
   return (
-    <div style={{ background: "#0f172a", borderRadius: 12, padding: "20px 16px", marginBottom: 24 }}>
-      <div style={{ color: "#94a3b8", fontSize: 11, fontFamily: "monospace", marginBottom: 10 }}>
-        แผนผัง: LINE Official Account Manager — 4 จุดที่ Scraper ต้องดึงข้อมูลให้ถูกต้อง
+    <div
+      style={{
+        background: "#0f172a",
+        borderRadius: 12,
+        padding: "20px 16px",
+        marginBottom: 24,
+      }}
+    >
+      <div
+        style={{
+          color: "#94a3b8",
+          fontSize: 11,
+          fontFamily: "monospace",
+          marginBottom: 10,
+        }}
+      >
+        แผนผัง: LINE Official Account Manager — 4 จุดที่ Scraper
+        ต้องดึงข้อมูลให้ถูกต้อง
       </div>
-      <svg viewBox="0 0 820 310" style={{ width: "100%", maxWidth: 820, display: "block" }}>
+      <svg
+        viewBox="0 0 820 310"
+        style={{ width: "100%", maxWidth: 820, display: "block" }}
+      >
         {/* App chrome */}
         <rect width={820} height={310} rx={8} fill="#1e293b" />
         {/* Left icon rail */}
         <rect x={4} y={4} width={54} height={302} rx={5} fill="#0d1a2d" />
-        <text x={31} y={28} textAnchor="middle" fill="#3b82f6" fontSize={9} fontWeight="bold">
+        <text
+          x={31}
+          y={28}
+          textAnchor="middle"
+          fill="#3b82f6"
+          fontSize={9}
+          fontWeight="bold"
+        >
           LINE
         </text>
         {["Chats", "Contact", "Broadcast", "Analysis"].map((t, i) => (
-          <text key={t} x={31} y={46 + i * 16} textAnchor="middle" fill="#475569" fontSize={7}>
+          <text
+            key={t}
+            x={31}
+            y={46 + i * 16}
+            textAnchor="middle"
+            fill="#475569"
+            fontSize={7}
+          >
             {t}
           </text>
         ))}
@@ -58,25 +91,79 @@ function LineOADiagram() {
         </text>
         {/* Mock chat list items */}
         {[
-          { name: "สมชาย ทดสอบ", preview: "สวัสดีครับ...", time: "10:42", dot: "#22c55e" },
-          { name: "นงนุช มีสุข", preview: "ขอบคุณมากค่ะ", time: "Friday", dot: "#f59e0b" },
-          { name: "พิมพ์ใจ แสง", preview: "ฝากได้ไหมคะ", time: "Thursday", dot: "#94a3b8" },
-          { name: "ธีรวุฒิ ดี", preview: "โอนเงินแล้วนะ", time: "5/16", dot: "#94a3b8" },
-          { name: "กมลา ใจดี", preview: "ขึ้นทะเบียนได้...", time: "5/15", dot: "#94a3b8" },
-          { name: "วิภา ตรี", preview: "รอสักครู่นะ...", time: "5/14", dot: "#94a3b8" },
+          {
+            name: "สมชาย ทดสอบ",
+            preview: "สวัสดีครับ...",
+            time: "10:42",
+            dot: "#22c55e",
+          },
+          {
+            name: "นงนุช มีสุข",
+            preview: "ขอบคุณมากค่ะ",
+            time: "Friday",
+            dot: "#f59e0b",
+          },
+          {
+            name: "พิมพ์ใจ แสง",
+            preview: "ฝากได้ไหมคะ",
+            time: "Thursday",
+            dot: "#94a3b8",
+          },
+          {
+            name: "ธีรวุฒิ ดี",
+            preview: "โอนเงินแล้วนะ",
+            time: "5/16",
+            dot: "#94a3b8",
+          },
+          {
+            name: "กมลา ใจดี",
+            preview: "ขึ้นทะเบียนได้...",
+            time: "5/15",
+            dot: "#94a3b8",
+          },
+          {
+            name: "วิภา ตรี",
+            preview: "รอสักครู่นะ...",
+            time: "5/14",
+            dot: "#94a3b8",
+          },
         ].map(({ name, preview, time, dot }, i) => (
           <g key={i}>
-            <rect x={62} y={32 + i * 44} width={173} height={42} fill={i === 0 ? "#1e3a5f" : "none"} />
-            <rect x={62} y={74 + i * 44} width={173} height={1} fill="#1e3050" />
+            <rect
+              x={62}
+              y={32 + i * 44}
+              width={173}
+              height={42}
+              fill={i === 0 ? "#1e3a5f" : "none"}
+            />
+            <rect
+              x={62}
+              y={74 + i * 44}
+              width={173}
+              height={1}
+              fill="#1e3050"
+            />
             <circle cx={82} cy={55 + i * 44} r={11} fill="#1e3a5f" />
             <circle cx={82} cy={55 + i * 44} r={4} fill={dot} />
-            <text x={97} y={50 + i * 44} fill="#e2e8f0" fontSize={8.5} fontWeight="600">
+            <text
+              x={97}
+              y={50 + i * 44}
+              fill="#e2e8f0"
+              fontSize={8.5}
+              fontWeight="600"
+            >
               {name}
             </text>
             <text x={97} y={63 + i * 44} fill="#64748b" fontSize={7.5}>
               {preview}
             </text>
-            <text x={228} y={50 + i * 44} textAnchor="end" fill="#94a3b8" fontSize={7}>
+            <text
+              x={228}
+              y={50 + i * 44}
+              textAnchor="end"
+              fill="#94a3b8"
+              fontSize={7}
+            >
               {time}
             </text>
           </g>
@@ -94,7 +181,14 @@ function LineOADiagram() {
           strokeDasharray="6,3"
         />
         <rect x={70} y={1} width={90} height={14} rx={3} fill="#3b82f6" />
-        <text x={115} y={11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">
+        <text
+          x={115}
+          y={11}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={9}
+          fontWeight="bold"
+        >
           ① Chat List + วันที่
         </text>
 
@@ -127,7 +221,14 @@ function LineOADiagram() {
           strokeDasharray="6,3"
         />
         <rect x={247} y={1} width={90} height={14} rx={3} fill="#10b981" />
-        <text x={292} y={11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">
+        <text
+          x={292}
+          y={11}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={9}
+          fontWeight="bold"
+        >
           ② ชื่อลูกค้า (header)
         </text>
 
@@ -192,13 +293,27 @@ function LineOADiagram() {
           strokeDasharray="6,3"
         />
         <rect x={247} y={39} width={150} height={14} rx={3} fill="#f59e0b" />
-        <text x={322} y={49} textAnchor="middle" fill="#1a1a1a" fontSize={9} fontWeight="bold">
+        <text
+          x={322}
+          y={49}
+          textAnchor="middle"
+          fill="#1a1a1a"
+          fontSize={9}
+          fontWeight="bold"
+        >
           ③ ข้อความ (ซ้าย=ลูกค้า, ขวา=admin)
         </text>
 
         {/* ── Box 4: Notes panel (right side) ── */}
         <rect x={630} y={4} width={186} height={302} rx={4} fill="#0f1a2b" />
-        <text x={723} y={22} textAnchor="middle" fill="#94a3b8" fontSize={9} fontWeight="bold">
+        <text
+          x={723}
+          y={22}
+          textAnchor="middle"
+          fill="#94a3b8"
+          fontSize={9}
+          fontWeight="bold"
+        >
           Notes
         </text>
         <rect x={638} y={30} width={170} height={60} rx={6} fill="#1a2a3a" />
@@ -234,12 +349,26 @@ function LineOADiagram() {
           strokeDasharray="6,3"
         />
         <rect x={639} y={1} width={100} height={14} rx={3} fill="#a855f7" />
-        <text x={689} y={11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">
+        <text
+          x={689}
+          y={11}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={9}
+          fontWeight="bold"
+        >
           ④ Notes (ขวาสุด)
         </text>
 
         {/* Arrow: Box 1 → scraper reads */}
-        <text x={148} y={296} textAnchor="middle" fill="#3b82f6" fontSize={7} fontStyle="italic">
+        <text
+          x={148}
+          y={296}
+          textAnchor="middle"
+          fill="#3b82f6"
+          fontSize={7}
+          fontStyle="italic"
+        >
           scroll ↓ หา dateFrom
         </text>
       </svg>
@@ -278,9 +407,23 @@ function Badge({ level, text }) {
 /* ─── Metric chip ─── */
 function Metric({ label, value, color }) {
   return (
-    <div style={{ background: "#1e293b", borderRadius: 8, padding: "10px 14px", minWidth: 100, textAlign: "center" }}>
-      <div style={{ fontSize: 20, fontWeight: "bold", color: color || "#f1f5f9" }}>{value ?? "—"}</div>
-      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{label}</div>
+    <div
+      style={{
+        background: "#1e293b",
+        borderRadius: 8,
+        padding: "10px 14px",
+        minWidth: 100,
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{ fontSize: 20, fontWeight: "bold", color: color || "#f1f5f9" }}
+      >
+        {value ?? "—"}
+      </div>
+      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
+        {label}
+      </div>
     </div>
   );
 }
@@ -288,8 +431,22 @@ function Metric({ label, value, color }) {
 /* ─── Box section ─── */
 function BoxSection({ num, color, title, children }) {
   return (
-    <div style={{ border: `2px solid ${color}`, borderRadius: 10, padding: 16, marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+    <div
+      style={{
+        border: `2px solid ${color}`,
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
         <div
           style={{
             background: color,
@@ -302,7 +459,9 @@ function BoxSection({ num, color, title, children }) {
         >
           {num}
         </div>
-        <div style={{ fontWeight: 700, fontSize: 14, color: "#f1f5f9" }}>{title}</div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: "#f1f5f9" }}>
+          {title}
+        </div>
       </div>
       {children}
     </div>
@@ -340,7 +499,9 @@ export default function ScraperTestPage() {
   const ns = data?.noteStats || {};
   const qs = data?.qcStats || {};
 
-  const unknownAdminPct = ms.total_admin_msgs ? Math.round((ms.unknown_admin / ms.total_admin_msgs) * 100) : 0;
+  const unknownAdminPct = ms.total_admin_msgs
+    ? Math.round((ms.unknown_admin / ms.total_admin_msgs) * 100)
+    : 0;
 
   return (
     <div className="shell">
@@ -365,7 +526,14 @@ export default function ScraperTestPage() {
 
       <main className="main">
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <h2 style={{ margin: 0, fontSize: 18 }}>🔬 Scraper Test Report</h2>
             <input
               type="date"
@@ -410,15 +578,20 @@ export default function ScraperTestPage() {
               {loading ? "⏳" : "🔄 โหลด"}
             </button>
           </div>
-          {err && <div style={{ marginTop: 10, color: "#f87171", fontSize: 13 }}>❌ {err}</div>}
+          {err && (
+            <div style={{ marginTop: 10, color: "#f87171", fontSize: 13 }}>
+              ❌ {err}
+            </div>
+          )}
         </div>
 
         {/* ─── Diagram ─── */}
         <div className="card">
           <LineOADiagram />
           <p style={{ color: "#64748b", fontSize: 12, margin: 0 }}>
-            แผนผังด้านบนแสดง 4 จุดที่ Scraper ต้องดึงข้อมูลจาก LINE Official Account Manager (chat.line.biz) — กรอบสี
-            แทนแต่ละ box ที่ scraper ต้องจัดการ
+            แผนผังด้านบนแสดง 4 จุดที่ Scraper ต้องดึงข้อมูลจาก LINE Official
+            Account Manager (chat.line.biz) — กรอบสี แทนแต่ละ box ที่ scraper
+            ต้องจัดการ
           </p>
         </div>
 
@@ -428,7 +601,14 @@ export default function ScraperTestPage() {
             <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#94a3b8" }}>
               📊 สรุปข้อมูลใน DB ({data.from} → {data.to})
             </h3>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginBottom: 16,
+              }}
+            >
               <Metric label="Admin msgs" value={ms.total_admin_msgs} />
               <Metric
                 label="รู้ชื่อ admin"
@@ -446,7 +626,11 @@ export default function ScraperTestPage() {
                 value={cs.with_real_name}
                 color={cs.with_real_name > 0 ? "#22c55e" : "#ef4444"}
               />
-              <Metric label="ชื่อไม่ครบ" value={cs.no_name} color={cs.no_name > 0 ? "#f59e0b" : "#22c55e"} />
+              <Metric
+                label="ชื่อไม่ครบ"
+                value={cs.no_name}
+                color={cs.no_name > 0 ? "#f59e0b" : "#22c55e"}
+              />
               <Metric label="Notes ทั้งหมด" value={ns.total_notes} />
               <Metric
                 label="Notes มีวันที่"
@@ -464,22 +648,89 @@ export default function ScraperTestPage() {
             {/* Daily breakdown table */}
             {data.dailyBreakdown?.length > 0 && (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 12,
+                  }}
+                >
                   <thead>
                     <tr style={{ background: "#1e293b" }}>
-                      <th style={{ padding: "6px 10px", textAlign: "left", color: "#94a3b8" }}>วันที่</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", color: "#94a3b8" }}>msgs</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", color: "#94a3b8" }}>ลูกค้า</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", color: "#ef4444" }}>ไม่รู้ admin</th>
-                      <th style={{ padding: "6px 10px", textAlign: "right", color: "#94a3b8" }}>%ไม่รู้</th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "left",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        วันที่
+                      </th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "right",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        msgs
+                      </th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "right",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        ลูกค้า
+                      </th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "right",
+                          color: "#ef4444",
+                        }}
+                      >
+                        ไม่รู้ admin
+                      </th>
+                      <th
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "right",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        %ไม่รู้
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.dailyBreakdown.map((r) => (
-                      <tr key={r.day} style={{ borderTop: "1px solid #1e293b" }}>
-                        <td style={{ padding: "5px 10px", color: "#e2e8f0" }}>{r.day}</td>
-                        <td style={{ padding: "5px 10px", textAlign: "right", color: "#f1f5f9" }}>{r.total}</td>
-                        <td style={{ padding: "5px 10px", textAlign: "right", color: "#93c5fd" }}>{r.customers}</td>
+                      <tr
+                        key={r.day}
+                        style={{ borderTop: "1px solid #1e293b" }}
+                      >
+                        <td style={{ padding: "5px 10px", color: "#e2e8f0" }}>
+                          {r.day}
+                        </td>
+                        <td
+                          style={{
+                            padding: "5px 10px",
+                            textAlign: "right",
+                            color: "#f1f5f9",
+                          }}
+                        >
+                          {r.total}
+                        </td>
+                        <td
+                          style={{
+                            padding: "5px 10px",
+                            textAlign: "right",
+                            color: "#93c5fd",
+                          }}
+                        >
+                          {r.customers}
+                        </td>
                         <td
                           style={{
                             padding: "5px 10px",
@@ -489,7 +740,13 @@ export default function ScraperTestPage() {
                         >
                           {r.unknown_admin}
                         </td>
-                        <td style={{ padding: "5px 10px", textAlign: "right", color: "#94a3b8" }}>
+                        <td
+                          style={{
+                            padding: "5px 10px",
+                            textAlign: "right",
+                            color: "#94a3b8",
+                          }}
+                        >
                           {pct(r.unknown_admin, r.total)}
                         </td>
                       </tr>
@@ -502,7 +759,9 @@ export default function ScraperTestPage() {
             {/* Unknown admin samples */}
             {data.unknownAdminSamples?.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, color: "#f87171", marginBottom: 6 }}>
+                <div
+                  style={{ fontSize: 12, color: "#f87171", marginBottom: 6 }}
+                >
                   ตัวอย่างข้อความที่ไม่รู้ชื่อ admin (admin_id = null):
                 </div>
                 {data.unknownAdminSamples.map((m, i) => (
@@ -516,10 +775,16 @@ export default function ScraperTestPage() {
                       fontSize: 11,
                     }}
                   >
-                    <span style={{ color: "#64748b" }}>{fmtTs(m.created_at)} — </span>
-                    <span style={{ color: "#fcd34d" }}>{m.display_name || m.line_user_id?.slice(0, 16)}</span>
+                    <span style={{ color: "#64748b" }}>
+                      {fmtTs(m.created_at)} —{" "}
+                    </span>
+                    <span style={{ color: "#fcd34d" }}>
+                      {m.display_name || m.line_user_id?.slice(0, 16)}
+                    </span>
                     <span style={{ color: "#94a3b8" }}>: </span>
-                    <span style={{ color: "#e2e8f0" }}>{String(m.message_text || "").slice(0, 80)}</span>
+                    <span style={{ color: "#e2e8f0" }}>
+                      {String(m.message_text || "").slice(0, 80)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -529,18 +794,34 @@ export default function ScraperTestPage() {
 
         {/* ─── Box 1: Chat List ─── */}
         <div className="card">
-          <BoxSection num="① Box 1" color="#3b82f6" title="Chat List Scroll + วันที่ (กรอบซ้าย)">
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10, lineHeight: 1.7 }}>
-              <b style={{ color: "#e2e8f0" }}>Spec:</b> เลื่อน chat list ลงจนถึงวันที่เป้าหมาย (dateFrom)
-              แล้วเริ่มเก็บข้อมูล จาก chat สุดท้ายของวันนั้น LINE OA แสดงเวลาเป็น "10:42" (วันนี้), "Friday"
-              (วันในสัปดาห์), "5/17/2026" (เก่ากว่า 7 วัน) ต้องแปลงเป็นวันที่จริงให้ถูกต้อง
+          <BoxSection
+            num="① Box 1"
+            color="#3b82f6"
+            title="Chat List Scroll + วันที่ (กรอบซ้าย)"
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "#94a3b8",
+                marginBottom: 10,
+                lineHeight: 1.7,
+              }}
+            >
+              <b style={{ color: "#e2e8f0" }}>Spec:</b> เลื่อน chat list
+              ลงจนถึงวันที่เป้าหมาย (dateFrom) แล้วเริ่มเก็บข้อมูล จาก chat
+              สุดท้ายของวันนั้น LINE OA แสดงเวลาเป็น "10:42" (วันนี้), "Friday"
+              (วันในสัปดาห์), "5/17/2026" (เก่ากว่า 7 วัน)
+              ต้องแปลงเป็นวันที่จริงให้ถูกต้อง
             </div>
 
             <Badge
               level="ok"
               text="dayLabelToDate() รองรับ: HH:MM (วันนี้), Yesterday/เมื่อวาน, ชื่อวัน EN+TH (Sunday–Saturday, อาทิตย์–เสาร์), M/D/YYYY และ standard date parse"
             />
-            <Badge level="ok" text="หยุด scroll เร็วเมื่อ item สุดท้ายมี label เก่ากว่า dateFrom — ไม่โหลดทั้งหมด" />
+            <Badge
+              level="ok"
+              text="หยุด scroll เร็วเมื่อ item สุดท้ายมี label เก่ากว่า dateFrom — ไม่โหลดทั้งหมด"
+            />
             <Badge
               level="ok"
               text="[แก้แล้ว] Virtual Scroll: ลบ pre-collected itemLabels array — อ่าน label live ทุกครั้งหลัง scrollIntoViewIfNeeded()+150ms เพื่อให้ DOM render ก่อนอ่าน"
@@ -558,10 +839,22 @@ export default function ScraperTestPage() {
 
         {/* ─── Box 2: Customer Name ─── */}
         <div className="card">
-          <BoxSection num="② Box 2" color="#10b981" title="ชื่อลูกค้า (header ของ chat panel)">
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10, lineHeight: 1.7 }}>
-              <b style={{ color: "#e2e8f0" }}>Spec:</b> ดึงชื่อลูกค้าจากหัว chat panel ฝั่งขวาหลังคลิก chat item LINE OA
-              ตั้งชื่อหน้าเป็น "ชื่อลูกค้า | LINE Official Account Manager" ใน document.title
+          <BoxSection
+            num="② Box 2"
+            color="#10b981"
+            title="ชื่อลูกค้า (header ของ chat panel)"
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "#94a3b8",
+                marginBottom: 10,
+                lineHeight: 1.7,
+              }}
+            >
+              <b style={{ color: "#e2e8f0" }}>Spec:</b> ดึงชื่อลูกค้าจากหัว chat
+              panel ฝั่งขวาหลังคลิก chat item LINE OA ตั้งชื่อหน้าเป็น
+              "ชื่อลูกค้า | LINE Official Account Manager" ใน document.title
             </div>
 
             <Badge
@@ -572,7 +865,10 @@ export default function ScraperTestPage() {
               level="ok"
               text="กรอง generic titles: 'LINE Official Account Manager', 'หน้าหลัก', 'Home', 'Chat' ออก"
             />
-            <Badge level="ok" text="กรอง emoji-only names ออก ด้วย regex [฀-๿a-zA-Z0-9] (ต้องมีตัวอักษร/ตัวเลขจริง)" />
+            <Badge
+              level="ok"
+              text="กรอง emoji-only names ออก ด้วย regex [฀-๿a-zA-Z0-9] (ต้องมีตัวอักษร/ตัวเลขจริง)"
+            />
             <Badge
               level="ok"
               text="[แก้แล้ว] DOM fallback ใหม่: img[alt] ที่ top < 15% height, left > 25% width (avatar ลูกค้า) + heading elements ใน right panel — ไม่ใช้ [class*=...] ที่ match ไม่ได้"
@@ -594,9 +890,21 @@ export default function ScraperTestPage() {
 
         {/* ─── Box 3: Messages ─── */}
         <div className="card">
-          <BoxSection num="③ Box 3" color="#f59e0b" title="ข้อความใน Chat (ซ้าย=ลูกค้า, ขวา=admin)">
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10, lineHeight: 1.7 }}>
-              <b style={{ color: "#e2e8f0" }}>Spec:</b> ดึงข้อความทั้งหมดในช่วงวันที่ จับคู่ Q&A (คำถามลูกค้า → คำตอบ
+          <BoxSection
+            num="③ Box 3"
+            color="#f59e0b"
+            title="ข้อความใน Chat (ซ้าย=ลูกค้า, ขวา=admin)"
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "#94a3b8",
+                marginBottom: 10,
+                lineHeight: 1.7,
+              }}
+            >
+              <b style={{ color: "#e2e8f0" }}>Spec:</b>{" "}
+              ดึงข้อความทั้งหมดในช่วงวันที่ จับคู่ Q&A (คำถามลูกค้า → คำตอบ
               admin) พร้อมชื่อ admin ที่ตอบ บันทึก timestamp ให้ถูกต้อง
             </div>
 
@@ -637,10 +945,22 @@ export default function ScraperTestPage() {
 
         {/* ─── Box 4: Notes ─── */}
         <div className="card">
-          <BoxSection num="④ Box 4" color="#a855f7" title="Notes ของลูกค้า (panel ฝั่งขวาสุด)">
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10, lineHeight: 1.7 }}>
-              <b style={{ color: "#e2e8f0" }}>Spec:</b> ดึง Notes ที่ admin บันทึกไว้ในแต่ละ conversation
-              พร้อมวันเวลาที่ note และชื่อ admin ที่ note
+          <BoxSection
+            num="④ Box 4"
+            color="#a855f7"
+            title="Notes ของลูกค้า (panel ฝั่งขวาสุด)"
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: "#94a3b8",
+                marginBottom: 10,
+                lineHeight: 1.7,
+              }}
+            >
+              <b style={{ color: "#e2e8f0" }}>Spec:</b> ดึง Notes ที่ admin
+              บันทึกไว้ในแต่ละ conversation พร้อมวันเวลาที่ note และชื่อ admin
+              ที่ note
             </div>
 
             <Badge
@@ -663,10 +983,19 @@ export default function ScraperTestPage() {
               level="info"
               text="Date regex M/D/YYYY, HH:MM ยังคงใช้รูปแบบเดิม — รองรับ AM/PM ด้วย; ถ้า LINE OA เปลี่ยน format จะ match ไม่ได้ (monitor ด้วย noted_at=null count)"
             />
-            <Badge level="info" text="Notes ใน DB ป้องกัน duplicate ด้วย upsert — ถ้า scrape ซ้ำจะไม่บันทึกซ้ำ" />
+            <Badge
+              level="info"
+              text="Notes ใน DB ป้องกัน duplicate ด้วย upsert — ถ้า scrape ซ้ำจะไม่บันทึกซ้ำ"
+            />
             {data && (
               <Badge
-                level={ns.total_notes === 0 ? "critical" : ns.with_date < ns.total_notes ? "warn" : "ok"}
+                level={
+                  ns.total_notes === 0
+                    ? "critical"
+                    : ns.with_date < ns.total_notes
+                      ? "warn"
+                      : "ok"
+                }
                 text={`ข้อมูลใน DB: notes ทั้งหมด ${ns.total_notes} รายการ — มีวันที่ ${ns.with_date} มีชื่อผู้ note ${ns.with_author} (last scraped: ${fmtTs(ns.last_scraped)})`}
               />
             )}
@@ -676,13 +1005,37 @@ export default function ScraperTestPage() {
         {/* ─── Recent Jobs ─── */}
         {data?.jobs?.length > 0 && (
           <div className="card">
-            <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#94a3b8" }}>📋 Jobs ล่าสุด</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#94a3b8" }}>
+              📋 Jobs ล่าสุด
+            </h3>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 12,
+                }}
+              >
                 <thead>
                   <tr style={{ background: "#1e293b" }}>
-                    {["ID", "ช่วงวันที่", "สถานะ", "Chats", "Logged", "เริ่ม", "เสร็จ", "Error"].map((h) => (
-                      <th key={h} style={{ padding: "6px 10px", textAlign: "left", color: "#94a3b8" }}>
+                    {[
+                      "ID",
+                      "ช่วงวันที่",
+                      "สถานะ",
+                      "Chats",
+                      "Logged",
+                      "เริ่ม",
+                      "เสร็จ",
+                      "Error",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: "6px 10px",
+                          textAlign: "left",
+                          color: "#94a3b8",
+                        }}
+                      >
                         {h}
                       </th>
                     ))}
@@ -691,17 +1044,34 @@ export default function ScraperTestPage() {
                 <tbody>
                   {data.jobs.map((j) => (
                     <tr key={j.id} style={{ borderTop: "1px solid #1e293b" }}>
-                      <td style={{ padding: "5px 10px", color: "#64748b" }}>{j.id}</td>
+                      <td style={{ padding: "5px 10px", color: "#64748b" }}>
+                        {j.id}
+                      </td>
                       <td style={{ padding: "5px 10px", color: "#e2e8f0" }}>
                         {j.date_from?.slice(0, 10)} – {j.date_to?.slice(0, 10)}
                       </td>
                       <td style={{ padding: "5px 10px" }}>
-                        <span style={{ color: statusColor(j.status), fontWeight: 600 }}>{j.status}</span>
+                        <span
+                          style={{
+                            color: statusColor(j.status),
+                            fontWeight: 600,
+                          }}
+                        >
+                          {j.status}
+                        </span>
                       </td>
-                      <td style={{ padding: "5px 10px", color: "#94a3b8" }}>{j.total_chats ?? "—"}</td>
-                      <td style={{ padding: "5px 10px", color: "#93c5fd" }}>{j.logged_count ?? 0}</td>
-                      <td style={{ padding: "5px 10px", color: "#64748b" }}>{fmtTs(j.started_at)}</td>
-                      <td style={{ padding: "5px 10px", color: "#64748b" }}>{fmtTs(j.finished_at)}</td>
+                      <td style={{ padding: "5px 10px", color: "#94a3b8" }}>
+                        {j.total_chats ?? "—"}
+                      </td>
+                      <td style={{ padding: "5px 10px", color: "#93c5fd" }}>
+                        {j.logged_count ?? 0}
+                      </td>
+                      <td style={{ padding: "5px 10px", color: "#64748b" }}>
+                        {fmtTs(j.started_at)}
+                      </td>
+                      <td style={{ padding: "5px 10px", color: "#64748b" }}>
+                        {fmtTs(j.finished_at)}
+                      </td>
                       <td
                         style={{
                           padding: "5px 10px",
@@ -723,35 +1093,48 @@ export default function ScraperTestPage() {
         )}
 
         {/* ─── Summary ─── */}
-        <div className="card" style={{ background: "#052e16", border: "1px solid #166534" }}>
-          <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#86efac" }}>✅ สรุปการแก้ไข (แก้ครบทุกปัญหาแล้ว)</h3>
+        <div
+          className="card"
+          style={{ background: "#052e16", border: "1px solid #166534" }}
+        >
+          <h3 style={{ margin: "0 0 12px", fontSize: 14, color: "#86efac" }}>
+            ✅ สรุปการแก้ไข (แก้ครบทุกปัญหาแล้ว)
+          </h3>
           <div style={{ fontSize: 12, lineHeight: 2, color: "#94a3b8" }}>
             <div>
-              <span style={{ color: "#86efac", fontWeight: "bold" }}>แก้ไขแล้ว (7 อัน):</span>
+              <span style={{ color: "#86efac", fontWeight: "bold" }}>
+                แก้ไขแล้ว (7 อัน):
+              </span>
             </div>
             <div style={{ paddingLeft: 16 }}>
-              1. <b style={{ color: "#86efac" }}>Box 3 — extractAdminName()</b>: ใช้ img[alt] + text nodes นอก
-              .chat-item-text + title/aria-label แทน hashed class selectors
+              1. <b style={{ color: "#86efac" }}>Box 3 — extractAdminName()</b>:
+              ใช้ img[alt] + text nodes นอก .chat-item-text + title/aria-label
+              แทน hashed class selectors
               <br />
-              2. <b style={{ color: "#86efac" }}>Box 4 — Notes detection</b>: ใช้ chat container exclusion (หา
-              scrollable parent ของ .chatsys-date) แทน x {">"} 55%
+              2. <b style={{ color: "#86efac" }}>Box 4 — Notes detection</b>:
+              ใช้ chat container exclusion (หา scrollable parent ของ
+              .chatsys-date) แทน x {">"} 55%
               <br />
-              3. <b style={{ color: "#86efac" }}>Box 2 — DOM fallback</b>: ใช้ img[alt] ใน top-right area + heading
-              elements แทน [class*=...] selectors
+              3. <b style={{ color: "#86efac" }}>Box 2 — DOM fallback</b>: ใช้
+              img[alt] ใน top-right area + heading elements แทน [class*=...]
+              selectors
               <br />
-              4. <b style={{ color: "#86efac" }}>Box 1 — Virtual scroll</b>: อ่าน label live ทุก iteration หลัง
-              scrollIntoViewIfNeeded()+150ms แทนการใช้ pre-collected array
+              4. <b style={{ color: "#86efac" }}>Box 1 — Virtual scroll</b>:
+              อ่าน label live ทุก iteration หลัง scrollIntoViewIfNeeded()+150ms
+              แทนการใช้ pre-collected array
               <br />
-              5. <b style={{ color: "#86efac" }}>Box 2 — Timeout</b>: เพิ่มจาก 2s → 4s, poll จาก 250ms → 200ms
+              5. <b style={{ color: "#86efac" }}>Box 2 — Timeout</b>: เพิ่มจาก
+              2s → 4s, poll จาก 250ms → 200ms
               <br />
-              6. <b style={{ color: "#86efac" }}>Box 4 — noted_at</b>: parseNotedAt() แปลง "M/D/YYYY, HH:MM" → ISO
-              timestamp ก่อนส่ง API
+              6. <b style={{ color: "#86efac" }}>Box 4 — noted_at</b>:
+              parseNotedAt() แปลง "M/D/YYYY, HH:MM" → ISO timestamp ก่อนส่ง API
               <br />
-              7. <b style={{ color: "#86efac" }}>Box 4 — UI_SKIP</b>: เพิ่ม 'Tag', 'Label', 'Follow-up' ใน filter list
+              7. <b style={{ color: "#86efac" }}>Box 4 — UI_SKIP</b>: เพิ่ม
+              'Tag', 'Label', 'Follow-up' ใน filter list
             </div>
             <div style={{ marginTop: 8, color: "#64748b" }}>
-              ดูตัวเลขผล DB จริงๆ ด้านบน — ถ้า "ไม่รู้ชื่อ admin" ลดลงหลังรัน scraper ครั้งถัดไปแสดงว่า img[alt]
-              approach ได้ผล
+              ดูตัวเลขผล DB จริงๆ ด้านบน — ถ้า "ไม่รู้ชื่อ admin" ลดลงหลังรัน
+              scraper ครั้งถัดไปแสดงว่า img[alt] approach ได้ผล
             </div>
           </div>
         </div>

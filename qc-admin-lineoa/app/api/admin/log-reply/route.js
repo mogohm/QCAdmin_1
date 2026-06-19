@@ -21,7 +21,11 @@ export async function OPTIONS() {
 export async function POST(req) {
   // scraper service ใช้ x-api-key (guard bypass); session ต้องมี chat.reply
   const gate = guard(req, "chat.reply");
-  if (gate) return Response.json({ error: "unauthorized" }, { status: gate.status, headers: CORS });
+  if (gate)
+    return Response.json(
+      { error: "unauthorized" },
+      { status: gate.status, headers: CORS },
+    );
 
   const {
     line_user_id,
@@ -41,7 +45,10 @@ export async function POST(req) {
     scraper_job_id,
   } = await req.json();
   if (!line_user_id || !text)
-    return Response.json({ error: "line_user_id, text required" }, { status: 400, headers: CORS });
+    return Response.json(
+      { error: "line_user_id, text required" },
+      { status: 400, headers: CORS },
+    );
 
   // ถ้าไม่มี admin_id ให้หาจากชื่อที่ scraper ดึงมา หรือสร้างใหม่อัตโนมัติ
   // กฎ: admin จริงทุกคนขึ้นต้นด้วย "PK" (รองรับฟอนต์ Unicode แปลก) — ไม่ใช่ = scraper ดึงผิด → ไม่บันทึก
@@ -49,7 +56,10 @@ export async function POST(req) {
   if (!resolvedAdminId && admin_name) {
     if (!isPkName(admin_name)) {
       // ชื่อไม่ใช่ admin จริง (เช่น Download, ชื่อลูกค้า, badge) — ข้าม ไม่บันทึกกันข้อมูลมั่ว
-      return Response.json({ ok: true, skipped: "non-PK admin name", admin_name }, { headers: CORS });
+      return Response.json(
+        { ok: true, skipped: "non-PK admin name", admin_name },
+        { headers: CORS },
+      );
     }
     const found = await query`
       SELECT id FROM qc_admins
@@ -72,7 +82,10 @@ export async function POST(req) {
     }
   }
   if (!resolvedAdminId)
-    return Response.json({ error: "ระบุ admin_id หรือ admin_name" }, { status: 400, headers: CORS });
+    return Response.json(
+      { error: "ระบุ admin_id หรือ admin_name" },
+      { status: 400, headers: CORS },
+    );
 
   // ตรวจสอบ/สร้าง customer ก่อน (FK constraint)
   // ถ้ามี customer_name จาก scraper (ชื่อที่เห็นใน LINE OA) ให้อัปเดตด้วย
@@ -135,7 +148,13 @@ export async function POST(req) {
       }
     }
     return Response.json(
-      { ok: true, duplicate: true, inserted_messages: 0, skipped_duplicates: 1, qc_score_id: null },
+      {
+        ok: true,
+        duplicate: true,
+        inserted_messages: 0,
+        skipped_duplicates: 1,
+        qc_score_id: null,
+      },
       { headers: CORS },
     );
   }
@@ -233,7 +252,8 @@ export async function POST(req) {
   `;
 
   // คำนวณ QC score ผ่าน qc-runner (SOP + fatal + SLA + details + telegram)
-  const settings = await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
+  const settings =
+    await query`SELECT value FROM app_settings WHERE key = 'response_limit_minutes'`;
 
   let responseSeconds = null;
   if (customerMsgCreatedAt) {
@@ -255,7 +275,8 @@ export async function POST(req) {
     createdAt: adminMsg[0].created_at,
     adminName: admin_name,
     customerName: customer_name,
-    responseLimitMinutes: settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
+    responseLimitMinutes:
+      settings[0]?.value || process.env.QC_RESPONSE_LIMIT_MINUTES || 5,
   });
 
   // บันทึก source/scraper_job_id ลง qc_scores (แยกจาก runQc เพื่อไม่แตะ pipeline หลัก)
@@ -275,7 +296,9 @@ export async function POST(req) {
     WHERE conversation_id = ${convId} AND direction = 'customer'
     ORDER BY created_at DESC LIMIT 5
   `;
-  const regSearchText = [text, ...recentCust.map((r) => r.message_text)].join(" ").replace(/[\s\-.()]/g, "");
+  const regSearchText = [text, ...recentCust.map((r) => r.message_text)]
+    .join(" ")
+    .replace(/[\s\-.()]/g, "");
   const hasPhone = /0[689]\d{8}/.test(regSearchText);
   const hasBankAcc = /\b\d{10,12}\b/.test(regSearchText);
   if (hasPhone || hasBankAcc) {

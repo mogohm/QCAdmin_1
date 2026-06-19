@@ -6,7 +6,9 @@ const path = require("path");
 
 (async () => {
   if (!process.env.DATABASE_URL) {
-    console.error("❌ ต้องตั้ง DATABASE_URL ก่อน เช่น:  DATABASE_URL=postgres://… npm run db:init");
+    console.error(
+      "❌ ต้องตั้ง DATABASE_URL ก่อน เช่น:  DATABASE_URL=postgres://… npm run db:init",
+    );
     process.exit(1);
   }
   const db = neon(process.env.DATABASE_URL);
@@ -23,7 +25,9 @@ const path = require("path");
       await db(part);
       ok++;
     } catch (e) {
-      console.error(`⚠️  statement ล้มเหลว: ${part.slice(0, 60)}… → ${e.message}`);
+      console.error(
+        `⚠️  statement ล้มเหลว: ${part.slice(0, 60)}… → ${e.message}`,
+      );
     }
   }
   console.log(

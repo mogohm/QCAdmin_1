@@ -9,7 +9,10 @@ function verifySignature(rawBody, signature) {
     console.error("Missing LINE_CHANNEL_SECRET");
     return false;
   }
-  const hash = crypto.createHmac("sha256", secret).update(rawBody).digest("base64");
+  const hash = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("base64");
   return hash === signature;
 }
 
@@ -23,7 +26,10 @@ export async function POST(req) {
       body = JSON.parse(raw || "{}");
     } catch (e) {
       console.error("Invalid JSON body", e);
-      return NextResponse.json({ ok: true, note: "Invalid JSON ignored" }, { status: 200 });
+      return NextResponse.json(
+        { ok: true, note: "Invalid JSON ignored" },
+        { status: 200 },
+      );
     }
 
     if (Array.isArray(body.events) && body.events.length === 0) {
@@ -81,7 +87,9 @@ export async function POST(req) {
         }
 
         // 3. Insert message — ใช้ timestamp จริงจาก LINE event (Unix ms)
-        const lineTs = ev.timestamp ? new Date(ev.timestamp).toISOString() : null;
+        const lineTs = ev.timestamp
+          ? new Date(ev.timestamp).toISOString()
+          : null;
         if (lineTs) {
           await query`
             INSERT INTO messages (conversation_id, line_user_id, direction, message_text, line_message_id, created_at)
@@ -100,13 +108,19 @@ export async function POST(req) {
   } catch (err) {
     console.error("Webhook error:", err);
     // Still return 200 so LINE doesn't retry
-    return NextResponse.json({ ok: true, error: String(err.message || err) }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, error: String(err.message || err) },
+      { status: 200 },
+    );
   }
 }
 
 export async function GET() {
   return NextResponse.json(
-    { ok: true, message: "LINE webhook endpoint is running. Use POST from LINE." },
+    {
+      ok: true,
+      message: "LINE webhook endpoint is running. Use POST from LINE.",
+    },
     { status: 200 },
   );
 }

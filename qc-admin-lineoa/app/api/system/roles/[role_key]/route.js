@@ -16,14 +16,22 @@ export async function PATCH(req, { params }) {
   const { role_key } = await params;
   const b = await req.json().catch(() => ({}));
   if (role_key === "system_admin")
-    return Response.json({ error: "system_admin มีทุกสิทธิ์เสมอ แก้ไม่ได้" }, { status: 400 });
-  const perms = (b.permissions || []).filter((p) => ALL_PERMISSIONS.includes(p));
+    return Response.json(
+      { error: "system_admin มีทุกสิทธิ์เสมอ แก้ไม่ได้" },
+      { status: 400 },
+    );
+  const perms = (b.permissions || []).filter((p) =>
+    ALL_PERMISSIONS.includes(p),
+  );
   try {
     await query`DELETE FROM role_permissions WHERE role_key = ${role_key}`;
     for (const p of perms) {
       await query`INSERT INTO role_permissions (role_key, permission_key) VALUES (${role_key}, ${p}) ON CONFLICT DO NOTHING`;
     }
-    await audit(me?.uid, "role.permissions.update", { role_key, count: perms.length });
+    await audit(me?.uid, "role.permissions.update", {
+      role_key,
+      count: perms.length,
+    });
     return Response.json({ ok: true, role_key, permissions: perms });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });

@@ -141,7 +141,13 @@ export default function RulesPage() {
     load();
   };
 
-  const catColor = { register: "#3b82f6", kyc: "#8b5cf6", deposit: "#10b981", promotion: "#f59e0b", other: "#6b7280" };
+  const catColor = {
+    register: "#3b82f6",
+    kyc: "#8b5cf6",
+    deposit: "#10b981",
+    promotion: "#f59e0b",
+    other: "#6b7280",
+  };
 
   return (
     <div className="shell">
@@ -165,13 +171,31 @@ export default function RulesPage() {
       </aside>
       <main className="main">
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>⚙️ จัดการ QC Rules</h1>
-          <span style={{ marginLeft: "auto", fontSize: 13, color: "#6b7280" }}>{rules.length} rules</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+            ⚙️ จัดการ QC Rules
+          </h1>
+          <span style={{ marginLeft: "auto", fontSize: 13, color: "#6b7280" }}>
+            {rules.length} rules
+          </span>
         </div>
 
         {/* API Key + Add */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginBottom: 20,
+            flexWrap: "wrap",
+          }}
+        >
           <input
             type="password"
             placeholder="Admin API Key (สำหรับแก้ไข/ลบ)"
@@ -218,36 +242,105 @@ export default function RulesPage() {
 
         {/* Rules Table */}
         {loading ? (
-          <div style={{ color: "#6b7280", textAlign: "center", padding: 40 }}>กำลังโหลด...</div>
+          <div style={{ color: "#6b7280", textAlign: "center", padding: 40 }}>
+            กำลังโหลด...
+          </div>
         ) : (
           <div
-            style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,.08)", overflow: "hidden" }}
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              boxShadow: "0 1px 4px rgba(0,0,0,.08)",
+              overflow: "hidden",
+            }}
           >
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 14,
+              }}
+            >
               <thead>
                 <tr style={{ background: "#f1f5f9" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     Rule Code
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     ชื่อ Rule
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     Category
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     คำถาม (keywords)
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     คำตอบ (keywords)
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     Weight
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     สถานะ
                   </th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "center",
+                      fontWeight: 600,
+                      color: "#374151",
+                    }}
+                  >
                     จัดการ
                   </th>
                 </tr>
@@ -262,7 +355,14 @@ export default function RulesPage() {
                       opacity: rule.is_active ? 1 : 0.5,
                     }}
                   >
-                    <td style={{ padding: "12px 16px", fontFamily: "monospace", fontWeight: 600, color: "#1d4ed8" }}>
+                    <td
+                      style={{
+                        padding: "12px 16px",
+                        fontFamily: "monospace",
+                        fontWeight: 600,
+                        color: "#1d4ed8",
+                      }}
+                    >
                       {rule.rule_code}
                     </td>
                     <td style={{ padding: "12px 16px" }}>{rule.rule_name}</td>
@@ -280,9 +380,20 @@ export default function RulesPage() {
                         {rule.category}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 16px", color: "#4b5563", maxWidth: 180 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {(Array.isArray(rule.question_keywords) ? rule.question_keywords : []).map((k, j) => (
+                    <td
+                      style={{
+                        padding: "12px 16px",
+                        color: "#4b5563",
+                        maxWidth: 180,
+                      }}
+                    >
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
+                      >
+                        {(Array.isArray(rule.question_keywords)
+                          ? rule.question_keywords
+                          : []
+                        ).map((k, j) => (
                           <span
                             key={j}
                             style={{
@@ -298,9 +409,20 @@ export default function RulesPage() {
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: "12px 16px", color: "#4b5563", maxWidth: 180 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {(Array.isArray(rule.answer_keywords) ? rule.answer_keywords : []).map((k, j) => (
+                    <td
+                      style={{
+                        padding: "12px 16px",
+                        color: "#4b5563",
+                        maxWidth: 180,
+                      }}
+                    >
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
+                      >
+                        {(Array.isArray(rule.answer_keywords)
+                          ? rule.answer_keywords
+                          : []
+                        ).map((k, j) => (
                           <span
                             key={j}
                             style={{
@@ -316,7 +438,9 @@ export default function RulesPage() {
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "center" }}>{rule.weight}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                      {rule.weight}
+                    </td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}>
                       <button
                         onClick={() => toggleActive(rule)}
@@ -335,7 +459,13 @@ export default function RulesPage() {
                       </button>
                     </td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          justifyContent: "center",
+                        }}
+                      >
                         <button
                           onClick={() => openEdit(rule)}
                           style={{
@@ -370,7 +500,14 @@ export default function RulesPage() {
                 ))}
                 {rules.length === 0 && (
                   <tr>
-                    <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
+                    <td
+                      colSpan={8}
+                      style={{
+                        padding: 40,
+                        textAlign: "center",
+                        color: "#9ca3af",
+                      }}
+                    >
                       ยังไม่มี Rule
                     </td>
                   </tr>
@@ -405,15 +542,23 @@ export default function RulesPage() {
                 overflowY: "auto",
               }}
             >
-              <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>{editId ? "แก้ไข Rule" : "เพิ่ม Rule ใหม่"}</h2>
+              <h2 style={{ margin: "0 0 20px", fontSize: 18 }}>
+                {editId ? "แก้ไข Rule" : "เพิ่ม Rule ใหม่"}
+              </h2>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 14 }}
+              >
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
                   Rule Code
                   <input
                     disabled={!!editId}
                     value={form.rule_code}
-                    onChange={(e) => setForm((f) => ({ ...f, rule_code: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, rule_code: e.target.value }))
+                    }
                     placeholder="เช่น DEP-002"
                     style={{
                       display: "block",
@@ -429,11 +574,15 @@ export default function RulesPage() {
                   />
                 </label>
 
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
                   Rule Name
                   <input
                     value={form.rule_name}
-                    onChange={(e) => setForm((f) => ({ ...f, rule_name: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, rule_name: e.target.value }))
+                    }
                     placeholder="เช่น ตอบคำถามฝากเงิน"
                     style={{
                       display: "block",
@@ -448,11 +597,15 @@ export default function RulesPage() {
                   />
                 </label>
 
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
                   Category
                   <select
                     value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, category: e.target.value }))
+                    }
                     style={{
                       display: "block",
                       width: "100%",
@@ -472,11 +625,21 @@ export default function RulesPage() {
                   </select>
                 </label>
 
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                  คำถาม Keywords <span style={{ fontWeight: 400, color: "#6b7280" }}>(คั่นด้วย ,)</span>
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
+                  คำถาม Keywords{" "}
+                  <span style={{ fontWeight: 400, color: "#6b7280" }}>
+                    (คั่นด้วย ,)
+                  </span>
                   <textarea
                     value={form.question_keywords}
-                    onChange={(e) => setForm((f) => ({ ...f, question_keywords: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        question_keywords: e.target.value,
+                      }))
+                    }
                     placeholder="เช่น ฝาก, โอน, เติมเงิน"
                     rows={2}
                     style={{
@@ -493,11 +656,21 @@ export default function RulesPage() {
                   />
                 </label>
 
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                  คำตอบ Keywords <span style={{ fontWeight: 400, color: "#6b7280" }}>(คั่นด้วย ,)</span>
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
+                  คำตอบ Keywords{" "}
+                  <span style={{ fontWeight: 400, color: "#6b7280" }}>
+                    (คั่นด้วย ,)
+                  </span>
                   <textarea
                     value={form.answer_keywords}
-                    onChange={(e) => setForm((f) => ({ ...f, answer_keywords: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        answer_keywords: e.target.value,
+                      }))
+                    }
                     placeholder="เช่น สลิป, ตรวจสอบ, QR"
                     rows={2}
                     style={{
@@ -514,7 +687,9 @@ export default function RulesPage() {
                   />
                 </label>
 
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                <label
+                  style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}
+                >
                   Weight (0.1 – 5)
                   <input
                     type="number"
@@ -522,7 +697,9 @@ export default function RulesPage() {
                     max="5"
                     step="0.1"
                     value={form.weight}
-                    onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, weight: e.target.value }))
+                    }
                     style={{
                       display: "block",
                       width: 100,
@@ -535,11 +712,21 @@ export default function RulesPage() {
                   />
                 </label>
 
-                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={form.is_active}
-                    onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, is_active: e.target.checked }))
+                    }
                     style={{ width: 16, height: 16 }}
                   />
                   เปิดใช้งาน Rule นี้
@@ -561,7 +748,14 @@ export default function RulesPage() {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 20,
+                  justifyContent: "flex-end",
+                }}
+              >
                 <button
                   onClick={() => setForm(null)}
                   style={{
@@ -607,13 +801,25 @@ export default function RulesPage() {
             }}
           >
             <div
-              style={{ background: "#fff", borderRadius: 16, padding: 32, maxWidth: 380, width: "100%", margin: 16 }}
+              style={{
+                background: "#fff",
+                borderRadius: 16,
+                padding: 32,
+                maxWidth: 380,
+                width: "100%",
+                margin: 16,
+              }}
             >
-              <h3 style={{ margin: "0 0 12px", color: "#dc2626" }}>ยืนยันการลบ</h3>
+              <h3 style={{ margin: "0 0 12px", color: "#dc2626" }}>
+                ยืนยันการลบ
+              </h3>
               <p style={{ margin: "0 0 20px", color: "#374151" }}>
-                ต้องการลบ <b>{delConfirm.rule_code}</b> — {delConfirm.rule_name} ?
+                ต้องการลบ <b>{delConfirm.rule_code}</b> — {delConfirm.rule_name}{" "}
+                ?
               </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <div
+                style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}
+              >
                 <button
                   onClick={() => setDelConfirm(null)}
                   style={{

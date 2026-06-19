@@ -12,22 +12,32 @@ const TIERS = [
 ];
 
 function downloadCSV(filename, rows) {
-  const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = rows
+    .map((r) =>
+      r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","),
+    )
+    .join("\n");
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+  a.href = URL.createObjectURL(
+    new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }),
+  );
   a.download = filename;
   a.click();
 }
 
 export default function Commission() {
   const [d, setD] = useState(null);
-  const [from, setFrom] = useState(toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [from, setFrom] = useState(
+    toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
+  );
   const [to, setTo] = useState(toISO(new Date()));
   const [override, setOverride] = useState({});
 
   useEffect(() => {
     try {
-      setOverride(JSON.parse(localStorage.getItem("commission_override") || "{}"));
+      setOverride(
+        JSON.parse(localStorage.getItem("commission_override") || "{}"),
+      );
     } catch {}
   }, []);
   const [loading, setLoading] = useState(false);
@@ -85,7 +95,8 @@ export default function Commission() {
         finalOf(a),
       ]),
     ]);
-  const tierNum = (t) => (t === "Excellent" ? 1 : t === "Standard" ? 2 : t === "Warning" ? 3 : 4);
+  const tierNum = (t) =>
+    t === "Excellent" ? 1 : t === "Standard" ? 2 : t === "Warning" ? 3 : 4;
   const saveDB = async () => {
     const rows = per.map((a) => ({
       admin_id: a.admin_id,
@@ -101,14 +112,28 @@ export default function Commission() {
       body: JSON.stringify({ period_start: from, period_end: to, rows }),
     });
     const j = await r.json();
-    setSaveMsg(j.ok ? `✓ บันทึก ${j.saved} รายการลง admin_commissions` : "⚠️ " + (j.error || "error"));
+    setSaveMsg(
+      j.ok
+        ? `✓ บันทึก ${j.saved} รายการลง admin_commissions`
+        : "⚠️ " + (j.error || "error"),
+    );
     setTimeout(() => setSaveMsg(""), 3000);
   };
 
   const actions = (
     <>
-      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 150, margin: 0 }} />
-      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 150, margin: 0 }} />
+      <input
+        type="date"
+        value={from}
+        onChange={(e) => setFrom(e.target.value)}
+        style={{ width: 150, margin: 0 }}
+      />
+      <input
+        type="date"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        style={{ width: 150, margin: 0 }}
+      />
       <button onClick={load}>{loading ? "..." : "ดู"}</button>
       <button onClick={exportCSV} style={{ background: "#16a34a" }}>
         ⬇ CSV
@@ -120,7 +145,11 @@ export default function Commission() {
   );
 
   return (
-    <AppShell title="Commission" subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณ Tier" actions={actions}>
+    <AppShell
+      title="Commission"
+      subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณ Tier"
+      actions={actions}
+    >
       <>
         {loading && (
           <div
@@ -140,11 +169,20 @@ export default function Commission() {
           </div>
         )}
         {saveMsg && (
-          <div className="card" style={{ marginBottom: 12, color: saveMsg[0] === "⚠" ? "#ef4444" : "#16a34a" }}>
+          <div
+            className="card"
+            style={{
+              marginBottom: 12,
+              color: saveMsg[0] === "⚠" ? "#ef4444" : "#16a34a",
+            }}
+          >
             {saveMsg}
           </div>
         )}
-        <section className="grid kpis" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 14 }}>
+        <section
+          className="grid kpis"
+          style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 14 }}
+        >
           {TIERS.map(([name, range, mult, color]) => (
             <div className="card" key={name}>
               <div className="kpi-title" style={{ color }}>
@@ -171,7 +209,12 @@ export default function Commission() {
 
         <div
           className="card"
-          style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          style={{
+            marginBottom: 14,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
         >
           <div>
             <b>รวมค่าคอมประมาณการ (รวม override)</b>
@@ -179,7 +222,9 @@ export default function Commission() {
               ช่วง {from} → {to}
             </div>
           </div>
-          <span style={{ fontSize: 28, fontWeight: 900, color: "#16a34a" }}>฿{total.toLocaleString()}</span>
+          <span style={{ fontSize: 28, fontWeight: 900, color: "#16a34a" }}>
+            ฿{total.toLocaleString()}
+          </span>
         </div>
 
         <div className="card" style={{ padding: 0, overflow: "auto" }}>
@@ -204,7 +249,9 @@ export default function Commission() {
                 .map((a) => (
                   <tr key={a.admin_id}>
                     <td style={{ fontWeight: 600 }}>{a.admin}</td>
-                    <td className={`score ${sc(a.avg_score)}`}>{a.avg_score}</td>
+                    <td className={`score ${sc(a.avg_score)}`}>
+                      {a.avg_score}
+                    </td>
                     <td>
                       <span
                         className="badge"
@@ -227,14 +274,19 @@ export default function Commission() {
                     <td className="score bad">{a.fatal_penalty || 0}</td>
                     <td>
                       {a.dispute_adjustment ? (
-                        <span className="badge" style={{ background: "#dcfce7", color: "#16a34a" }}>
+                        <span
+                          className="badge"
+                          style={{ background: "#dcfce7", color: "#16a34a" }}
+                        >
                           {a.dispute_adjustment} แก้
                         </span>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td>฿{Number(a.estimated_commission || 0).toLocaleString()}</td>
+                    <td>
+                      ฿{Number(a.estimated_commission || 0).toLocaleString()}
+                    </td>
                     <td>
                       <input
                         type="number"
@@ -244,12 +296,18 @@ export default function Commission() {
                         style={{ width: 90, margin: 0, padding: 5 }}
                       />
                     </td>
-                    <td style={{ fontWeight: 800, color: "#16a34a" }}>฿{Number(finalOf(a) || 0).toLocaleString()}</td>
+                    <td style={{ fontWeight: 800, color: "#16a34a" }}>
+                      ฿{Number(finalOf(a) || 0).toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               {!per.length && (
                 <tr>
-                  <td colSpan="10" className="muted" style={{ textAlign: "center", padding: 20 }}>
+                  <td
+                    colSpan="10"
+                    className="muted"
+                    style={{ textAlign: "center", padding: 20 }}
+                  >
                     ยังไม่มีข้อมูล
                   </td>
                 </tr>
@@ -258,8 +316,9 @@ export default function Commission() {
           </table>
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          <b>Tier:</b> 90-100→×1.2 · 80-89→×1.0 · 70-79→×0.5 · &lt;70→×0 · <b>Fatal</b> = จำนวนเคส fatal (หักตามนโยบาย)
-          · <b>Dispute Adj</b> = เคสที่ manager แก้คะแนนแล้ว · <b>Override</b> บันทึกในเครื่อง (manual)
+          <b>Tier:</b> 90-100→×1.2 · 80-89→×1.0 · 70-79→×0.5 · &lt;70→×0 ·{" "}
+          <b>Fatal</b> = จำนวนเคส fatal (หักตามนโยบาย) · <b>Dispute Adj</b> =
+          เคสที่ manager แก้คะแนนแล้ว · <b>Override</b> บันทึกในเครื่อง (manual)
         </div>
       </>
     </AppShell>

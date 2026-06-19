@@ -12,7 +12,11 @@ export async function GET(req) {
     const s = Date.now();
     try {
       const r = await fn();
-      return { label, ms: Date.now() - s, rows: Array.isArray(r) ? r.length : 1 };
+      return {
+        label,
+        ms: Date.now() - s,
+        rows: Array.isArray(r) ? r.length : 1,
+      };
     } catch (e) {
       return { label, ms: Date.now() - s, error: e.message };
     }
@@ -91,5 +95,10 @@ export async function GET(req) {
   );
 
   results.sort((a, b) => b.ms - a.ms);
-  return Response.json({ from: f, to: t, total_ms: results.reduce((s, r) => s + r.ms, 0), slowest: results });
+  return Response.json({
+    from: f,
+    to: t,
+    total_ms: results.reduce((s, r) => s + r.ms, 0),
+    slowest: results,
+  });
 }

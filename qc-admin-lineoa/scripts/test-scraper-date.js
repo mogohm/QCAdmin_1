@@ -25,8 +25,14 @@ console.log("===== 1) Today / Yesterday / เวลา =====");
 ok('"Today" → วันนี้', midnight(dayLabelToDate("Today", NOW)) === today);
 ok('"วันนี้" → วันนี้', midnight(dayLabelToDate("วันนี้", NOW)) === today);
 ok('"11:20" (เวลา) → วันนี้', midnight(dayLabelToDate("11:20", NOW)) === today);
-ok('"Yesterday" → เมื่อวาน', midnight(dayLabelToDate("Yesterday", NOW)) === today - DAY);
-ok('"เมื่อวาน" → เมื่อวาน', midnight(dayLabelToDate("เมื่อวาน", NOW)) === today - DAY);
+ok(
+  '"Yesterday" → เมื่อวาน',
+  midnight(dayLabelToDate("Yesterday", NOW)) === today - DAY,
+);
+ok(
+  '"เมื่อวาน" → เมื่อวาน',
+  midnight(dayLabelToDate("เมื่อวาน", NOW)) === today - DAY,
+);
 
 console.log("\n===== 2) ชื่อวัน (TH/EN) → วันล่าสุดในอดีต =====");
 const weekdayCases = [
@@ -46,7 +52,11 @@ for (const [label, dayNum] of weekdayCases) {
   const d = dayLabelToDate(label, NOW);
   const okDay = d && d.getDay() === dayNum;
   const inPast = d && midnight(d) < today && midnight(d) >= today - 7 * DAY;
-  ok(`"${label}" → getDay=${dayNum} + เป็นอดีตภายใน 7 วัน`, okDay && inPast, d ? d.toDateString() : "null");
+  ok(
+    `"${label}" → getDay=${dayNum} + เป็นอดีตภายใน 7 วัน`,
+    okDay && inPast,
+    d ? d.toDateString() : "null",
+  );
 }
 
 console.log("\n===== 3) รูปแบบวันที่ =====");
@@ -58,7 +68,8 @@ const dateCases = [
 ];
 for (const [label, y, mo, day] of dateCases) {
   const d = dayLabelToDate(label, NOW);
-  const match = d && d.getFullYear() === y && d.getMonth() === mo && d.getDate() === day;
+  const match =
+    d && d.getFullYear() === y && d.getMonth() === mo && d.getDate() === day;
   ok(
     `"${label}" → ${y}-${String(mo + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
     match,
@@ -74,8 +85,13 @@ ok(
 );
 
 console.log("\n===== 4) จาก fixture line-chat-date-labels.html =====");
-const html = fs.readFileSync(path.join(__dirname, "..", "tests", "fixtures", "line-chat-date-labels.html"), "utf8");
-const items = [...html.matchAll(/data-label="([^"]+)"(?:[^>]*data-iso="([^"]+)")?/g)];
+const html = fs.readFileSync(
+  path.join(__dirname, "..", "tests", "fixtures", "line-chat-date-labels.html"),
+  "utf8",
+);
+const items = [
+  ...html.matchAll(/data-label="([^"]+)"(?:[^>]*data-iso="([^"]+)")?/g),
+];
 ok("อ่าน fixture เจอ label", items.length >= 12, `${items.length} items`);
 let isoOk = 0,
   isoTotal = 0;
@@ -83,7 +99,10 @@ for (const m of items) {
   const label = m[1];
   const iso = m[2];
   const d = dayLabelToDate(label, NOW);
-  ok(`fixture "${label}" → แปลงเป็น Date ได้`, d instanceof Date && !isNaN(d.getTime()));
+  ok(
+    `fixture "${label}" → แปลงเป็น Date ได้`,
+    d instanceof Date && !isNaN(d.getTime()),
+  );
   if (iso) {
     isoTotal++;
     const got = d
@@ -92,7 +111,13 @@ for (const m of items) {
     if (got === iso) isoOk++;
   }
 }
-ok("วันที่ที่ระบุ data-iso ตรงทั้งหมด", isoOk === isoTotal, `${isoOk}/${isoTotal}`);
+ok(
+  "วันที่ที่ระบุ data-iso ตรงทั้งหมด",
+  isoOk === isoTotal,
+  `${isoOk}/${isoTotal}`,
+);
 
-console.log(`\n===== Date label: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
+console.log(
+  `\n===== Date label: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`,
+);
 process.exit(fail ? 1 : 0);

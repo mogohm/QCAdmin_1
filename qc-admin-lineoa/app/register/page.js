@@ -59,7 +59,8 @@ export default function Register() {
         minHeight: "100vh",
         display: "grid",
         placeItems: "center",
-        background: "radial-gradient(1200px 600px at 50% -10%,#1b3a6b,#0a1424 60%)",
+        background:
+          "radial-gradient(1200px 600px at 50% -10%,#1b3a6b,#0a1424 60%)",
         fontFamily: "Inter,'Noto Sans Thai',sans-serif",
         padding: 20,
       }}
@@ -76,25 +77,81 @@ export default function Register() {
           color: "#dbe7fb",
         }}
       >
-        <div style={{ textAlign: "center", fontSize: 13, letterSpacing: 1, color: "#5fd0ff" }}>AI QC PROGRAM</div>
-        <h2 style={{ textAlign: "center", margin: "4px 0 4px" }}>สมัครขอเข้าใช้งาน</h2>
-        <p style={{ textAlign: "center", color: "#7d92b5", fontSize: 12, marginTop: 0 }}>
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: 13,
+            letterSpacing: 1,
+            color: "#5fd0ff",
+          }}
+        >
+          AI QC PROGRAM
+        </div>
+        <h2 style={{ textAlign: "center", margin: "4px 0 4px" }}>
+          สมัครขอเข้าใช้งาน
+        </h2>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#7d92b5",
+            fontSize: 12,
+            marginTop: 0,
+          }}
+        >
           คำขอจะถูกส่งให้ผู้ดูแลระบบอนุมัติก่อนเข้าใช้งาน
         </p>
-        {msg && <div style={{ color: "#22c55e", fontSize: 13, margin: "8px 0" }}>✅ {msg}</div>}
-        {err && <div style={{ color: "#ff8585", fontSize: 13, margin: "8px 0" }}>⚠️ {err}</div>}
+        {msg && (
+          <div style={{ color: "#22c55e", fontSize: 13, margin: "8px 0" }}>
+            ✅ {msg}
+          </div>
+        )}
+        {err && (
+          <div style={{ color: "#ff8585", fontSize: 13, margin: "8px 0" }}>
+            ⚠️ {err}
+          </div>
+        )}
         <label style={{ fontSize: 12 }}>Username</label>
-        <input value={f.username} onChange={set("username")} style={inp} required />
+        <input
+          value={f.username}
+          onChange={set("username")}
+          style={inp}
+          required
+        />
         <label style={{ fontSize: 12 }}>Password</label>
-        <input type="password" value={f.password} onChange={set("password")} style={inp} required />
+        <input
+          type="password"
+          value={f.password}
+          onChange={set("password")}
+          style={inp}
+          required
+        />
         <label style={{ fontSize: 12 }}>ยืนยัน Password</label>
-        <input type="password" value={f.confirm_password} onChange={set("confirm_password")} style={inp} required />
+        <input
+          type="password"
+          value={f.confirm_password}
+          onChange={set("confirm_password")}
+          style={inp}
+          required
+        />
         <label style={{ fontSize: 12 }}>ชื่อที่แสดง</label>
-        <input value={f.display_name} onChange={set("display_name")} style={inp} />
+        <input
+          value={f.display_name}
+          onChange={set("display_name")}
+          style={inp}
+        />
         <label style={{ fontSize: 12 }}>Email</label>
-        <input type="email" value={f.email} onChange={set("email")} style={inp} />
+        <input
+          type="email"
+          value={f.email}
+          onChange={set("email")}
+          style={inp}
+        />
         <label style={{ fontSize: 12 }}>บทบาทที่ขอ</label>
-        <select value={f.requested_role} onChange={set("requested_role")} style={inp}>
+        <select
+          value={f.requested_role}
+          onChange={set("requested_role")}
+          style={inp}
+        >
           <option value="admin">Admin (QC Operator)</option>
           <option value="leader">Leader</option>
           <option value="manager">Manager</option>
@@ -109,7 +166,10 @@ export default function Register() {
         />
         <label style={{ fontSize: 12 }}>เหตุผล / หมายเหตุ</label>
         <input value={f.note} onChange={set("note")} style={inp} />
-        <button disabled={busy} style={{ width: "100%", marginTop: 8, padding: 12 }}>
+        <button
+          disabled={busy}
+          style={{ width: "100%", marginTop: 8, padding: 12 }}
+        >
           {busy ? "..." : "ส่งคำขอสมัคร"}
         </button>
         <div style={{ textAlign: "center", marginTop: 14, fontSize: 12 }}>

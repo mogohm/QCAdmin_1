@@ -10,7 +10,10 @@ export async function GET(req) {
   const s = readSession(req);
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
-  const af = s?.role === "admin" ? s.adminId || "00000000-0000-0000-0000-000000000000" : null;
+  const af =
+    s?.role === "admin"
+      ? s.adminId || "00000000-0000-0000-0000-000000000000"
+      : null;
   try {
     const rows = await query`
       SELECT d.*, a.member_name AS admin_name, q.final_score AS current_score, q.intent,
@@ -28,7 +31,8 @@ export async function GET(req) {
       WHERE (${status}::text IS NULL OR d.status = ${status})
         AND (${af}::uuid IS NULL OR d.admin_id = ${af}::uuid)
       ORDER BY d.status='pending' DESC, d.created_at DESC LIMIT 100`;
-    const counts = await query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`;
+    const counts =
+      await query`SELECT status, count(*)::int n FROM qc_disputes GROUP BY status`;
     return Response.json({ disputes: rows, counts });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
@@ -41,20 +45,31 @@ export async function POST(req) {
   if (gate) return gate;
   const s = readSession(req);
   const b = await req.json().catch(() => ({}));
-  if (!b.qc_score_id || !b.reason) return Response.json({ error: "qc_score_id, reason required" }, { status: 400 });
+  if (!b.qc_score_id || !b.reason)
+    return Response.json(
+      { error: "qc_score_id, reason required" },
+      { status: 400 },
+    );
   try {
-    const sc = await query`SELECT id, admin_id, final_score, line_user_id FROM qc_scores WHERE id = ${b.qc_score_id}`;
-    if (!sc[0]) return Response.json({ error: "qc_score not found" }, { status: 404 });
+    const sc =
+      await query`SELECT id, admin_id, final_score, line_user_id FROM qc_scores WHERE id = ${b.qc_score_id}`;
+    if (!sc[0])
+      return Response.json({ error: "qc_score not found" }, { status: 404 });
     const adminId = b.admin_id || s?.adminId || sc[0].admin_id;
     const dup =
       await query`SELECT id FROM qc_disputes WHERE qc_score_id = ${b.qc_score_id} AND status='pending' LIMIT 1`;
-    if (dup[0]) return Response.json({ error: "มี dispute pending อยู่แล้ว", id: dup[0].id }, { status: 409 });
+    if (dup[0])
+      return Response.json(
+        { error: "มี dispute pending อยู่แล้ว", id: dup[0].id },
+        { status: 409 },
+      );
 
     const rows = await query`
       INSERT INTO qc_disputes (qc_score_id, admin_id, line_user_id, reason, old_score, status)
       VALUES (${b.qc_score_id}, ${adminId}, ${sc[0].line_user_id || null}, ${b.reason}, ${sc[0].final_score}, 'pending')
       RETURNING *`;
-    const an = await query`SELECT member_name FROM qc_admins WHERE id = ${adminId}`;
+    const an =
+      await query`SELECT member_name FROM qc_admins WHERE id = ${adminId}`;
     sendTelegram(
       `[DISPUTE CREATED]\nAdmin: ${an[0]?.member_name || adminId}\nScore: ${sc[0].final_score}\nReason: ${b.reason}`,
     ).catch(() => {});

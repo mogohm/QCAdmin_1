@@ -26,7 +26,9 @@ export async function isSlaException(at = null) {
         AND starts_at <= ${t}::timestamptz
         AND (ends_at IS NULL OR ends_at >= ${t}::timestamptz)
       LIMIT 1`;
-    return rows[0] ? { active: true, event: rows[0] } : { active: false, event: null };
+    return rows[0]
+      ? { active: true, event: rows[0] }
+      : { active: false, event: null };
   } catch {
     return { active: false, event: null };
   }

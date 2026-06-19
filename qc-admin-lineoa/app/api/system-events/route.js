@@ -8,8 +8,11 @@ export async function GET(req) {
   if (!requirePermission(req, "system.events.manage", "qc.monitor.view"))
     return Response.json({ error: "forbidden" }, { status: 403 });
   try {
-    const rows = await query`SELECT * FROM system_events ORDER BY is_active DESC, starts_at DESC LIMIT 100`;
-    const active = rows.filter((r) => r.is_active && (!r.ends_at || new Date(r.ends_at) >= new Date()));
+    const rows =
+      await query`SELECT * FROM system_events ORDER BY is_active DESC, starts_at DESC LIMIT 100`;
+    const active = rows.filter(
+      (r) => r.is_active && (!r.ends_at || new Date(r.ends_at) >= new Date()),
+    );
     return Response.json({ events: rows, active });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
@@ -18,9 +21,11 @@ export async function GET(req) {
 
 // POST — create
 export async function POST(req) {
-  if (!allow(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!allow(req))
+    return Response.json({ error: "unauthorized" }, { status: 401 });
   const b = await req.json().catch(() => ({}));
-  if (!b.title) return Response.json({ error: "title required" }, { status: 400 });
+  if (!b.title)
+    return Response.json({ error: "title required" }, { status: 400 });
   try {
     const rows = await query`
       INSERT INTO system_events (title, description, event_type, affects_sla, starts_at, ends_at, is_active)

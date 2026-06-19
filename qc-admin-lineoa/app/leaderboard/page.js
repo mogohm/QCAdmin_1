@@ -26,13 +26,27 @@ export default function Leaderboard() {
   const ranking = (d?.ranking || []).filter((a) => a.cases > 0);
   const actions = (
     <>
-      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: 140, margin: 0 }} />
-      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: 140, margin: 0 }} />
+      <input
+        type="date"
+        value={from}
+        onChange={(e) => setFrom(e.target.value)}
+        style={{ width: 140, margin: 0 }}
+      />
+      <input
+        type="date"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        style={{ width: 140, margin: 0 }}
+      />
       <button onClick={load}>{loading ? "..." : "ดู"}</button>
     </>
   );
   return (
-    <AppShell title="🏆 Leaderboard" subtitle="อันดับผลงานแอดมิน" actions={actions}>
+    <AppShell
+      title="🏆 Leaderboard"
+      subtitle="อันดับผลงานแอดมิน"
+      actions={actions}
+    >
       {loading && (
         <div className="loadbar">
           <span className="spin">⏳</span> กำลังโหลด...
@@ -40,15 +54,29 @@ export default function Leaderboard() {
       )}
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         {ranking.slice(0, 3).map((a, i) => (
-          <div key={a.id} className="glass glow" style={{ flex: 1, padding: 16, textAlign: "center" }}>
+          <div
+            key={a.id}
+            className="glass glow"
+            style={{ flex: 1, padding: 16, textAlign: "center" }}
+          >
             <span
               className={`medal ${["g", "s", "b"][i]}`}
-              style={{ margin: "0 auto 8px", width: 38, height: 38, fontSize: 18 }}
+              style={{
+                margin: "0 auto 8px",
+                width: 38,
+                height: 38,
+                fontSize: 18,
+              }}
             >
               {i + 1}
             </span>
-            <div style={{ fontWeight: 800, color: "#eef4ff" }}>{a.member_name}</div>
-            <div className={`score ${sc(a.avg_score)}`} style={{ fontSize: 26 }}>
+            <div style={{ fontWeight: 800, color: "#eef4ff" }}>
+              {a.member_name}
+            </div>
+            <div
+              className={`score ${sc(a.avg_score)}`}
+              style={{ fontSize: 26 }}
+            >
               {a.avg_score}
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
@@ -58,14 +86,22 @@ export default function Leaderboard() {
         ))}
       </div>
       <section className="grid split">
-        <GlassPanel title="Full Ranking" glow empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}>
+        <GlassPanel
+          title="Full Ranking"
+          glow
+          empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}
+        >
           <LeaderboardTable rows={ranking} />
         </GlassPanel>
         <GlassPanel
           title="📈 Most Improved"
           tag="7 วัน vs ก่อนหน้า"
           glow
-          empty={!(d?.mostImproved || []).length && !loading && "ยังไม่มีข้อมูลเปรียบเทียบ"}
+          empty={
+            !(d?.mostImproved || []).length &&
+            !loading &&
+            "ยังไม่มีข้อมูลเปรียบเทียบ"
+          }
         >
           {(d?.mostImproved || []).map((m, i) => (
             <div
@@ -78,8 +114,14 @@ export default function Leaderboard() {
               }}
             >
               <span style={{ color: "#dbe7ff" }}>{m.admin}</span>
-              <span style={{ color: m.delta >= 0 ? "var(--green)" : "var(--red)", fontWeight: 800 }}>
-                {m.delta >= 0 ? "▲" : "▼"} {Math.abs(m.delta)} ({m.previous}→{m.current})
+              <span
+                style={{
+                  color: m.delta >= 0 ? "var(--green)" : "var(--red)",
+                  fontWeight: 800,
+                }}
+              >
+                {m.delta >= 0 ? "▲" : "▼"} {Math.abs(m.delta)} ({m.previous}→
+                {m.current})
               </span>
             </div>
           ))}

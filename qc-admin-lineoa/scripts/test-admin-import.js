@@ -28,7 +28,8 @@ const keep = [
   "PK_HMON", // underscore
   "PK-Mos🐻❤️🔥", // มี emoji ต่อท้าย
 ];
-for (const n of keep) ok(`KEEP "${n}"`, isPkName(n), `norm=${normalizeAdminName(n).slice(0, 10)}`);
+for (const n of keep)
+  ok(`KEEP "${n}"`, isPkName(n), `norm=${normalizeAdminName(n).slice(0, 10)}`);
 
 console.log("\n===== ไม่ใช่ PK (ต้อง SKIP) =====");
 const skip = [
@@ -69,9 +70,17 @@ for (const name of lines) {
   imported++;
 }
 // PK และ pk normalize เหมือนกัน (admin คนเดียว) → dedup 1 ตัว
-ok("imported = PK unique (PK≡pk dedup)", imported === keep.length - 1, `imported=${imported}/${keep.length}`);
+ok(
+  "imported = PK unique (PK≡pk dedup)",
+  imported === keep.length - 1,
+  `imported=${imported}/${keep.length}`,
+);
 ok("skipped = จำนวน non-PK", skipped === skip.length, `skipped=${skipped}`);
-ok("duplicated ≥ 2 (PK-PANG ซ้ำ + PK≡pk)", duplicated >= 2, `duplicated=${duplicated}`);
+ok(
+  "duplicated ≥ 2 (PK-PANG ซ้ำ + PK≡pk)",
+  duplicated >= 2,
+  `duplicated=${duplicated}`,
+);
 
 console.log(`\n===== สรุป: ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
 process.exit(fail ? 1 : 0);

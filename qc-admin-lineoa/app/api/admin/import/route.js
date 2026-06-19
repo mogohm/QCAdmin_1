@@ -6,7 +6,8 @@ import { isPkName, normalizeAdminName } from "@/lib/admin-name";
 // นำเข้ารายชื่อ admin — รับเฉพาะชื่อที่เป็น "PK" จริง (รองรับ Unicode/emoji/decorative)
 // return { ok, imported, skipped, duplicated, errors, admins:[] }
 export async function POST(req) {
-  if (!requireAdmin(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!requireAdmin(req))
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
@@ -16,7 +17,14 @@ export async function POST(req) {
       .map((x) => x.trim())
       .filter(Boolean);
 
-    const result = { ok: true, imported: 0, skipped: 0, duplicated: 0, errors: [], admins: [] };
+    const result = {
+      ok: true,
+      imported: 0,
+      skipped: 0,
+      duplicated: 0,
+      errors: [],
+      admins: [],
+    };
     const seen = new Set();
 
     for (const name of lines) {
@@ -56,7 +64,14 @@ export async function POST(req) {
   } catch (err) {
     console.error("Import admin error:", err);
     return NextResponse.json(
-      { ok: false, imported: 0, skipped: 0, duplicated: 0, errors: [String(err.message || err)], admins: [] },
+      {
+        ok: false,
+        imported: 0,
+        skipped: 0,
+        duplicated: 0,
+        errors: [String(err.message || err)],
+        admins: [],
+      },
       { status: 500 },
     );
   }
