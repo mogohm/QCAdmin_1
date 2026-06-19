@@ -1,7 +1,7 @@
 // log-reply route — POST จาก scraper: upsert customer/conversation, insert messages,
 //   runQc → qc_scores + qc_score_details, dedup. (full source ~330 lines)
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { guard } from "@/lib/permissions";
 import { isPkName } from "@/lib/admin-name";
 import { runQc } from "@/lib/qc-runner";
 import { getLineProfile } from "@/lib/line";
@@ -19,7 +19,9 @@ export async function OPTIONS() {
 // เรียกจาก Browser Extension — รับ line_user_id แทน conversation_id
 // send_line = false เสมอ (ส่งไปแล้วจาก LINE OA Manager)
 export async function POST(req) {
-  if (!requireAdmin(req)) return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
+  // scraper service ใช้ x-api-key (guard bypass); session ต้องมี chat.reply
+  const gate = guard(req, "chat.reply");
+  if (gate) return Response.json({ error: "unauthorized" }, { status: gate.status, headers: CORS });
 
   const {
     line_user_id,

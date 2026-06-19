@@ -1,18 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { MENU, filterMenuByPermissions } from "@/lib/menu";
 
-const MENU = [
-  ["/", "📊 Executive Dashboard"],
-  ["/qc-dashboard", "🎯 QC Monitoring"],
-  ["/chat-review", "💬 Chat Review"],
-  ["/sop", "📚 SOP Knowledge Base"],
-  ["/disputes", "⚖️ Disputes"],
-  ["/system-events", "🛠️ System Events"],
-  ["/admin-performance", "🏅 Admin Performance"],
-  ["/commission", "💰 Commission"],
-  ["/rules", "⚙️ Settings"],
-];
-
+// Sidebar แบบ permission-based จริง: ดึง /api/auth/me แล้วกรองเมนูด้วย filterMenuByPermissions()
+//   ห้ามแสดงเมนูที่ user ไม่มีสิทธิ์ (system_admin เห็นทั้งหมด)
 export default function Sidebar({ active }) {
   const [me, setMe] = useState(null);
   useEffect(() => {
@@ -26,15 +17,20 @@ export default function Sidebar({ active }) {
     window.location.href = "/login";
   };
 
+  // กรองตามสิทธิ์: ยังไม่ได้ /api/auth/me → เมนูว่าง (กันเมนูแฟลชให้คนไม่มีสิทธิ์)
+  const visibleMenu = me?.authenticated ? filterMenuByPermissions(me, MENU) : [];
+
   return (
     <aside className="side">
       <div className="brand">
         QC<span>Admin</span>
       </div>
+      <div className="brand-sub">AI QC PROGRAM</div>
       <nav className="nav">
-        {MENU.map(([href, label]) => (
-          <a key={href} href={href} className={active === href ? "active" : ""}>
-            {label}
+        {visibleMenu.map((item) => (
+          <a key={item.href} href={item.href} className={active === item.href ? "active" : ""}>
+            <span style={{ marginRight: 8 }}>{item.icon}</span>
+            {item.label}
           </a>
         ))}
       </nav>

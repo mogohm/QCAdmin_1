@@ -1,27 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-
-// [href, icon, label, requiredPermission(s) | null = ทุกคนที่ login]
-const MENU = [
-  ["/", "📊", "Executive Dashboard", "dashboard.executive.view"],
-  ["/admin-dashboard", "🧑‍💼", "Admin Dashboard", "dashboard.admin.view"],
-  ["/manager-dashboard", "📈", "Manager Dashboard", "dashboard.manager.view"],
-  ["/leaderboard", "🏆", "Leaderboard", "dashboard.leaderboard.view"],
-  ["/marketing-dashboard", "📣", "Marketing Dashboard", "dashboard.marketing.view"],
-  ["/qc-dashboard", "🎯", "QC Monitoring", "qc.monitor.view"],
-  ["/chat-review", "💬", "Chat Review", ["chat.view.all", "chat.view.own", "chat.review"]],
-  ["/sop", "📚", "SOP Knowledge Base", "sop.view"],
-  ["/disputes", "⚖️", "Disputes", ["qc.dispute.review", "qc.dispute.create"]],
-  ["/system-events", "🛠️", "System Events", "system.events.manage"],
-  ["/admin-performance", "🏅", "Admin Performance", "dashboard.manager.view"],
-  ["/commission", "💰", "Commission", ["commission.view.own", "commission.view.team", "commission.view.all"]],
-  ["/scraper", "🛰️", "Scraper", "scraper.view"],
-  ["/system/users", "👥", "User & Role Mgmt", "system.users.view"],
-  ["/system/roles", "🔐", "Role Permissions", "system.roles.manage"],
-  ["/system/registration-requests", "📝", "Registration Requests", "system.users.create"],
-  ["/docs", "📄", "Docs", null],
-];
+import { MENU, filterMenuByPermissions } from "@/lib/menu";
 
 export default function AppShell({ title, subtitle, actions, children }) {
   const pathname = usePathname();
@@ -60,14 +40,8 @@ export default function AppShell({ title, subtitle, actions, children }) {
     window.location.href = "/login";
   };
   const active = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
-  const perms = me?.permissions || [];
-  const canSee = (need) => {
-    if (!need) return true; // ทุกคนที่ login
-    if (me?.role === "system_admin") return true;
-    const arr = Array.isArray(need) ? need : [need];
-    return arr.some((p) => perms.includes(p));
-  };
-  const visibleMenu = me ? MENU.filter(([, , , need]) => canSee(need)) : [];
+  // กรองเมนูตามสิทธิ์จริง (system_admin เห็นทั้งหมด) — ใช้ helper ชุดเดียวกับ Sidebar/permissions.js
+  const visibleMenu = me?.authenticated ? filterMenuByPermissions(me, MENU) : [];
 
   return (
     <div className="shell">
@@ -77,10 +51,15 @@ export default function AppShell({ title, subtitle, actions, children }) {
         </div>
         <div className="brand-sub">AI QC PROGRAM</div>
         <nav className="nav">
-          {visibleMenu.map(([href, icon, label]) => (
-            <a key={href} href={href} className={active(href) ? "active" : ""} onClick={() => setOpen(false)}>
-              <span style={{ marginRight: 8 }}>{icon}</span>
-              {label}
+          {visibleMenu.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={active(item.href) ? "active" : ""}
+              onClick={() => setOpen(false)}
+            >
+              <span style={{ marginRight: 8 }}>{item.icon}</span>
+              {item.label}
             </a>
           ))}
         </nav>

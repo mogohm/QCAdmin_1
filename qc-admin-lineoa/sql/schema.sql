@@ -333,3 +333,61 @@ CREATE TABLE IF NOT EXISTS user_registration_requests (
 CREATE TABLE IF NOT EXISTS user_audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_user_id TEXT, target_user_id TEXT, action TEXT, detail JSONB, created_at TIMESTAMPTZ DEFAULT now());
+
+-- ---- RBAC seed: roles ----
+INSERT INTO roles (role_key, role_name, description, is_system) VALUES
+  ('system_admin','System Admin','สิทธิ์เต็มทั้งระบบ', true),
+  ('manager','Manager','ดูภาพรวมทีม/QC/dispute/SOP/commission team', true),
+  ('leader','Leader','ดูทีมย่อย/leaderboard/chat review/dispute review', true),
+  ('admin','Admin (QC Operator)','ดูผลงานตัวเอง/chat own/commission own/ตอบลูกค้า', true),
+  ('marketing','Marketing','ดูข้อมูลการตลาด (สมัคร/KYC/ฝากถอน/โปรโมชัน)', true)
+ON CONFLICT (role_key) DO UPDATE SET role_name=EXCLUDED.role_name, is_system=EXCLUDED.is_system;
+
+-- ---- RBAC seed: permissions (36) ----
+INSERT INTO permissions (permission_key, module) VALUES
+  ('dashboard.executive.view','dashboard'),('dashboard.admin.view','dashboard'),
+  ('dashboard.manager.view','dashboard'),('dashboard.leaderboard.view','dashboard'),
+  ('dashboard.marketing.view','dashboard'),
+  ('chat.view.all','chat'),('chat.view.own','chat'),('chat.reply','chat'),('chat.review','chat'),
+  ('qc.monitor.view','qc'),('qc.score.view','qc'),('qc.score.override','qc'),
+  ('qc.dispute.create','qc'),('qc.dispute.review','qc'),
+  ('sop.view','sop'),('sop.create','sop'),('sop.update','sop'),('sop.delete','sop'),('sop.import','sop'),
+  ('scraper.view','scraper'),('scraper.run','scraper'),('scraper.schedule','scraper'),('scraper.report','scraper'),
+  ('system.users.view','system'),('system.users.create','system'),('system.users.update','system'),
+  ('system.users.disable','system'),('system.roles.manage','system'),('system.settings.manage','system'),
+  ('system.events.manage','system'),
+  ('commission.view.own','commission'),('commission.view.team','commission'),
+  ('commission.view.all','commission'),('commission.adjust','commission'),
+  ('marketing.dashboard.view','marketing'),('marketing.events.view','marketing')
+ON CONFLICT (permission_key) DO NOTHING;
+
+-- ---- RBAC seed: role_permissions ----
+-- system_admin = ทุก permission
+INSERT INTO role_permissions (role_key, permission_key)
+  SELECT 'system_admin', permission_key FROM permissions
+ON CONFLICT DO NOTHING;
+-- admin (6)
+INSERT INTO role_permissions (role_key, permission_key) VALUES
+  ('admin','dashboard.admin.view'),('admin','chat.view.own'),('admin','chat.reply'),
+  ('admin','qc.score.view'),('admin','qc.dispute.create'),('admin','commission.view.own')
+ON CONFLICT DO NOTHING;
+-- manager (17)
+INSERT INTO role_permissions (role_key, permission_key) VALUES
+  ('manager','dashboard.executive.view'),('manager','dashboard.manager.view'),
+  ('manager','dashboard.leaderboard.view'),('manager','dashboard.marketing.view'),
+  ('manager','qc.monitor.view'),('manager','qc.score.view'),('manager','qc.score.override'),
+  ('manager','qc.dispute.review'),('manager','chat.view.all'),('manager','chat.review'),
+  ('manager','sop.view'),('manager','sop.update'),('manager','scraper.view'),('manager','scraper.report'),
+  ('manager','commission.view.team'),('manager','marketing.dashboard.view'),('manager','marketing.events.view')
+ON CONFLICT DO NOTHING;
+-- leader (8)
+INSERT INTO role_permissions (role_key, permission_key) VALUES
+  ('leader','dashboard.manager.view'),('leader','dashboard.leaderboard.view'),
+  ('leader','chat.view.all'),('leader','chat.review'),('leader','qc.monitor.view'),
+  ('leader','qc.score.view'),('leader','qc.dispute.review'),('leader','commission.view.team')
+ON CONFLICT DO NOTHING;
+-- marketing (4)
+INSERT INTO role_permissions (role_key, permission_key) VALUES
+  ('marketing','dashboard.marketing.view'),('marketing','marketing.dashboard.view'),
+  ('marketing','marketing.events.view'),('marketing','commission.view.all')
+ON CONFLICT DO NOTHING;

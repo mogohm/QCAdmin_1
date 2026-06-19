@@ -17,6 +17,14 @@ async function login(username, password) {
 }
 const code = async (path, cookie) =>
   (await fetch(`${BASE}${path}`, { headers: cookie ? { Cookie: cookie } : {} })).status;
+const postCode = async (path, cookie, body = {}) =>
+  (
+    await fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    })
+  ).status;
 
 (async () => {
   console.log(`== permission enforcement @ ${BASE} ==`);
@@ -42,10 +50,22 @@ const code = async (path, cookie) =>
   ok("manager → /api/qc-disputes 200", (await code("/api/qc-disputes", mgr)) === 200);
   ok("manager → /api/system/users 403 (no system.users.view)", (await code("/api/system/users", mgr)) === 403);
 
-  // marketing — ห้ามดู chat
+  // manager — dispute review write
+  ok(
+    "manager → PATCH /api/qc-disputes/0 ไม่ใช่ 403 (มี qc.dispute.review)",
+    (await postCode("/api/qc-disputes", mgr, {})) !== 403,
+  );
+
+  // marketing — ห้ามดู chat detail
   ok("marketing → /api/dashboard 200", (await code("/api/dashboard?from=2026-06-01&to=2026-06-30", mkt)) === 200);
   ok("marketing → /api/replies 403 (no chat perm)", (await code("/api/replies", mkt)) === 403);
+  ok("marketing → /api/chat/Uxxx 403 (chat detail)", (await code("/api/chat/Uxxxxxxxx", mkt)) === 403);
   ok("marketing → /api/sop 403 (no sop.view)", (await code("/api/sop", mkt)) === 403);
+
+  // password ต้องไม่เก็บ/ส่งเป็น plain text
+  const usersList = await fetch(`${BASE}/api/system/users`, { headers: { Cookie: sys } }).then((r) => r.json());
+  const leak = (usersList.users || []).some((u) => "password" in u || "password_hash" in u);
+  ok("users API ไม่ leak password/password_hash (เก็บแบบ hash)", !leak);
 
   // admin (สร้างชั่วคราว) — ห้ามจัดการ user, ห้ามดู sop
   const uname = "__test_perm_admin_" + Date.now();
@@ -56,8 +76,14 @@ const code = async (path, cookie) =>
   }).then((r) => r.json());
   const adminCookie = cr.user?.id ? await login(uname, "test1234") : null;
   if (adminCookie) {
+    ok("admin login สำเร็จ (password hash verify ได้)", !!adminCookie);
     ok("admin → /api/system/users 403", (await code("/api/system/users", adminCookie)) === 403);
+    ok("admin → /api/system/roles 403", (await code("/api/system/roles", adminCookie)) === 403);
     ok("admin → /api/sop 403 (no sop.view)", (await code("/api/sop", adminCookie)) === 403);
+    ok(
+      "admin → POST /api/sop 403 (no sop edit)",
+      (await postCode("/api/sop", adminCookie, { topic: "x", answer: "y" })) === 403,
+    );
     ok("admin → /api/dashboard 200 (dashboard.admin.view)", (await code("/api/dashboard", adminCookie)) === 200);
     // cleanup
     await fetch(`${BASE}/api/system/users/${cr.user.id}`, {
@@ -67,6 +93,29 @@ const code = async (path, cookie) =>
     });
   } else {
     ok("create temp admin for perm test", false, cr.error || "no id");
+  }
+
+  // pending user login ไม่ได้ (สร้าง user status=pending แล้ว login → 403)
+  const puname = "__test_pending_" + Date.now();
+  const pcr = await fetch(`${BASE}/api/system/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: sys },
+    body: JSON.stringify({ username: puname, password: "test1234", role: "admin", status: "pending" }),
+  }).then((r) => r.json());
+  if (pcr.user?.id) {
+    const pl = await fetch(`${BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: puname, password: "test1234" }),
+    });
+    ok("pending user login ไม่ได้ (403)", pl.status === 403, `status ${pl.status}`);
+    await fetch(`${BASE}/api/system/users/${pcr.user.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: sys },
+      body: JSON.stringify({ action: "disable" }),
+    });
+  } else {
+    ok("create pending user", false, pcr.error || "no id");
   }
 
   console.log(`\n===== Permissions: ${fail ? "❌ FAIL" : "✅ PASS"} — ผ่าน ${pass} / ล้มเหลว ${fail} =====`);
