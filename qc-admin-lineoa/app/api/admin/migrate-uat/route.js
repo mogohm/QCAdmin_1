@@ -8,16 +8,24 @@ export async function POST(req) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   try {
     // ---- AI review queue: เคสที่ AI ไม่มั่นใจ/ไม่เข้าใจ ให้ QC/หัวหน้าตรวจ ----
+    // matched_sop_id/corrected_sop_id = INTEGER (sop_scripts.id เป็น integer)
     await query`CREATE TABLE IF NOT EXISTS ai_review_queue (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       qc_score_id UUID, conversation_id UUID, message_id UUID,
       customer_name TEXT, admin_name TEXT, customer_text TEXT, admin_text TEXT,
       detected_intent TEXT, intent_confidence NUMERIC,
-      matched_sop_id UUID, sop_confidence NUMERIC,
+      matched_sop_id INTEGER, sop_confidence NUMERIC,
       reason TEXT, status TEXT DEFAULT 'pending',
-      reviewed_by UUID, review_action TEXT, corrected_intent TEXT, corrected_sop_id UUID,
+      reviewed_by UUID, review_action TEXT, corrected_intent TEXT, corrected_sop_id INTEGER,
       reviewer_note TEXT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ)`;
     await query`CREATE INDEX IF NOT EXISTS idx_ai_review_status ON ai_review_queue (status, created_at DESC)`;
+    // แก้ชนิดคอลัมน์ให้ตรง sop_scripts.id ถ้าตารางถูกสร้างเป็น uuid มาก่อน (ปลอดภัย: ตารางว่าง)
+    await query`DO $$ BEGIN
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='ai_review_queue' AND column_name='matched_sop_id') = 'uuid' THEN
+        ALTER TABLE ai_review_queue ALTER COLUMN matched_sop_id TYPE INTEGER USING NULL;
+        ALTER TABLE ai_review_queue ALTER COLUMN corrected_sop_id TYPE INTEGER USING NULL;
+      END IF;
+    END $$;`;
 
     // ---- Case evidence: หลักฐานอ้างอิงแต่ละเคส (screenshot/html/raw/late_response) ----
     await query`CREATE TABLE IF NOT EXISTS case_evidence (
