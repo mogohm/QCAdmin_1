@@ -8,7 +8,9 @@ const BASE = (
   process.env.APP_BASE_URL ||
   "https://qc-admin-1.vercel.app"
 ).replace(/\/$/, "");
-const STRICT = process.env.UAT_STRICT === "true";
+// STRICT: เปิดผ่าน --strict (cross-platform) หรือ UAT_STRICT=true
+const STRICT =
+  process.env.UAT_STRICT === "true" || process.argv.includes("--strict");
 let pass = 0,
   fail = 0,
   skip = 0;
