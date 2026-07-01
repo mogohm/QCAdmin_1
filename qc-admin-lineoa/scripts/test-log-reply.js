@@ -77,6 +77,12 @@ const KEY = process.env.QC_API_KEY || process.env.ADMIN_API_KEY;
         customer_name: "QC LogReply Test",
         assigned_admin: "PK - Mei",
       });
+      // ใช้เวลาปัจจุบันจริง เพื่อให้ dedup (created_at > now()-7วัน) ทำงานเสมอ
+      // (ไม่งั้น fixture date เก่าเกิน 7 วันจากนาฬิกา server จริง จะไม่ dedup)
+      const nowIso = new Date().toISOString();
+      const custIso = new Date(Date.now() - 60000).toISOString();
+      body.admin_ts = body.admin_created_at = nowIso;
+      body.customer_ts = body.customer_created_at = custIso;
       const res = await fetch(`${API}/api/admin/log-reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": KEY },
