@@ -392,3 +392,31 @@ INSERT INTO role_permissions (role_key, permission_key) VALUES
   ('marketing','marketing.events.view'),('marketing','commission.view.all')
 ON CONFLICT DO NOTHING;
 -- rev: 2026-06-19 file-integrity (LF, multi-line verified)
+
+-- ============================================================
+-- UAT feedback: AI review queue + case evidence + SOP training fields
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ai_review_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  qc_score_id UUID, conversation_id UUID, message_id UUID,
+  customer_name TEXT, admin_name TEXT, customer_text TEXT, admin_text TEXT,
+  detected_intent TEXT, intent_confidence NUMERIC,
+  matched_sop_id UUID, sop_confidence NUMERIC,
+  reason TEXT, status TEXT DEFAULT 'pending',
+  reviewed_by UUID, review_action TEXT, corrected_intent TEXT, corrected_sop_id UUID,
+  reviewer_note TEXT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ);
+CREATE INDEX IF NOT EXISTS idx_ai_review_status ON ai_review_queue (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS case_evidence (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  qc_score_id UUID, conversation_id UUID, scraper_job_id UUID,
+  evidence_type TEXT, title TEXT, file_path TEXT, url TEXT,
+  data JSONB, created_at TIMESTAMPTZ DEFAULT now());
+CREATE INDEX IF NOT EXISTS idx_case_evidence_qc ON case_evidence (qc_score_id);
+CREATE INDEX IF NOT EXISTS idx_case_evidence_conv ON case_evidence (conversation_id);
+
+ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS knowledge_type TEXT;
+ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS example_questions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS source_case_id UUID;
+ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS training_status TEXT DEFAULT 'active';
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS source TEXT;

@@ -6,6 +6,7 @@ export default function Login() {
   const [p, setP] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(true);
   // แสดงข้อความเมื่อถูกส่งมาจาก session หมดอายุ (?expired=1)
   useEffect(() => {
     if (new URLSearchParams(location.search).get("expired"))
@@ -20,7 +21,7 @@ export default function Login() {
       const r = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify({ username: u, password: p, remember }),
       });
       const j = await r.json();
       if (!r.ok) {
@@ -101,6 +102,25 @@ export default function Login() {
           onChange={(e) => setP(e.target.value)}
           style={inp}
         />
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 13,
+            color: "#bcd2f4",
+            margin: "2px 0 6px",
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          จดจำการเข้าสู่ระบบ (30 วัน)
+        </label>
         {err && (
           <div style={{ color: "#ff8585", fontSize: 13, margin: "6px 0" }}>
             ⚠️ {err}

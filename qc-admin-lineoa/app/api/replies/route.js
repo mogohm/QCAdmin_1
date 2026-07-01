@@ -44,15 +44,18 @@ export async function GET(req) {
     const [rows, countRows] = await Promise.all([
       db.query(
         `SELECT
-          m.id, m.created_at,
+          m.id, m.created_at, m.source, m.conversation_id,
           a.member_name     AS admin_name,
           lc.display_name   AS customer_name,
           m.line_user_id,
           m.message_text    AS reply_text,
           cust.message_text AS customer_text,
+          q.id              AS qc_score_id,
           q.final_score, q.speed_score, q.correctness_score,
-          q.sentiment_score, q.response_seconds,
-          q.fail_reasons, q.matched_rules
+          q.sentiment_score, q.response_seconds, q.is_fatal, q.minor_issues,
+          q.intent, q.sop_confidence,
+          q.fail_reasons, q.matched_rules,
+          (SELECT count(*)::int FROM qc_disputes d WHERE d.qc_score_id = q.id) AS dispute_count
         FROM messages m
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
         LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
 const weekAgo = () => toISO(new Date(Date.now() - 7 * 864e5));
@@ -291,11 +292,32 @@ export default function QCDashboard() {
         }}
       >
         <div>
+          {/* breadcrumb + back */}
+          <div
+            style={{
+              fontSize: 12,
+              color: "#8fb0dd",
+              marginBottom: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <a href="/" style={{ color: "#5fd0ff", textDecoration: "none" }}>
+              ← กลับ Dashboard
+            </a>
+            <span style={{ color: "#3a557d" }}>|</span>
+            <span className="muted">หน้าหลัก / QC Monitoring</span>
+          </div>
           <div style={{ fontSize: 11, color: "#5fd0ff", letterSpacing: 2 }}>
-            AI QC PROGRAM DASHBOARD
+            AI QC PROGRAM · QC MONITORING
           </div>
           <div style={{ fontWeight: 800, fontSize: 18 }}>
-            ระบบแดชบอร์ด AI ควบคุมคุณภาพ
+            ตรวจสอบคุณภาพการตอบแบบเรียลไทม์
+          </div>
+          <div style={{ fontSize: 12, color: "#8fb0dd", marginTop: 2 }}>
+            เฝ้าดูคะแนน QC ทีมงาน · เคสผิดพลาด (Fatal/Minor) · เวลาตอบ ·
+            เคสที่ต้องตรวจสอบ
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -314,6 +336,7 @@ export default function QCDashboard() {
           <button onClick={() => load()} style={btn}>
             {loading ? "..." : "ดู"}
           </button>
+          <ScoringCriteriaButton />
           <div
             style={{
               fontSize: 12,

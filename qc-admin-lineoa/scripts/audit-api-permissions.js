@@ -34,6 +34,14 @@ const SENSITIVE = [
   "/api/system/roles/[role_key]",
   "/api/system/registration-requests",
   "/api/system/registration-requests/[id]",
+  "/api/ai-review",
+  "/api/ai-review/[id]",
+  "/api/ai-review/[id]/create-sop",
+  "/api/manual-case",
+  "/api/knowledge-training",
+  "/api/knowledge-training/[id]",
+  "/api/knowledge-training/test-match",
+  "/api/case-evidence",
 ];
 
 function walk(dir) {

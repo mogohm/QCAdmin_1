@@ -1,12 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
 const sc = (v) => (v >= 85 ? "good" : v >= 70 ? "warn" : "bad");
 const fmtSec = (s) => {
   s = Number(s || 0);
-  return s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
+  if (s <= 0) return "—";
+  if (s < 60) return `${s} วินาที`;
+  return `${Math.floor(s / 60)} นาที`;
 };
 const heatBg = (v) =>
   v == null
@@ -121,6 +124,7 @@ export default function AdminPerformance() {
       <button onClick={exportCSV} style={{ background: "#16a34a" }}>
         ⬇ CSV
       </button>
+      <ScoringCriteriaButton />
     </>
   );
 
@@ -209,16 +213,18 @@ export default function AdminPerformance() {
 
         <section className="grid split">
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>Ranking</h3>
+            <h3 style={{ marginTop: 0 }}>อันดับแอดมิน</h3>
             <table className="table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Admin</th>
-                  <th>เคส</th>
-                  <th>คะแนน</th>
-                  <th>Resp</th>
-                  <th>Bad</th>
+                  <th title="อันดับ">อันดับ</th>
+                  <th>แอดมิน</th>
+                  <th title="จำนวนเคสที่ถูกประเมิน QC">จำนวนเคส</th>
+                  <th title="คะแนน QC เฉลี่ย (เต็ม 100)">คะแนน QC</th>
+                  <th title="เวลาเฉลี่ยที่แอดมินใช้ตอบลูกค้า">ตอบเฉลี่ย</th>
+                  <th title="จำนวนเคสที่ AI/QC ตรวจพบว่ามีข้อผิดพลาด">
+                    เคสผิดพลาด
+                  </th>
                 </tr>
               </thead>
               <tbody>

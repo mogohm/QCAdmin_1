@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
 import GlassPanel from "../components/GlassPanel";
 import MetricTile from "../components/MetricTile";
 import MiniLineChart from "../components/MiniLineChart";
@@ -44,6 +45,7 @@ export default function ManagerDashboard() {
         style={{ width: 140, margin: 0 }}
       />
       <button onClick={load}>{loading ? "..." : "ดู"}</button>
+      <ScoringCriteriaButton />
     </>
   );
   return (

@@ -1,10 +1,33 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import ChatModal from "../components/ChatModal";
+import EvidenceViewer from "../components/EvidenceViewer";
+import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
 const sc = (v) => (v >= 85 ? "good" : v >= 70 ? "warn" : "bad");
+
+// ตัวกรองเคส (ทำงานฝั่ง client จากผลที่โหลดมา)
+const FILTERS = [
+  ["all", "ทุกเคส", () => true],
+  ["low", "คะแนนต่ำ", (r) => r.final_score != null && r.final_score < 70],
+  ["slow", "ตอบช้า", (r) => Number(r.response_seconds || 0) >= 300],
+  [
+    "unsure",
+    "AI ไม่มั่นใจ",
+    (r) => r.sop_confidence != null && Number(r.sop_confidence) < 60,
+  ],
+  ["fatal", "Fatal Error", (r) => r.is_fatal === true],
+  [
+    "minor",
+    "Minor Error",
+    (r) => Array.isArray(r.minor_issues) && r.minor_issues.length > 0,
+  ],
+  ["dispute", "มี Dispute", (r) => Number(r.dispute_count || 0) > 0],
+  ["manual", "Manual Case", (r) => r.source === "manual"],
+  ["scraper", "Scraper Case", (r) => r.source === "scraper" || !r.source],
+];
 
 export default function ChatReview() {
   const [rows, setRows] = useState([]);
@@ -14,13 +37,15 @@ export default function ChatReview() {
   const [order, setOrder] = useState("asc");
   const [cust, setCust] = useState("");
   const [chatUser, setChatUser] = useState(null);
+  const [evidence, setEvidence] = useState(null); // เคสที่เปิดดูหลักฐาน
+  const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const [err, setErr] = useState("");
   const load = () => {
     setLoading(true);
     setErr("");
-    const p = new URLSearchParams({ from, to, sort, order, limit: "40" });
+    const p = new URLSearchParams({ from, to, sort, order, limit: "80" });
     if (cust) p.set("customer", cust);
     fetch("/api/replies?" + p)
       .then((r) => r.json())
@@ -35,12 +60,49 @@ export default function ChatReview() {
     load();
   }, [sort, order]);
 
+  const fn = FILTERS.find((f) => f[0] === filter)?.[2] || (() => true);
+  const shown = useMemo(() => rows.filter(fn), [rows, filter]);
+
   return (
     <AppShell
       title="Chat Review"
-      subtitle="ตรวจรีวิวคำตอบแอดมิน — คลิกเพื่อดูแชท + QC evidence"
+      subtitle="ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน QC"
+      actions={<ScoringCriteriaButton />}
     >
       <>
+        <div
+          className="glass"
+          style={{ marginBottom: 12, fontSize: 13, color: "#bcd2f4" }}
+        >
+          หน้านี้ใช้ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน QC เช่น เคสตอบช้า
+          เคสคะแนนต่ำ เคส AI ไม่มั่นใจ เคส Fatal/Minor Error
+          และเคสที่มีการโต้แย้งคะแนน — คลิก "ดูแชท" เพื่อดูบทสนทนา หรือ
+          "ดูหลักฐาน" เพื่อตรวจหลักฐานอ้างอิง
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            marginBottom: 12,
+          }}
+        >
+          {FILTERS.map(([key, label]) => (
+            <span
+              key={key}
+              className={`chip ${filter === key ? "on" : ""}`}
+              onClick={() => setFilter(key)}
+            >
+              {label}
+              {key !== "all" && (
+                <span className="muted">
+                  {" "}
+                  ({rows.filter(FILTERS.find((f) => f[0] === key)[2]).length})
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
         <div
           className="card"
           style={{
@@ -92,9 +154,10 @@ export default function ChatReview() {
               <tr>
                 <th>เวลา</th>
                 <th>ลูกค้า</th>
-                <th>Admin</th>
+                <th>แอดมิน</th>
                 <th>คำตอบ</th>
-                <th>คะแนน</th>
+                <th title="คะแนน QC เต็ม 100">คะแนน QC</th>
+                <th>ประเภท</th>
                 <th></th>
               </tr>
             </thead>
@@ -102,7 +165,7 @@ export default function ChatReview() {
               {loading && (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="muted"
                     style={{ textAlign: "center", padding: 24 }}
                   >
@@ -114,7 +177,7 @@ export default function ChatReview() {
                 </tr>
               )}
               {!loading &&
-                rows.map((r) => (
+                shown.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontSize: 11, whiteSpace: "nowrap" }}>
                       {new Date(r.created_at).toLocaleString("th-TH", {
@@ -126,7 +189,9 @@ export default function ChatReview() {
                     </td>
                     <td>{r.customer_name || r.line_user_id?.slice(0, 10)}</td>
                     <td>{r.admin_name || "—"}</td>
-                    <td style={{ maxWidth: 320, fontSize: 12, color: "#555" }}>
+                    <td
+                      style={{ maxWidth: 300, fontSize: 12, color: "#9fb3d6" }}
+                    >
                       {String(r.reply_text || "").slice(0, 70)}
                     </td>
                     <td>
@@ -138,7 +203,42 @@ export default function ChatReview() {
                         "—"
                       )}
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {r.source === "manual" && (
+                        <span
+                          className="badge"
+                          style={{ background: "#0b5cab" }}
+                        >
+                          Manual
+                        </span>
+                      )}
+                      {r.is_fatal && (
+                        <span className="score bad" style={{ fontSize: 10 }}>
+                          Fatal
+                        </span>
+                      )}
+                      {!r.is_fatal &&
+                        Array.isArray(r.minor_issues) &&
+                        r.minor_issues.length > 0 && (
+                          <span className="score warn" style={{ fontSize: 10 }}>
+                            Minor
+                          </span>
+                        )}
+                      {Number(r.dispute_count || 0) > 0 && (
+                        <span
+                          className="badge"
+                          style={{ background: "#b45309" }}
+                        >
+                          Dispute
+                        </span>
+                      )}
+                      {Number(r.response_seconds || 0) >= 300 && (
+                        <span className="score warn" style={{ fontSize: 10 }}>
+                          ตอบช้า
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }}>
                       <button
                         onClick={() =>
                           setChatUser({ line_user_id: r.line_user_id })
@@ -146,6 +246,19 @@ export default function ChatReview() {
                         style={{ padding: "3px 10px", fontSize: 11 }}
                       >
                         ดูแชท
+                      </button>{" "}
+                      <button
+                        onClick={() =>
+                          setEvidence({
+                            qcScoreId: r.qc_score_id,
+                            conversationId: r.conversation_id,
+                            caseRef: r.qc_score_id || r.id,
+                          })
+                        }
+                        className="ghost"
+                        style={{ padding: "3px 10px", fontSize: 11 }}
+                      >
+                        ดูหลักฐาน
                       </button>
                     </td>
                   </tr>
@@ -153,7 +266,7 @@ export default function ChatReview() {
               {!loading && err && (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     style={{
                       textAlign: "center",
                       padding: 20,
@@ -164,14 +277,14 @@ export default function ChatReview() {
                   </td>
                 </tr>
               )}
-              {!loading && !err && !rows.length && (
+              {!loading && !err && !shown.length && (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     className="muted"
                     style={{ textAlign: "center", padding: 20 }}
                   >
-                    ไม่พบข้อมูลในช่วงวันที่นี้ — ลองขยายช่วงวันที่
+                    ไม่พบเคสในตัวกรองนี้ — ลองเปลี่ยนตัวกรองหรือขยายช่วงวันที่
                   </td>
                 </tr>
               )}
@@ -180,6 +293,14 @@ export default function ChatReview() {
         </div>
         {chatUser && (
           <ChatModal user={chatUser} onClose={() => setChatUser(null)} />
+        )}
+        {evidence && (
+          <EvidenceViewer
+            qcScoreId={evidence.qcScoreId}
+            conversationId={evidence.conversationId}
+            caseRef={evidence.caseRef}
+            onClose={() => setEvidence(null)}
+          />
         )}
       </>
     </AppShell>

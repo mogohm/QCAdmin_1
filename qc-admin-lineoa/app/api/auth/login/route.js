@@ -1,8 +1,14 @@
 import { query } from "@/lib/db";
-import { sign, verifyPassword, cookieHeader } from "@/lib/session";
+import {
+  sign,
+  verifyPassword,
+  cookieHeader,
+  REMEMBER_AGE,
+  SHORT_AGE,
+} from "@/lib/session";
 
 export async function POST(req) {
-  const { username, password } = await req.json().catch(() => ({}));
+  const { username, password, remember } = await req.json().catch(() => ({}));
   if (!username || !password)
     return Response.json({ error: "กรอก username/password" }, { status: 400 });
 
@@ -31,12 +37,18 @@ export async function POST(req) {
   await query`UPDATE app_users SET last_login_at = now() WHERE id = ${u.id}`.catch(
     () => {},
   );
-  const token = sign({
-    uid: u.id,
-    role: u.role,
-    adminId: u.qc_admin_id,
-    name: u.display_name || u.username,
-  });
+  // จดจำการเข้าสู่ระบบ → 30 วัน, ไม่จดจำ → 12 ชม. (แก้อาการ mobile เด้ง login)
+  const maxAge = remember ? REMEMBER_AGE : SHORT_AGE;
+  const token = sign(
+    {
+      uid: u.id,
+      role: u.role,
+      adminId: u.qc_admin_id,
+      name: u.display_name || u.username,
+      rem: !!remember,
+    },
+    maxAge,
+  );
   return new Response(
     JSON.stringify({
       ok: true,
@@ -48,7 +60,7 @@ export async function POST(req) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Set-Cookie": cookieHeader(token),
+        "Set-Cookie": cookieHeader(token, maxAge),
       },
     },
   );

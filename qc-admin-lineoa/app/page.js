@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MENU, filterMenuByPermissions } from "@/lib/menu";
+import { ScoringCriteriaButton } from "./components/ScoringCriteriaPanel";
 import GlassPanel from "./components/GlassPanel";
 import KpiGauge from "./components/KpiGauge";
 import RadarChart from "./components/RadarChart";
@@ -174,6 +175,7 @@ export default function Dashboard() {
             style={{ width: 140 }}
           />
           <button onClick={() => load()}>{loading ? "..." : "🔄 ดู"}</button>
+          <ScoringCriteriaButton />
           {me?.authenticated && (
             <span className="exec-user">
               👤 {me.name} <span className="exec-role">{me.role}</span>

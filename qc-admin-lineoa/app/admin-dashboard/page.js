@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
 import GlassPanel from "../components/GlassPanel";
 import KpiGauge from "../components/KpiGauge";
 import RadarChart from "../components/RadarChart";
@@ -51,7 +52,11 @@ export default function AdminDashboard() {
     : [];
 
   return (
-    <AppShell title="🧑‍💼 Admin Dashboard" subtitle="ผลงานของฉัน · 30 วันล่าสุด">
+    <AppShell
+      title="🧑‍💼 Admin Dashboard"
+      subtitle="ผลงานของฉัน · 30 วันล่าสุด"
+      actions={<ScoringCriteriaButton />}
+    >
       {loading ? (
         <div className="loadbar">
           <span className="spin">⏳</span> กำลังโหลด...

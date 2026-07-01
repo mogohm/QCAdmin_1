@@ -166,6 +166,24 @@ export const MENU = [
     perm: ["qc.dispute.review", "qc.dispute.create"],
   },
   {
+    href: "/ai-review",
+    icon: "🤖",
+    label: "AI Review Queue",
+    perm: ["qc.dispute.review", "qc.score.override"],
+  },
+  {
+    href: "/manual-case",
+    icon: "✍️",
+    label: "Manual Case",
+    perm: ["qc.score.override", "qc.monitor.view"],
+  },
+  {
+    href: "/knowledge-training",
+    icon: "🧠",
+    label: "AI Knowledge Training",
+    perm: ["sop.create", "sop.update"],
+  },
+  {
     href: "/system-events",
     icon: "🛠️",
     label: "System Events",

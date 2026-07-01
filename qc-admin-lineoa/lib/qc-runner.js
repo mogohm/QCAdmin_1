@@ -6,6 +6,7 @@ import { generateCoaching } from "@/lib/coaching";
 import { matchSOP } from "@/lib/sop-matcher";
 import { loadKnowledge, isSlaException } from "@/lib/qc-shared";
 import { qcAlert } from "@/lib/telegram";
+import { enqueueAiReview, saveQcEvidence } from "@/lib/qc-review";
 
 export async function runQc({
   conversationId,
@@ -20,6 +21,7 @@ export async function runQc({
   adminName = null,
   customerName = null,
   responseLimitMinutes = 5,
+  scraperJobId = null,
 }) {
   const { sops, fatalRules } = await loadKnowledge();
   const sla = await isSlaException(createdAt || new Date());
@@ -78,6 +80,23 @@ export async function runQc({
     await query`UPDATE sop_scripts SET used_count = COALESCE(used_count,0) + 1 WHERE id = ${sop.id}`.catch(
       () => {},
     );
+
+  // UAT: เก็บหลักฐาน (เคส fail/late/fatal) + เข้าคิว AI review เมื่อ AI ไม่มั่นใจ
+  const reviewCtx = {
+    conversationId,
+    adminMessageId,
+    sop,
+    customerText,
+    adminText,
+    customerName,
+    adminName,
+    responseSeconds,
+    responseLimitMinutes,
+    createdAt,
+    scraperJobId,
+  };
+  await saveQcEvidence(qc, reviewCtx).catch(() => {});
+  await enqueueAiReview(qc, reviewCtx).catch(() => {});
 
   // Telegram
   const slaFail =

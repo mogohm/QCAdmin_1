@@ -6,11 +6,14 @@ const SECRET =
   process.env.ADMIN_API_KEY ||
   "qc-admin-default-secret";
 const COOKIE = "qc_session";
-const MAX_AGE = 7 * 24 * 3600; // 7 วัน
+const MAX_AGE = 7 * 24 * 3600; // default 7 วัน
+export const REMEMBER_AGE = 30 * 24 * 3600; // จดจำการเข้าสู่ระบบ = 30 วัน
+export const SHORT_AGE = 12 * 3600; // ไม่จดจำ = 12 ชม.
 
-export function sign(payload) {
+// sign(payload, maxAgeSec) — ฝัง exp ตาม maxAge (mobile: อายุยาวขึ้นถ้า remember me)
+export function sign(payload, maxAgeSec = MAX_AGE) {
   const body = Buffer.from(
-    JSON.stringify({ ...payload, exp: Date.now() + MAX_AGE * 1000 }),
+    JSON.stringify({ ...payload, exp: Date.now() + maxAgeSec * 1000 }),
   ).toString("base64url");
   const sig = crypto
     .createHmac("sha256", SECRET)
@@ -57,9 +60,11 @@ export function verifyPassword(pw, stored) {
   );
 }
 
-export function cookieHeader(token) {
-  const maxAge = token ? MAX_AGE : 0;
-  return `${COOKIE}=${token || ""}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+// cookieHeader(token, maxAgeSec) — mobile-safe: HttpOnly, SameSite=Lax, Secure (prod), Path=/
+export function cookieHeader(token, maxAgeSec = MAX_AGE) {
+  const maxAge = token ? maxAgeSec : 0;
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${COOKIE}=${token || ""}; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=${maxAge}`;
 }
 
 export function readSession(req) {
