@@ -1,8 +1,22 @@
+// ============================================================
 // /api/knowledge-training — สอน AI ความรู้ใหม่ (Poker/App/Game/...) เก็บใน sop_scripts
-//   GET  → list (filter knowledge_type/q)   ต้องมีสิทธิ์ sop.view/create/update
-//   POST → เพิ่มความรู้ (topic/answer/knowledge_type/example_questions/keywords)
+// ------------------------------------------------------------
+//   GET ?type=&q=
+//     type : กรองตาม knowledge_type/category_code/intent (เช่น Poker, Deposit)
+//     q    : ค้นจาก topic/answer
+//     Response: { items: [...], knowledge_types: [...] }
+//     Permission: sop.view หรือ sop.create หรือ sop.update
+//
+//   POST { topic*, answer*, knowledge_type?, intent?, category_code?,
+//          keywords?, required_keywords?, forbidden_keywords?, example_questions? }
+//     upsert ตาม topic (ON CONFLICT) — ระบบใช้ความรู้นี้จับคู่ SOP + ประเมิน QC
+//     Permission: sop.create หรือ sop.update
+//   หมายเหตุ: enforce สิทธิ์ที่ระดับ API (server-side) ทุก method
+// ============================================================
 import { query } from "@/lib/db";
 import { guard } from "@/lib/permissions";
+
+// รับ keywords (array หรือ comma-separated) → array สะอาด
 
 const arr = (v) =>
   Array.isArray(v)

@@ -56,6 +56,22 @@ export default function ManualCase() {
       subtitle="เพิ่มเคสด้วยตนเอง — ระบบ QC จะให้คะแนนอัตโนมัติ"
     >
       <div
+        style={{
+          fontSize: 12,
+          color: "#8fb0dd",
+          marginBottom: 10,
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        <a href="/" style={{ color: "#5fd0ff", textDecoration: "none" }}>
+          ← กลับ Dashboard
+        </a>
+        <span style={{ color: "#3a557d" }}>|</span>
+        <span className="muted">หน้าหลัก / Manual Case</span>
+      </div>
+      <div
         className="glass"
         style={{ marginBottom: 12, fontSize: 13, color: "#bcd2f4" }}
       >

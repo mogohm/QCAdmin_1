@@ -19,6 +19,7 @@
     "test:auth": "node scripts/test-auth-roles.js && node scripts/test-permissions.js && node scripts/test-role-menu.js",
     "audit:permissions": "node scripts/audit-api-permissions.js",
     "test:uat-feedback": "node scripts/test-uat-feedback.js",
+    "test:uat-feedback:strict": "UAT_STRICT=true node scripts/test-uat-feedback.js",
     "audit:scraper": "node scripts/audit-scraper-output.js",
     "scraper:login": "node scripts/line-login.js",
     "scraper:watch": "node scraper.js --watch",

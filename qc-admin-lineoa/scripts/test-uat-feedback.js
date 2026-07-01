@@ -1,5 +1,6 @@
 // test-uat-feedback.js — ตรวจ UAT feedback fixes (pages/APIs/permission/session/manual case/evidence)
-//   ยิง API จริงบน prod (ต้อง seed + migrate ก่อน) — ถ้า login ไม่ได้จะข้าม (ไม่ fail หลอก)
+//   ยิง API จริงบน prod (ต้อง seed + migrate ก่อน)
+//   STRICT mode (UAT_STRICT=true): login/ADMIN_API_KEY/migrate ต้องผ่าน — ห้าม skip API tests
 const fs = require("fs");
 const path = require("path");
 const BASE = (
@@ -7,6 +8,7 @@ const BASE = (
   process.env.APP_BASE_URL ||
   "https://qc-admin-1.vercel.app"
 ).replace(/\/$/, "");
+const STRICT = process.env.UAT_STRICT === "true";
 let pass = 0,
   fail = 0,
   skip = 0;
@@ -14,9 +16,15 @@ const ok = (n, c, x = "") => {
   c ? pass++ : fail++;
   console.log(`${c ? "✅" : "❌"} ${n}${x ? " — " + x : ""}`);
 };
+// info(): ปกติ = skip (ไม่ fail), STRICT = fail (ห้ามข้าม)
 const info = (n) => {
-  skip++;
-  console.log(`⏭️  ${n}`);
+  if (STRICT) {
+    fail++;
+    console.log(`❌ [STRICT] ${n}`);
+  } else {
+    skip++;
+    console.log(`⏭️  ${n}`);
+  }
 };
 const root = path.join(__dirname, "..");
 const exists = (p) => fs.existsSync(path.join(root, p));
