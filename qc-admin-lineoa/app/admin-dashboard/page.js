@@ -44,10 +44,10 @@ export default function AdminDashboard() {
     : null;
   const radar = skill
     ? [
-        { label: "Greet", value: skill.greeting_closing },
-        { label: "Problem", value: skill.problem_solving },
-        { label: "Tone", value: skill.communication_tone },
-        { label: "Response", value: skill.response_time },
+        { label: "ทักทาย", value: skill.greeting_closing },
+        { label: "แก้ปัญหา", value: skill.problem_solving },
+        { label: "น้ำเสียง", value: skill.communication_tone },
+        { label: "ความเร็ว", value: skill.response_time },
       ].filter((x) => x.value != null)
     : [];
 

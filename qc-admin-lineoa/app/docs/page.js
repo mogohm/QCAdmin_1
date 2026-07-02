@@ -51,13 +51,12 @@ export default function Docs() {
         </p>
         <ul>
           <li>
-            น้ำหนักคงที่: Greeting &amp; Closing <b>15</b> · Problem Solving
-            &amp; Accuracy <b>20</b> · Communication &amp; Tone <b>20</b> ·
-            Response Time <b>10</b>
+            น้ำหนักคงที่: ทักทายและปิดเคส <b>15</b> · การแก้ปัญหาและความถูกต้อง{" "}
+            <b>20</b> · น้ำเสียงและความสุภาพ <b>20</b> · ความเร็วในการตอบ{" "}
+            <b>10</b>
           </li>
           <li>
-            intent-specific: Upselling 10 (promotion/bonus) · Credit
-            Deposit/Withdraw 10 (ฝาก/ถอน) · KYC 10 (kyc)
+            ตาม intent: โปรโมชั่น/แนะนำเพิ่ม 10 · ฝาก/ถอน/เครดิต 10 · KYC 10
           </li>
           <li>
             มิติที่ไม่เกี่ยวกับ intent = N/A (ไม่คิดในตัวหาร) แต่บันทึกเหตุผลไว้

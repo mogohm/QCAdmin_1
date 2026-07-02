@@ -23,6 +23,7 @@ const RAW_KEYS = [
   "[object Object]",
 ];
 // label อังกฤษที่อ่านแล้วงง (ต้องเป็นไทย) — regex ตรงคำ
+//   อนุญาต: KYC, SOP, AI, QC, LINE OA
 const CONFUSING = [
   /\bRESP\b/,
   /\bBAD\b/,
@@ -33,6 +34,15 @@ const CONFUSING = [
   /AI Coaching/,
   /Total Cases/,
   /Error Cases/,
+  /Estimated Commission/,
+  /Intent Distribution/,
+  /Commission Tiers/,
+  /Greeting\/Closing/,
+  /Problem Solving/,
+  /Deposit\/WD/,
+  /Marketing —/,
+  /AI QC PROGRAM · QC MONITORING/,
+  /\bFATAL\b/,
 ];
 
 function walk(dir) {

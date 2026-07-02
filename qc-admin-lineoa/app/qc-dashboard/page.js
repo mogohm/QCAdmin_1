@@ -11,19 +11,19 @@ const fmtSec = (s) =>
   s == null ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
 
 const RADAR_AXES = [
-  ["greeting_closing", "Greeting/Closing"],
-  ["problem_solving", "Problem Solving"],
-  ["communication_tone", "Tone"],
-  ["response_time", "Response"],
-  ["credit_deposit_withdraw", "Deposit/WD"],
+  ["greeting_closing", "ทักทาย/ปิดเคส"],
+  ["problem_solving", "แก้ปัญหา"],
+  ["communication_tone", "น้ำเสียง"],
+  ["response_time", "ความเร็ว"],
+  ["credit_deposit_withdraw", "ฝาก/ถอน"],
   ["kyc_process", "KYC"],
-  ["upsell_promotion", "Upsell"],
+  ["upsell_promotion", "โปรโมชัน"],
 ];
 const TIERS = [
-  ["tier1", "Tier 1 · Excellent (90-100)", "#22d39a"],
-  ["tier2", "Tier 2 · Standard (80-89)", "#5fd0ff"],
-  ["tier3", "Tier 3 · Warning (70-79)", "#f5b341"],
-  ["tier4", "Tier 4 · Critical (<70)", "#ff6b6b"],
+  ["tier1", "ระดับ 1 · ดีเยี่ยม (90-100)", "#22d39a"],
+  ["tier2", "ระดับ 2 · มาตรฐาน (80-89)", "#5fd0ff"],
+  ["tier3", "ระดับ 3 · ต้องปรับปรุง (70-79)", "#f5b341"],
+  ["tier4", "ระดับ 4 · วิกฤต (<70)", "#ff6b6b"],
 ];
 
 // ----- styled atoms (dark) -----
@@ -243,15 +243,15 @@ export default function QCDashboard() {
       ? [
           ["admin", "👤 ของฉัน"],
           ["leaderboard", "🏆 อันดับ"],
-          ["coaching", "🎓 Coaching"],
+          ["coaching", "🎓 คำแนะนำจาก AI"],
         ]
       : role === "marketing"
-        ? [["marketing", "📣 Marketing"]]
+        ? [["marketing", "📣 การตลาด"]]
         : [
-            ["manager", "🧭 Manager"],
-            ["leaderboard", "🏆 Leaderboard"],
-            ["marketing", "📣 Marketing"],
-            ["coaching", "🎓 Coaching"],
+            ["manager", "🧭 ผู้จัดการ"],
+            ["leaderboard", "🏆 จัดอันดับ"],
+            ["marketing", "📣 การตลาด"],
+            ["coaching", "🎓 คำแนะนำจาก AI"],
           ];
 
   const radar = d?.skill_radar || {};
@@ -307,10 +307,10 @@ export default function QCDashboard() {
               ← กลับ Dashboard
             </a>
             <span style={{ color: "#3a557d" }}>|</span>
-            <span className="muted">หน้าหลัก / QC Monitoring</span>
+            <span className="muted">หน้าหลัก / ตรวจสอบคุณภาพ</span>
           </div>
           <div style={{ fontSize: 11, color: "#5fd0ff", letterSpacing: 2 }}>
-            AI QC PROGRAM · QC MONITORING
+            ระบบตรวจสอบคุณภาพการตอบแชท
           </div>
           <div style={{ fontWeight: 800, fontSize: 18 }}>
             ตรวจสอบคุณภาพการตอบแบบเรียลไทม์
@@ -422,7 +422,7 @@ export default function QCDashboard() {
                 }}
               >
                 <div style={{ fontSize: 12, color: "#8fb0e0" }}>
-                  Estimated Commission
+                  ค่าคอมมิชชั่นโดยประมาณ
                 </div>
                 <div
                   style={{ fontSize: 34, fontWeight: 900, color: "#22d39a" }}
@@ -530,7 +530,7 @@ export default function QCDashboard() {
               </div>
             </div>
             <div style={{ ...card, gridColumn: "1 / -1" }}>
-              <p style={title}>Intent Distribution</p>
+              <p style={title}>สัดส่วนประเภทคำถาม</p>
               <div
                 style={{
                   display: "grid",
@@ -619,7 +619,7 @@ export default function QCDashboard() {
                   )}
                 </tbody>
               </table>
-              <p style={{ ...title, marginTop: 16 }}>Commission Tiers</p>
+              <p style={{ ...title, marginTop: 16 }}>ระดับค่าคอมมิชชั่น</p>
               <Bars
                 rows={TIERS.map(([k, l, c]) => ({
                   label: l,
@@ -635,7 +635,7 @@ export default function QCDashboard() {
         {tab === "marketing" && (
           <div style={card}>
             <p style={title}>
-              📣 Marketing — Registration / KYC / Deposit / Withdraw / Promotion
+              📣 การตลาด — สมัครสมาชิก / KYC / ฝาก / ถอน / โปรโมชั่น
             </p>
             <div
               style={{
@@ -650,11 +650,11 @@ export default function QCDashboard() {
                     (e) => e.event_type === ev,
                   );
                   const labels = {
-                    register: "Registration",
+                    register: "สมัครสมาชิก",
                     kyc: "KYC",
-                    deposit: "Deposit",
-                    withdraw: "Withdraw",
-                    promotion: "Promotion",
+                    deposit: "ฝากเงิน",
+                    withdraw: "ถอนเงิน",
+                    promotion: "โปรโมชั่น",
                   };
                   return (
                     <div
@@ -690,7 +690,7 @@ export default function QCDashboard() {
         {/* COACHING */}
         {tab === "coaching" && (
           <div style={card}>
-            <p style={title}>🎓 AI Feedback & Coaching</p>
+            <p style={title}>🎓 คำแนะนำจาก AI</p>
             {(d?.coaching_recommendations || []).map((c) => (
               <CoachCard key={c.id} c={c} showAdmin />
             ))}
@@ -726,7 +726,7 @@ function CoachCard({ c, showAdmin }) {
         <b>
           {showAdmin ? (c.admin || "—") + " · " : ""}
           <span style={{ color: sc(c.final_score) }}>{c.final_score}</span>{" "}
-          {c.is_fatal && <span style={{ color: "#ff6b6b" }}>FATAL</span>}
+          {c.is_fatal && <span style={{ color: "#ff6b6b" }}>ผิดร้ายแรง</span>}
         </b>
         <span style={{ color: "#7d92b5" }}>{c.intent}</span>
       </div>

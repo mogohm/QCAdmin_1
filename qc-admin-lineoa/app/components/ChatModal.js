@@ -563,7 +563,7 @@ export default function ChatModal({ user, onClose }) {
                                 fontWeight: 800,
                               }}
                             >
-                              FATAL
+                              ผิดร้ายแรง
                             </span>
                           )}
                           {msg.sla_exception && (

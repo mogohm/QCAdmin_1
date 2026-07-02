@@ -3,20 +3,20 @@ import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 
 const CATEGORIES = [
-  "Poker",
-  "App / Technical Issue",
-  "Game Rules",
-  "Promotion",
-  "Tournament",
-  "Jackpot",
+  "โป๊กเกอร์",
+  "แอป / ปัญหาทางเทคนิค",
+  "กติกาเกม",
+  "โปรโมชั่น",
+  "ทัวร์นาเมนต์",
+  "แจ็กพอต",
   "KYC",
-  "Deposit",
-  "Withdraw",
+  "ฝากเงิน",
+  "ถอนเงิน",
 ];
 const blank = {
   topic: "",
   answer: "",
-  knowledge_type: "Poker",
+  knowledge_type: "โป๊กเกอร์",
   intent: "",
   required_keywords: "",
   forbidden_keywords: "",

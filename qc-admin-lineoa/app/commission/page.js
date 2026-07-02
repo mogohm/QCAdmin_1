@@ -147,7 +147,7 @@ export default function Commission() {
   return (
     <AppShell
       title="ค่าคอมมิชชั่น"
-      subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณระดับ (Tier)"
+      subtitle="ประมาณการค่าคอม = ยอดแนะนำเพิ่ม × 1% × ตัวคูณระดับ"
       actions={actions}
     >
       <>
@@ -235,7 +235,7 @@ export default function Commission() {
                 <th>คะแนน QC</th>
                 <th>ระดับ</th>
                 <th>×ตัวคูณ</th>
-                <th>ยอด Upsell (฿)</th>
+                <th>ยอดแนะนำเพิ่ม (฿)</th>
                 <th>ผิดร้ายแรง</th>
                 <th>ปรับจากโต้แย้ง</th>
                 <th>ประมาณการ</th>

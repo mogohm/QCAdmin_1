@@ -24,10 +24,10 @@ const heatBg = (v) =>
             ? "#f97316"
             : "#ef4444";
 const CATS = [
-  ["greeting_closing", "Greet/Close"],
-  ["problem_solving", "Problem"],
-  ["communication_tone", "Tone"],
-  ["response_time", "Response"],
+  ["greeting_closing", "ทักทาย/ปิดเคส"],
+  ["problem_solving", "แก้ปัญหา"],
+  ["communication_tone", "น้ำเสียง"],
+  ["response_time", "ความเร็ว"],
 ];
 
 function downloadCSV(filename, rows) {

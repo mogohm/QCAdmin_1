@@ -133,10 +133,10 @@ export default function Dashboard() {
   const selComm = commById[selId];
   const radarAxes = selSkill
     ? [
-        { label: "Greet", value: selSkill.greeting_closing },
-        { label: "Problem", value: selSkill.problem_solving },
-        { label: "Tone", value: selSkill.communication_tone },
-        { label: "Response", value: selSkill.response_time },
+        { label: "ทักทาย", value: selSkill.greeting_closing },
+        { label: "แก้ปัญหา", value: selSkill.problem_solving },
+        { label: "น้ำเสียง", value: selSkill.communication_tone },
+        { label: "ความเร็ว", value: selSkill.response_time },
       ].filter((x) => x.value != null)
     : [];
 
@@ -159,8 +159,8 @@ export default function Dashboard() {
     <div className="exec-board">
       <header className="exec-header">
         <div className="exec-title">
-          <h1>AI QC PROGRAM DASHBOARD SYSTEM</h1>
-          <div className="exec-sub">ระบบแดชบอร์ด AI ควบคุมคุณภาพ</div>
+          <h1>ระบบแดชบอร์ด AI ควบคุมคุณภาพ</h1>
+          <div className="exec-sub">AI QC PROGRAM DASHBOARD SYSTEM</div>
         </div>
         <div className="exec-controls">
           <QF id="today" label="วันนี้" />
@@ -208,7 +208,7 @@ export default function Dashboard() {
 
       {loading && (
         <div className="loadbar">
-          <span className="spin">⏳</span> กำลังโหลดข้อมูล Dashboard...
+          <span className="spin">⏳</span> กำลังโหลดข้อมูลแดชบอร์ด...
         </div>
       )}
 

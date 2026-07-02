@@ -55,7 +55,7 @@ export default function RegistrationRequests() {
 
   return (
     <AppShell
-      title="Registration Requests"
+      title="คำขอลงทะเบียน"
       subtitle="คำขอสมัครเข้าใช้งาน"
       actions={actions}
     >
