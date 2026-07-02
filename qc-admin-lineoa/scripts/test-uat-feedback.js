@@ -74,7 +74,7 @@ const code = (p, cookie, method = "GET", body) =>
   );
   ok(
     "Chat Review มีคำอธิบาย + filters",
-    /ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน QC/.test(
+    /ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน/.test(
       fs.readFileSync(path.join(root, "app/chat-review/page.js"), "utf8"),
     ),
   );
