@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
+import { categoryLabel, formatDuration } from "@/lib/ui-labels";
 import GlassPanel from "../components/GlassPanel";
 import KpiGauge from "../components/KpiGauge";
 import RadarChart from "../components/RadarChart";
@@ -9,8 +10,7 @@ import MetricTile from "../components/MetricTile";
 import AdminAvatarCard from "../components/AdminAvatarCard";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
-const fmtSec = (s) =>
-  s == null || s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
+const fmtSec = formatDuration; // "x วินาที" / "x นาที"
 const baht = (n) => "฿" + Number(n || 0).toLocaleString();
 
 export default function AdminDashboard() {
@@ -53,7 +53,7 @@ export default function AdminDashboard() {
 
   return (
     <AppShell
-      title="🧑‍💼 Admin Dashboard"
+      title="🧑‍💼 แดชบอร์ดแอดมิน"
       subtitle="ผลงานของฉัน · 30 วันล่าสุด"
       actions={<ScoringCriteriaButton />}
     >
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
         />
       ) : (
         <section className="grid split">
-          <GlassPanel title="Performance Overview" glow>
+          <GlassPanel title="ภาพรวมผลงาน" glow>
             <AdminAvatarCard
               name={mine.member_name}
               score={mine.avg_score}
@@ -85,11 +85,15 @@ export default function AdminDashboard() {
               }}
             >
               <div className="glass" style={{ padding: 10 }}>
-                <KpiGauge value={mine.avg_score} label="Avg QA" size={120} />
+                <KpiGauge
+                  value={mine.avg_score}
+                  label="คะแนน QC เฉลี่ย"
+                  size={120}
+                />
               </div>
-              <MetricTile label="เคส" value={mine.cases} tone="blue" />
+              <MetricTile label="จำนวนเคส" value={mine.cases} tone="blue" />
               <MetricTile
-                label="ตอบเฉลี่ย"
+                label="เวลาตอบเฉลี่ย"
                 value={fmtSec(mine.avg_response_sec)}
                 tone="blue"
               />
@@ -99,19 +103,23 @@ export default function AdminDashboard() {
               style={{ gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}
             >
               <MetricTile
-                label="ดี (≥85)"
+                label="เคสดี (≥85)"
                 value={mine.good || 0}
                 tone="green"
               />
-              <MetricTile label="ต่ำ (<70)" value={mine.bad || 0} tone="red" />
+              <MetricTile
+                label="เคสผิดพลาด (<70)"
+                value={mine.bad || 0}
+                tone="red"
+              />
             </div>
             <MetricTile
-              label="Est. Commission"
+              label="ค่าคอมมิชชั่นโดยประมาณ"
               value={baht(comm?.estimated_commission)}
               hint={comm?.tier}
             />
           </GlassPanel>
-          <GlassPanel title="Skill & Coaching" glow>
+          <GlassPanel title="ทักษะและคำแนะนำ" glow>
             <RadarChart axes={radar} size={220} />
             <div className="case" style={{ marginTop: 10, fontSize: 12 }}>
               <b className="muted">มิติที่อ่อนสุด (ทีม)</b>
@@ -120,7 +128,7 @@ export default function AdminDashboard() {
                   .slice(0, 3)
                   .map((c, i) => (
                     <span key={i} className="badge" style={{ marginRight: 4 }}>
-                      {c.category_code} {c.avg_score}
+                      {categoryLabel(c.category_code)} {c.avg_score}
                     </span>
                   ))}
               </div>

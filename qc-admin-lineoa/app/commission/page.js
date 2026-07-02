@@ -146,8 +146,8 @@ export default function Commission() {
 
   return (
     <AppShell
-      title="Commission"
-      subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณ Tier"
+      title="ค่าคอมมิชชั่น"
+      subtitle="ประมาณการค่าคอม = ยอด Upsell × 1% × ตัวคูณระดับ (Tier)"
       actions={actions}
     >
       <>
@@ -231,16 +231,16 @@ export default function Commission() {
           <table className="table">
             <thead>
               <tr>
-                <th>Admin</th>
-                <th>Score</th>
-                <th>Tier</th>
-                <th>×Mult</th>
-                <th>Upsell (฿)</th>
-                <th>Fatal</th>
-                <th>Dispute Adj</th>
-                <th>Estimated</th>
-                <th>Override (Manual)</th>
-                <th>Final</th>
+                <th>แอดมิน</th>
+                <th>คะแนน QC</th>
+                <th>ระดับ</th>
+                <th>×ตัวคูณ</th>
+                <th>ยอด Upsell (฿)</th>
+                <th>ผิดร้ายแรง</th>
+                <th>ปรับจากโต้แย้ง</th>
+                <th>ประมาณการ</th>
+                <th>แก้ไขเอง</th>
+                <th>สุทธิ</th>
               </tr>
             </thead>
             <tbody>

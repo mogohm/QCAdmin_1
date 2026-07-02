@@ -399,7 +399,7 @@ export default function QCDashboard() {
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
           >
             <div style={card}>
-              <p style={title}>Performance Overview · {me.name}</p>
+              <p style={title}>ภาพรวมผลงาน · {me.name}</p>
               <div style={{ display: "flex", gap: 8 }}>
                 <Gauge
                   label="คะแนนเฉลี่ย QA"
@@ -435,13 +435,13 @@ export default function QCDashboard() {
               </div>
             </div>
             <div style={card}>
-              <p style={title}>Skill Radar Chart</p>
+              <p style={title}>กราฟทักษะแอดมิน</p>
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <Radar data={radar} />
               </div>
             </div>
             <div style={{ ...card, gridColumn: "1 / -1" }}>
-              <p style={title}>🤖 AI Feedback & Coaching (ล่าสุด)</p>
+              <p style={title}>🤖 คำแนะนำจาก AI (ล่าสุด)</p>
               {(d?.coaching_recommendations || []).slice(0, 4).map((c) => (
                 <CoachCard key={c.id} c={c} />
               ))}
@@ -464,20 +464,24 @@ export default function QCDashboard() {
             }}
           >
             <div style={card}>
-              <p style={title}>Team Average & Trend</p>
+              <p style={title}>แนวโน้มคะแนนทีม</p>
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                <Gauge label="QA เฉลี่ยทีม" value={tot.avg_score} sub="score" />
+                <Gauge
+                  label="คะแนน QC เฉลี่ยทีม"
+                  value={tot.avg_score}
+                  sub="score"
+                />
                 <Gauge label="ตรวจทั้งหมด" value={tot.total} />
                 <Gauge label="ตอบเฉลี่ย" value={fmtSec(tot.avg_response_sec)} />
                 <Gauge
-                  label="SOP Coverage"
+                  label="ความครอบคลุม SOP"
                   value={(d?.sop_coverage?.percent ?? 0) + "%"}
                 />
               </div>
               <Trend data={d?.trend} />
             </div>
             <div style={card}>
-              <p style={title}>Bottleneck Analysis (หมวดอ่อนสุด)</p>
+              <p style={title}>จุดที่ทีมทำพลาดบ่อย (หมวดอ่อนสุด)</p>
               <Bars
                 rows={(d?.bottleneck || []).map((b) => ({
                   label: b.intent,
@@ -501,7 +505,9 @@ export default function QCDashboard() {
                   >
                     {d?.fatal_errors ?? 0}
                   </div>
-                  <div style={{ fontSize: 11, color: "#7d92b5" }}>Fatal</div>
+                  <div style={{ fontSize: 11, color: "#7d92b5" }}>
+                    ผิดร้ายแรง
+                  </div>
                 </div>
                 <div
                   style={{
@@ -517,7 +523,9 @@ export default function QCDashboard() {
                   >
                     {d?.minor_errors ?? 0}
                   </div>
-                  <div style={{ fontSize: 11, color: "#7d92b5" }}>Minor</div>
+                  <div style={{ fontSize: 11, color: "#7d92b5" }}>
+                    ผิดเล็กน้อย
+                  </div>
                 </div>
               </div>
             </div>
@@ -547,15 +555,15 @@ export default function QCDashboard() {
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
           >
             <div style={card}>
-              <p style={title}>🏆 Top Performers</p>
+              <p style={title}>🏆 แอดมินผลงานดีที่สุด</p>
               <table style={tbl}>
                 <thead>
                   <tr>
-                    <Th>#</Th>
-                    <Th>Admin</Th>
+                    <Th>อันดับ</Th>
+                    <Th>แอดมิน</Th>
                     <Th>ตรวจ</Th>
                     <Th>คะแนน</Th>
-                    <Th>Fatal</Th>
+                    <Th>ผิดร้ายแรง</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -581,11 +589,11 @@ export default function QCDashboard() {
               </table>
             </div>
             <div style={card}>
-              <p style={title}>📈 Most Improved</p>
+              <p style={title}>📈 พัฒนาดีขึ้นมากที่สุด</p>
               <table style={tbl}>
                 <thead>
                   <tr>
-                    <Th>Admin</Th>
+                    <Th>แอดมิน</Th>
                     <Th>ก่อน</Th>
                     <Th>หลัง</Th>
                     <Th>+เพิ่ม</Th>

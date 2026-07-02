@@ -158,7 +158,7 @@ export default function AdminPerformance() {
           <table className="table" style={{ fontSize: 12 }}>
             <thead>
               <tr>
-                <th>Admin</th>
+                <th>แอดมิน</th>
                 {CATS.map(([, l]) => (
                   <th key={l} style={{ textAlign: "center" }}>
                     {l}

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { categoryLabel, DIMENSION_CODES } from "@/lib/ui-labels";
 
 function fmtTime(iso) {
   if (!iso) return "";
@@ -502,15 +503,6 @@ export default function ChatModal({ user, onClose }) {
                       (typeof msg.evidence === "object"
                         ? msg.evidence
                         : tryParseObj(msg.evidence)) || {};
-                    const DIM_LABELS = {
-                      greetingClosing: "Greeting/Closing",
-                      problemSolving: "Problem Solving",
-                      communicationTone: "Tone",
-                      responseTime: "Response",
-                      upsellPromotion: "Upsell",
-                      creditDepositWithdraw: "Deposit/WD",
-                      kycProcess: "KYC",
-                    };
                     return (
                       <div
                         style={{
@@ -592,9 +584,8 @@ export default function ChatModal({ user, onClose }) {
 
                         {/* dimension bars */}
                         <div style={{ marginBottom: 8 }}>
-                          {Object.keys(DIM_LABELS)
-                            .filter((k) => dims[k] != null)
-                            .map((k) => (
+                          {DIMENSION_CODES.filter((k) => dims[k] != null).map(
+                            (k) => (
                               <div
                                 key={k}
                                 style={{
@@ -611,7 +602,7 @@ export default function ChatModal({ user, onClose }) {
                                     color: "#666",
                                   }}
                                 >
-                                  {DIM_LABELS[k]}
+                                  {categoryLabel(k)}
                                 </span>
                                 <div
                                   style={{
@@ -641,7 +632,8 @@ export default function ChatModal({ user, onClose }) {
                                   {dims[k]}
                                 </b>
                               </div>
-                            ))}
+                            ),
+                          )}
                         </div>
 
                         {fmtSec(msg.response_seconds) && (

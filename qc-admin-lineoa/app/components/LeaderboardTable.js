@@ -1,10 +1,8 @@
 "use client";
 // LeaderboardTable — อันดับแอดมิน + เหรียญ 1/2/3
+import { formatDuration } from "@/lib/ui-labels";
 const sc = (v) => (v >= 85 ? "good" : v >= 70 ? "warn" : "bad");
-const fmtSec = (s) => {
-  s = Number(s || 0);
-  return s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
-};
+const fmtSec = formatDuration;
 export default function LeaderboardTable({ rows = [], onPick }) {
   if (!rows.length)
     return <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>;
@@ -12,11 +10,11 @@ export default function LeaderboardTable({ rows = [], onPick }) {
     <table className="table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Admin</th>
-          <th>QA Score</th>
-          <th>เคส</th>
-          <th>ตอบเฉลี่ย</th>
+          <th title="อันดับ">อันดับ</th>
+          <th>แอดมิน</th>
+          <th title="คะแนนเฉลี่ยจากทุกเคสที่ถูกตรวจ">คะแนน QC</th>
+          <th title="จำนวนบทสนทนาที่ถูกนำมาตรวจ">จำนวนเคส</th>
+          <th title="เวลาเฉลี่ยที่ใช้ตอบลูกค้า">ตอบเฉลี่ย</th>
         </tr>
       </thead>
       <tbody>

@@ -49,8 +49,8 @@ export default function MarketingDashboard() {
   );
   return (
     <AppShell
-      title="📣 Marketing Dashboard"
-      subtitle="สมัคร · KYC · ฝาก/ถอน · โปรโมชัน"
+      title="📣 แดชบอร์ดการตลาด"
+      subtitle="การสมัครสมาชิก · KYC · ยอดฝาก/ถอน · โปรโมชั่น"
       actions={actions}
     >
       {loading && (
@@ -69,13 +69,13 @@ export default function MarketingDashboard() {
         />
         <MetricTile label="KYC ผ่าน" value={m.kyc_pass || 0} tone="green" />
         <MetricTile
-          label="Deposit รวม"
+          label="ยอดฝากรวม"
           value={baht(m.deposit_total)}
           tone="gold"
           hint={`${m.deposit_count || 0} ครั้ง`}
         />
         <MetricTile
-          label="Withdraw รวม"
+          label="ยอดถอนรวม"
           value={baht(m.withdraw_total)}
           tone="red"
           hint={`${m.withdraw_count || 0} ครั้ง`}
@@ -83,7 +83,7 @@ export default function MarketingDashboard() {
       </div>
       <section className="grid split">
         <GlassPanel
-          title="Registration Funnel"
+          title="เส้นทางการสมัครสมาชิก"
           glow
           empty={!hasData && !loading && "ยังไม่มีข้อมูลในช่วงวันที่นี้"}
         >
@@ -100,7 +100,7 @@ export default function MarketingDashboard() {
             ]}
           />
         </GlassPanel>
-        <GlassPanel title="KYC & Promotion" glow>
+        <GlassPanel title="KYC และโปรโมชั่น" glow>
           <BarChart
             rows={[
               {

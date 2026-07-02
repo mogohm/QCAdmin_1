@@ -18,15 +18,15 @@ const FILTERS = [
     "AI ไม่มั่นใจ",
     (r) => r.sop_confidence != null && Number(r.sop_confidence) < 60,
   ],
-  ["fatal", "Fatal Error", (r) => r.is_fatal === true],
+  ["fatal", "ผิดร้ายแรง", (r) => r.is_fatal === true],
   [
     "minor",
-    "Minor Error",
+    "ผิดเล็กน้อย",
     (r) => Array.isArray(r.minor_issues) && r.minor_issues.length > 0,
   ],
-  ["dispute", "มี Dispute", (r) => Number(r.dispute_count || 0) > 0],
-  ["manual", "Manual Case", (r) => r.source === "manual"],
-  ["scraper", "Scraper Case", (r) => r.source === "scraper" || !r.source],
+  ["dispute", "มีการโต้แย้ง", (r) => Number(r.dispute_count || 0) > 0],
+  ["manual", "เคสเพิ่มเอง", (r) => r.source === "manual"],
+  ["scraper", "จาก LINE OA", (r) => r.source === "scraper" || !r.source],
 ];
 
 export default function ChatReview() {
@@ -65,8 +65,8 @@ export default function ChatReview() {
 
   return (
     <AppShell
-      title="Chat Review"
-      subtitle="ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน QC"
+      title="💬 รีวิวแชท"
+      subtitle="ตรวจสอบบทสนทนาที่ถูกนำมาประเมินคุณภาพ QC"
       actions={<ScoringCriteriaButton />}
     >
       <>
@@ -74,10 +74,19 @@ export default function ChatReview() {
           className="glass"
           style={{ marginBottom: 12, fontSize: 13, color: "#bcd2f4" }}
         >
-          หน้านี้ใช้ตรวจสอบบทสนทนาที่ถูกนำมาประเมิน QC เช่น เคสตอบช้า
-          เคสคะแนนต่ำ เคส AI ไม่มั่นใจ เคส Fatal/Minor Error
-          และเคสที่มีการโต้แย้งคะแนน — คลิก "ดูแชท" เพื่อดูบทสนทนา หรือ
-          "ดูหลักฐาน" เพื่อตรวจหลักฐานอ้างอิง
+          หน้านี้ใช้ตรวจสอบบทสนทนาที่ถูกนำมาประเมินคุณภาพ เช่น เคสตอบช้า
+          เคสคะแนนต่ำ เคสที่ AI ไม่มั่นใจ เคสผิดพลาดร้ายแรง
+          เคสที่มีการโต้แย้งคะแนน และเคสที่เพิ่มเองแบบ Manual — คลิก "ดูแชท"
+          เพื่อดูบทสนทนา หรือ "ดูหลักฐาน" เพื่อตรวจหลักฐานอ้างอิง
+          <div
+            className="muted"
+            style={{ fontSize: 12, marginTop: 6, lineHeight: 1.7 }}
+          >
+            • <b>คะแนนต่ำ</b> = คะแนน QC ต่ำกว่า 70 &nbsp;•&nbsp; <b>ตอบช้า</b>{" "}
+            = แอดมินตอบเกินเวลาที่กำหนด &nbsp;•&nbsp; <b>AI ไม่มั่นใจ</b> = AI
+            จับ intent/SOP ไม่มั่นใจ ต้องให้หัวหน้าตรวจ &nbsp;•&nbsp;{" "}
+            <b>ผิดร้ายแรง</b> = ความผิดที่กระทบลูกค้าหรือข้อมูลสำคัญ
+          </div>
         </div>
         <div
           style={{
@@ -209,19 +218,19 @@ export default function ChatReview() {
                           className="badge"
                           style={{ background: "#0b5cab" }}
                         >
-                          Manual
+                          เพิ่มเอง
                         </span>
                       )}
                       {r.is_fatal && (
                         <span className="score bad" style={{ fontSize: 10 }}>
-                          Fatal
+                          ผิดร้ายแรง
                         </span>
                       )}
                       {!r.is_fatal &&
                         Array.isArray(r.minor_issues) &&
                         r.minor_issues.length > 0 && (
                           <span className="score warn" style={{ fontSize: 10 }}>
-                            Minor
+                            ผิดเล็กน้อย
                           </span>
                         )}
                       {Number(r.dispute_count || 0) > 0 && (
@@ -229,7 +238,7 @@ export default function ChatReview() {
                           className="badge"
                           style={{ background: "#b45309" }}
                         >
-                          Dispute
+                          โต้แย้ง
                         </span>
                       )}
                       {Number(r.response_seconds || 0) >= 300 && (

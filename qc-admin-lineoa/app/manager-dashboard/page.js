@@ -2,15 +2,15 @@
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
 import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
+import MetricHelp from "../components/MetricHelp";
 import GlassPanel from "../components/GlassPanel";
 import MetricTile from "../components/MetricTile";
 import MiniLineChart from "../components/MiniLineChart";
 import BarChart from "../components/BarChart";
 import LeaderboardTable from "../components/LeaderboardTable";
+import { categoryLabel, PENALTY_CODES } from "@/lib/ui-labels";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
-const fmtSec = (s) =>
-  s == null || s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
 
 export default function ManagerDashboard() {
   const [d, setD] = useState(null);
@@ -50,8 +50,8 @@ export default function ManagerDashboard() {
   );
   return (
     <AppShell
-      title="📊 Manager Dashboard"
-      subtitle="ภาพรวมทีม QC"
+      title="📊 แดชบอร์ดผู้จัดการ"
+      subtitle="ภาพรวมคุณภาพทีม QC"
       actions={actions}
     >
       {loading && (
@@ -64,31 +64,39 @@ export default function ManagerDashboard() {
         style={{ gridTemplateColumns: "repeat(5,1fr)", marginBottom: 14 }}
       >
         <MetricTile
-          label="Avg QA"
+          label="คะแนน QC เฉลี่ย"
           value={k.avgQaScore ?? 0}
           tone={
             k.avgQaScore >= 85 ? "green" : k.avgQaScore >= 70 ? "gold" : "red"
           }
         />
         <MetricTile
-          label="QA Coverage"
+          label="สัดส่วนเคสที่ตรวจแล้ว"
           value={(k.qaCoveragePercent ?? 0) + "%"}
           tone="blue"
         />
         <MetricTile
-          label="SLA Pass"
+          label="ตอบทันตาม SLA"
           value={(k.slaPassPercent ?? 0) + "%"}
           tone="green"
         />
-        <MetricTile label="Fatal" value={k.fatalCount ?? 0} tone="red" />
         <MetricTile
-          label="Pending Disputes"
+          label="ข้อผิดพลาดร้ายแรง"
+          value={k.fatalCount ?? 0}
+          tone="red"
+        />
+        <MetricTile
+          label="รอพิจารณาการโต้แย้ง"
           value={k.pendingDisputes ?? 0}
           tone="gold"
         />
       </div>
       <section className="grid split">
-        <GlassPanel title="Team Average & Trend" glow>
+        <GlassPanel title="แนวโน้มคะแนนทีม" glow>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+            คะแนน QC เฉลี่ยของทีมในแต่ละวัน
+            <MetricHelp label="แนวโน้มคะแนนทีม" />
+          </div>
           <MiniLineChart
             data={[...(d?.weeklySummary || [])]
               .reverse()
@@ -96,25 +104,27 @@ export default function ManagerDashboard() {
             height={160}
           />
         </GlassPanel>
-        <GlassPanel title="Bottleneck Analysis" tag="มิติที่ตกบ่อย" glow>
+        <GlassPanel title="จุดที่ทีมทำพลาดบ่อย" tag="หมวดที่ตกบ่อย" glow>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+            หมวดที่มีเคสผิดพลาดมากสุด — ควรปรับปรุงก่อน
+            <MetricHelp label="จุดที่ทีมทำพลาดบ่อย" />
+          </div>
           <BarChart
             rows={[...(d?.categorySummary || [])]
-              .filter(
-                (c) => !["minorError", "fatalError"].includes(c.category_code),
-              )
+              .filter((c) => !PENALTY_CODES.includes(c.category_code))
               .sort((a, b) => (b.fail_count || 0) - (a.fail_count || 0))
               .slice(0, 6)
               .map((c) => ({
-                label: c.category_code,
+                label: categoryLabel(c.category_code),
                 value: c.fail_count || 0,
                 color: "linear-gradient(90deg,#ef4444,#f6c65b)",
               }))}
-            unit=" fail"
+            unit=" เคส"
           />
         </GlassPanel>
       </section>
       <GlassPanel
-        title="Team Members"
+        title="สมาชิกทีม"
         tag={`${ranking.length} คน`}
         glow
         style={{ marginTop: 16 }}

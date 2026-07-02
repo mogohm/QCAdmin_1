@@ -4,46 +4,39 @@ import { useState } from "react";
 // เกณฑ์การให้คะแนน QC (ตรงกับ rubric ใน lib/qc-engine.js) — ใช้ซ้ำได้ทุกหน้า
 const CRITERIA = [
   {
-    code: "problemSolving",
     th: "ความถูกต้องตาม SOP / การแก้ปัญหา",
     weight: 20,
     desc: "ตอบตรงปัญหา ถูกต้องตาม SOP ไม่ให้ข้อมูลผิด",
   },
   {
-    code: "communicationTone",
     th: "น้ำเสียงและความสุภาพ",
     weight: 20,
     desc: "สุภาพ เป็นมิตร ไม่ห้วน ไม่หยาบคาย",
   },
   {
-    code: "greetingClosing",
     th: "การทักทายและปิดเคส",
     weight: 15,
     desc: "ทักทายเปิดเคส และปิดเคสอย่างเหมาะสม",
   },
   {
-    code: "responseTime",
     th: "ความเร็วในการตอบ",
     weight: 10,
     desc: "ตอบภายในเวลา SLA ที่กำหนด",
   },
   {
-    code: "kycProcess",
-    th: "KYC Process",
+    th: "ขั้นตอน KYC",
     weight: 10,
     desc: "ดำเนินการยืนยันตัวตนถูกขั้นตอน",
   },
   {
-    code: "creditDepositWithdraw",
-    th: "ฝาก / ถอน",
+    th: "ฝาก / ถอน / เครดิต",
     weight: 10,
     desc: "จัดการเรื่องฝาก-ถอนถูกต้อง ปลอดภัย",
   },
   {
-    code: "upsellPromotion",
-    th: "Promotion / Upsell",
+    th: "โปรโมชั่น / การแนะนำเพิ่ม",
     weight: 10,
-    desc: "แนะนำโปรโมชันเมื่อเหมาะสม",
+    desc: "แนะนำโปรโมชั่นเมื่อเหมาะสม",
   },
 ];
 const PENALTY = [
@@ -126,7 +119,7 @@ export default function ScoringCriteriaPanel({ onClose }) {
           </thead>
           <tbody>
             {CRITERIA.map((c) => (
-              <tr key={c.code}>
+              <tr key={c.th}>
                 <td style={{ fontWeight: 700, color: "#e7eefc" }}>{c.th}</td>
                 <td style={{ textAlign: "right" }}>
                   <span className="badge">{c.weight}%</span>

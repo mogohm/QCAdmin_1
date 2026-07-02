@@ -1,7 +1,15 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { MENU, filterMenuByPermissions } from "@/lib/menu";
+import {
+  categoryLabel,
+  safeText,
+  formatDuration,
+  formatFail,
+  PENALTY_CODES,
+} from "@/lib/ui-labels";
 import { ScoringCriteriaButton } from "./components/ScoringCriteriaPanel";
+import MetricHelp from "./components/MetricHelp";
 import GlassPanel from "./components/GlassPanel";
 import KpiGauge from "./components/KpiGauge";
 import RadarChart from "./components/RadarChart";
@@ -14,10 +22,7 @@ import AdminAvatarCard from "./components/AdminAvatarCard";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
 const sc = (v) => (v >= 85 ? "good" : v >= 70 ? "warn" : "bad");
-const fmtSec = (s) => {
-  s = Number(s || 0);
-  return s <= 0 ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
-};
+const fmtSec = formatDuration; // "x วินาที" / "x นาที"
 const baht = (n) => "฿" + Number(n || 0).toLocaleString();
 
 // เบลอ panel ที่ role ไม่มีสิทธิ์ดู (PART I) — การ enforce จริงอยู่ที่ API
@@ -211,7 +216,7 @@ export default function Dashboard() {
         {/* ===== Panel 1: Admin Dashboard ===== */}
         <Gated need="dashboard.admin.view" perms={perms} role={role}>
           <GlassPanel
-            title="🧑‍💼 Admin Dashboard"
+            title="🧑‍💼 แดชบอร์ดแอดมิน"
             tag="รายบุคคล"
             glow
             empty={
@@ -248,17 +253,17 @@ export default function Dashboard() {
                   <div className="glass" style={{ padding: 10 }}>
                     <KpiGauge
                       value={selAdmin.avg_score}
-                      label="Avg QA Score"
+                      label="คะแนน QC เฉลี่ย"
                       size={120}
                     />
                   </div>
                   <MetricTile
-                    label="Total Cases"
+                    label="จำนวนเคส"
                     value={selAdmin.cases}
                     tone="blue"
                   />
                   <MetricTile
-                    label="ตอบเฉลี่ย"
+                    label="เวลาตอบเฉลี่ย"
                     value={fmtSec(selAdmin.avg_response_sec)}
                     tone="blue"
                   />
@@ -272,13 +277,16 @@ export default function Dashboard() {
                   }}
                 >
                   <div>
-                    <div className="panel-title">Skill Radar</div>
+                    <div className="panel-title">
+                      กราฟทักษะ
+                      <MetricHelp label="ทักษะแอดมิน" />
+                    </div>
                     <RadarChart axes={radarAxes} size={210} />
                   </div>
                   <div>
-                    <div className="panel-title">AI Coaching</div>
+                    <div className="panel-title">คำแนะนำจาก AI</div>
                     <MetricTile
-                      label="Est. Commission"
+                      label="ค่าคอมมิชชั่นโดยประมาณ"
                       value={baht(selComm?.estimated_commission)}
                     />
                     <div
@@ -299,7 +307,7 @@ export default function Dashboard() {
                                 display: "inline-block",
                               }}
                             >
-                              {c.category_code} {c.avg_score}
+                              {categoryLabel(c.category_code)} {c.avg_score}
                             </span>
                           )) || "—"}
                       </div>
@@ -312,7 +320,10 @@ export default function Dashboard() {
                       <div style={{ color: "#cfe0ff" }}>
                         {(d?.coachingSummary?.repeated_fail_reasons || [])
                           .slice(0, 2)
-                          .map((r) => r.reason || r)
+                          .map(
+                            (r) =>
+                              `${categoryLabel(r.category_code)}: ${safeText(r.fail_reason ?? r)}`,
+                          )
                           .join(" · ") || "—"}
                       </div>
                     </div>
@@ -325,14 +336,15 @@ export default function Dashboard() {
 
         {/* ===== Panel 2: Manager Dashboard ===== */}
         <Gated need="dashboard.manager.view" perms={perms} role={role}>
-          <GlassPanel title="📊 Manager Dashboard" tag="ภาพรวมทีม" glow>
+          <GlassPanel title="📊 แดชบอร์ดผู้จัดการ" tag="ภาพรวมทีม" glow>
             <div
               className="grid"
               style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}
             >
               <MetricTile
-                label="Avg QA"
+                label="คะแนน QC เฉลี่ย"
                 value={k.avgQaScore ?? 0}
+                hint="เฉลี่ยจากทุกเคสที่ตรวจ"
                 tone={
                   k.avgQaScore >= 85
                     ? "green"
@@ -342,17 +354,17 @@ export default function Dashboard() {
                 }
               />
               <MetricTile
-                label="QA Coverage"
+                label="สัดส่วนเคสที่ตรวจแล้ว"
                 value={(k.qaCoveragePercent ?? 0) + "%"}
                 tone="blue"
               />
               <MetricTile
-                label="SLA Pass"
+                label="ตอบทันตาม SLA"
                 value={(k.slaPassPercent ?? 0) + "%"}
                 tone="green"
               />
               <MetricTile
-                label="ตอบเฉลี่ย"
+                label="เวลาตอบเฉลี่ย"
                 value={fmtSec(k.avgResponseSec)}
                 tone="blue"
               />
@@ -365,16 +377,28 @@ export default function Dashboard() {
                 marginTop: 10,
               }}
             >
-              <MetricTile label="Fatal" value={k.fatalCount ?? 0} tone="red" />
-              <MetricTile label="Minor" value={k.minorCount ?? 0} tone="gold" />
               <MetricTile
-                label="Pending Disputes"
+                label="ข้อผิดพลาดร้ายแรง"
+                value={k.fatalCount ?? 0}
+                tone="red"
+              />
+              <MetricTile
+                label="ข้อผิดพลาดเล็กน้อย"
+                value={k.minorCount ?? 0}
+                tone="gold"
+              />
+              <MetricTile
+                label="รอพิจารณาการโต้แย้ง"
                 value={k.pendingDisputes ?? 0}
                 tone="gold"
               />
             </div>
-            <div className="panel-title" style={{ marginTop: 16 }}>
-              Team Average & Trend
+            <div
+              className="panel-title"
+              style={{ marginTop: 16, display: "flex", alignItems: "center" }}
+            >
+              แนวโน้มคะแนนทีม
+              <MetricHelp label="แนวโน้มคะแนนทีม" />
             </div>
             <MiniLineChart
               data={[...(d?.weeklySummary || [])]
@@ -382,23 +406,24 @@ export default function Dashboard() {
                 .map((w) => ({ label: w.day, value: w.avg_score }))}
               height={140}
             />
-            <div className="panel-title" style={{ marginTop: 12 }}>
-              Bottleneck Analysis <span className="tag">มิติที่ตกบ่อย</span>
+            <div
+              className="panel-title"
+              style={{ marginTop: 12, display: "flex", alignItems: "center" }}
+            >
+              จุดที่ทีมทำพลาดบ่อย
+              <MetricHelp label="จุดที่ทีมทำพลาดบ่อย" />
             </div>
             <BarChart
               rows={[...(d?.categorySummary || [])]
-                .filter(
-                  (c) =>
-                    !["minorError", "fatalError"].includes(c.category_code),
-                )
+                .filter((c) => !PENALTY_CODES.includes(c.category_code))
                 .sort((a, b) => (b.fail_count || 0) - (a.fail_count || 0))
                 .slice(0, 5)
                 .map((c) => ({
-                  label: c.category_code,
+                  label: categoryLabel(c.category_code),
                   value: c.fail_count || 0,
                   color: "linear-gradient(90deg,#ef4444,#f6c65b)",
                 }))}
-              unit=" fail"
+              unit=" เคส"
             />
           </GlassPanel>
         </Gated>
@@ -406,7 +431,7 @@ export default function Dashboard() {
         {/* ===== Panel 3: Leaderboard ===== */}
         <Gated need="dashboard.leaderboard.view" perms={perms} role={role}>
           <GlassPanel
-            title="🏆 Leaderboard"
+            title="🏆 จัดอันดับแอดมิน"
             tag="อันดับ"
             glow
             empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}
@@ -446,7 +471,8 @@ export default function Dashboard() {
               onPick={(a) => setPickAdmin(a.id)}
             />
             <div className="panel-title" style={{ marginTop: 14 }}>
-              📈 Most Improved <span className="tag">7 วัน vs ก่อนหน้า</span>
+              📈 พัฒนาดีขึ้นมากที่สุด{" "}
+              <span className="tag">7 วัน เทียบก่อนหน้า</span>
             </div>
             {(d?.mostImproved || []).length ? (
               (d.mostImproved || []).slice(0, 5).map((m, i) => (
@@ -479,7 +505,7 @@ export default function Dashboard() {
 
         {/* ===== Panel 4: Marketing Dashboard ===== */}
         <Gated need="dashboard.marketing.view" perms={perms} role={role}>
-          <GlassPanel title="📣 Marketing Dashboard" tag="การตลาด" glow>
+          <GlassPanel title="📣 แดชบอร์ดการตลาด" tag="การตลาด" glow>
             {(() => {
               const m = d?.marketingSummary || {};
               const hasData =
@@ -493,7 +519,7 @@ export default function Dashboard() {
                 );
               return (
                 <>
-                  <div className="panel-title">Registration Funnel</div>
+                  <div className="panel-title">เส้นทางการสมัครสมาชิก</div>
                   <FunnelChart
                     steps={[
                       { label: "สมัคร", value: m.registration || 0 },
@@ -515,20 +541,20 @@ export default function Dashboard() {
                     }}
                   >
                     <MetricTile
-                      label="Deposit รวม"
+                      label="ยอดฝากรวม"
                       value={baht(m.deposit_total)}
                       tone="green"
                       hint={`${m.deposit_count || 0} ครั้ง`}
                     />
                     <MetricTile
-                      label="Withdraw รวม"
+                      label="ยอดถอนรวม"
                       value={baht(m.withdraw_total)}
                       tone="red"
                       hint={`${m.withdraw_count || 0} ครั้ง`}
                     />
                   </div>
                   <div className="panel-title" style={{ marginTop: 14 }}>
-                    KYC
+                    การยืนยันตัวตน KYC
                   </div>
                   <BarChart
                     rows={[
@@ -541,7 +567,7 @@ export default function Dashboard() {
                     ]}
                   />
                   <div className="panel-title" style={{ marginTop: 14 }}>
-                    Promotion
+                    โปรโมชั่น
                   </div>
                   <div
                     className="grid"

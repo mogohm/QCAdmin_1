@@ -43,7 +43,7 @@ export default function Leaderboard() {
   );
   return (
     <AppShell
-      title="🏆 Leaderboard"
+      title="🏆 จัดอันดับแอดมิน"
       subtitle="อันดับผลงานแอดมิน"
       actions={actions}
     >
@@ -52,6 +52,21 @@ export default function Leaderboard() {
           <span className="spin">⏳</span> กำลังโหลด...
         </div>
       )}
+      <div
+        className="glass"
+        style={{ marginBottom: 12, fontSize: 13, color: "#bcd2f4" }}
+      >
+        หน้านี้ใช้ดูอันดับผลงานของแอดมินจากคะแนน QC เฉลี่ย จำนวนเคสที่ดูแล
+        ความเร็วในการตอบ และจำนวนเคสผิดพลาด
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+        <div
+          className="muted"
+          style={{ fontSize: 12, width: "100%", marginBottom: -4 }}
+        >
+          🏅 แอดมินผลงานดีที่สุด
+        </div>
+      </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         {ranking.slice(0, 3).map((a, i) => (
           <div
@@ -87,15 +102,15 @@ export default function Leaderboard() {
       </div>
       <section className="grid split">
         <GlassPanel
-          title="Full Ranking"
+          title="อันดับทั้งหมด"
           glow
           empty={!ranking.length && !loading && "ยังไม่มีข้อมูล"}
         >
           <LeaderboardTable rows={ranking} />
         </GlassPanel>
         <GlassPanel
-          title="📈 Most Improved"
-          tag="7 วัน vs ก่อนหน้า"
+          title="📈 พัฒนาดีขึ้นมากที่สุด"
+          tag="7 วัน เทียบก่อนหน้า"
           glow
           empty={
             !(d?.mostImproved || []).length &&
