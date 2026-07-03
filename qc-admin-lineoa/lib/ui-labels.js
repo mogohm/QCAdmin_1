@@ -2,8 +2,9 @@
 //   ใช้ทุกหน้าเพื่อไม่ให้ raw key (creditDepositWithdraw ฯลฯ) หรือ [object Object] หลุดบน UI
 //   คำที่ทีมคุ้น (KYC/SOP/AI/QC) คงไว้เป็นอังกฤษได้
 
-// ---- หมวดคะแนน QC (category_code → ไทย) ----
+// ---- หมวดคะแนน QC (category_code → ไทย) — รองรับทั้ง camelCase และ snake_case ----
 export const CATEGORY_LABELS = {
+  // camelCase (dimension_scores keys)
   creditDepositWithdraw: "ฝาก/ถอน/เครดิต",
   problemSolving: "การแก้ปัญหา",
   greetingClosing: "ทักทายและปิดเคส",
@@ -14,7 +15,23 @@ export const CATEGORY_LABELS = {
   minorError: "ข้อผิดพลาดเล็กน้อย",
   fatalError: "ข้อผิดพลาดร้ายแรง",
   sopAccuracy: "ความถูกต้องตาม SOP",
+  // snake_case (SQL alias / adminCategoryRanking keys)
+  greeting_closing: "ทักทายและปิดเคส",
+  problem_solving: "การแก้ปัญหา",
+  communication_tone: "น้ำเสียงและความสุภาพ",
+  response_time: "ความเร็วในการตอบ",
+  credit_deposit_withdraw: "ฝาก/ถอน/เครดิต",
+  kyc_process: "ขั้นตอน KYC",
+  upsell_promotion: "โปรโมชั่น/การแนะนำเพิ่ม",
+  minor_error: "ข้อผิดพลาดเล็กน้อย",
+  fatal_error: "ข้อผิดพลาดร้ายแรง",
+  sop_accuracy: "ความถูกต้องตาม SOP",
 };
+
+// แปลง snake_case → camelCase (เผื่อ key ที่ไม่อยู่ใน map)
+function snakeToCamel(s) {
+  return String(s).replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
 
 // รหัสหมวดที่เป็น "โทษ" (ไม่ใช่มิติคะแนนปกติ) — ใช้กรองใน bottleneck
 export const PENALTY_CODES = ["minorError", "fatalError"];
@@ -129,7 +146,10 @@ export function label(key) {
 }
 export function categoryLabel(key) {
   if (key == null) return "-";
-  return CATEGORY_LABELS[key] || String(key);
+  // ลองตรง ๆ ก่อน แล้วลอง camelCase (รองรับ snake_case)
+  return (
+    CATEGORY_LABELS[key] || CATEGORY_LABELS[snakeToCamel(key)] || String(key)
+  );
 }
 export function metricLabel(key) {
   return METRIC_LABELS[key] || STATUS_LABELS[key] || String(key ?? "-");
