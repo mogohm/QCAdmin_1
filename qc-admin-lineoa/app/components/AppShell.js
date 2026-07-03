@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MENU, filterMenuByPermissions } from "@/lib/menu";
+import { roleLabel } from "@/lib/ui-labels";
 
 export default function AppShell({ title, subtitle, actions, children }) {
   const pathname = usePathname();
@@ -86,7 +87,7 @@ export default function AppShell({ title, subtitle, actions, children }) {
                     fontSize: 10,
                   }}
                 >
-                  {me.role}
+                  {roleLabel(me.role)}
                 </span>
               </div>
               <button

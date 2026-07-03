@@ -68,6 +68,15 @@ export const METRIC_LABELS = {
   "Estimated Commission": "ค่าคอมมิชชั่นโดยประมาณ",
 };
 
+// ---- บทบาท (role) ----
+export const ROLE_LABELS = {
+  system_admin: "ผู้ดูแลระบบ",
+  manager: "ผู้จัดการ",
+  leader: "หัวหน้าทีม",
+  admin: "แอดมิน",
+  marketing: "การตลาด",
+};
+
 // ---- สถานะ ----
 export const STATUS_LABELS = {
   Excellent: "ดีเยี่ยม",
@@ -128,6 +137,10 @@ export function metricLabel(key) {
 export function statusLabel(key) {
   if (key == null) return "-";
   return STATUS_LABELS[key] || String(key);
+}
+export function roleLabel(key) {
+  if (key == null) return "-";
+  return ROLE_LABELS[key] || String(key);
 }
 export function explainMetric(key) {
   // รับได้ทั้ง key ไทย (จาก metricLabel) และ key อังกฤษ

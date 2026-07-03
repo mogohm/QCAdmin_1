@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { MENU, filterMenuByPermissions } from "@/lib/menu";
+import { roleLabel } from "@/lib/ui-labels";
 
 // Sidebar แบบ permission-based จริง: ดึง /api/auth/me แล้วกรองเมนูด้วย filterMenuByPermissions()
 //   ห้ามแสดงเมนูที่ user ไม่มีสิทธิ์ (system_admin เห็นทั้งหมด)
@@ -60,7 +61,7 @@ export default function Sidebar({ active }) {
                   fontSize: 10,
                 }}
               >
-                {me.role}
+                {roleLabel(me.role)}
               </span>
             </div>
             <button

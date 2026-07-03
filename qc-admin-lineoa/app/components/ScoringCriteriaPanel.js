@@ -143,7 +143,7 @@ export default function ScoringCriteriaPanel({ onClose }) {
           </tbody>
         </table>
         <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>
-          Tier: ≥90 Excellent · ≥80 Standard · ≥70 Warning · &lt;70 Critical
+          ระดับ: ≥90 ดีเยี่ยม · ≥80 มาตรฐาน · ≥70 ต้องปรับปรุง · &lt;70 วิกฤต
           (เคสผิดพลาด)
         </div>
       </div>

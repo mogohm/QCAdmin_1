@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { categoryLabel, DIMENSION_CODES } from "@/lib/ui-labels";
+import {
+  categoryLabel,
+  DIMENSION_CODES,
+  formatDuration,
+} from "@/lib/ui-labels";
 
 function fmtTime(iso) {
   if (!iso) return "";
@@ -21,7 +25,7 @@ function fmtDateSep(iso) {
 function fmtSec(s) {
   s = Number(s || 0);
   if (s <= 0) return null;
-  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+  return formatDuration(s); // "x วินาที" / "x นาที"
 }
 function scoreColor(v) {
   return v >= 85 ? "#22c55e" : v >= 70 ? "#f59e0b" : "#ef4444";

@@ -2,18 +2,17 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ChatModal from "@/app/components/ChatModal";
+import { formatDuration } from "@/lib/ui-labels";
 
 function fmtSec(s) {
-  s = Number(s || 0);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
+  return formatDuration(s); // "x วินาที" / "x นาที"
 }
 function timeAgo(iso) {
   if (!iso) return "—";
   const s = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (s < 60) return `${s}s ที่แล้ว`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ที่แล้ว`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ที่แล้ว`;
+  if (s < 60) return `${s} วินาทีที่แล้ว`;
+  if (s < 3600) return `${Math.floor(s / 60)} นาทีที่แล้ว`;
+  if (s < 86400) return `${Math.floor(s / 3600)} ชั่วโมงที่แล้ว`;
   return new Date(iso).toLocaleDateString("th-TH", {
     day: "numeric",
     month: "short",

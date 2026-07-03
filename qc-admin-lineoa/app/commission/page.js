@@ -10,6 +10,14 @@ const TIERS = [
   ["Warning", "70-79", 0.5, "#f59e0b"],
   ["Critical", "<70", 0, "#ef4444"],
 ];
+// ชื่อระดับ (คีย์ระบบ → ไทยสำหรับแสดงผล)
+const TIER_TH = {
+  Excellent: "ดีเยี่ยม",
+  Standard: "มาตรฐาน",
+  Warning: "ต้องปรับปรุง",
+  Critical: "วิกฤต",
+};
+const tierTh = (t) => TIER_TH[t] || t || "-";
 
 function downloadCSV(filename, rows) {
   const csv = rows
@@ -71,16 +79,16 @@ export default function Commission() {
   const exportCSV = () =>
     downloadCSV(`commission_${from}_${to}.csv`, [
       [
-        "Admin",
-        "AvgScore",
-        "Tier",
-        "Multiplier",
-        "Upsell",
-        "FatalPenalty",
-        "DisputeAdj",
-        "Estimated",
-        "Override",
-        "Final",
+        "แอดมิน",
+        "คะแนนQC",
+        "ระดับ",
+        "ตัวคูณ",
+        "ยอดแนะนำเพิ่ม",
+        "หักผิดร้ายแรง",
+        "ปรับจากโต้แย้ง",
+        "ประมาณการ",
+        "แก้ไขเอง",
+        "สุทธิ",
       ],
       ...per.map((a) => [
         a.admin,
@@ -186,7 +194,7 @@ export default function Commission() {
           {TIERS.map(([name, range, mult, color]) => (
             <div className="card" key={name}>
               <div className="kpi-title" style={{ color }}>
-                {name} ({range})
+                {tierTh(name)} ({range})
               </div>
               <div className="kpi-value" style={{ fontSize: 22 }}>
                 ×{mult}
@@ -266,7 +274,7 @@ export default function Commission() {
                                   : "#fee2e2",
                         }}
                       >
-                        {a.tier}
+                        {tierTh(a.tier)}
                       </span>
                     </td>
                     <td>×{a.multiplier}</td>
@@ -316,9 +324,10 @@ export default function Commission() {
           </table>
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-          <b>Tier:</b> 90-100→×1.2 · 80-89→×1.0 · 70-79→×0.5 · &lt;70→×0 ·{" "}
-          <b>Fatal</b> = จำนวนเคส fatal (หักตามนโยบาย) · <b>Dispute Adj</b> =
-          เคสที่ manager แก้คะแนนแล้ว · <b>Override</b> บันทึกในเครื่อง (manual)
+          <b>ระดับ:</b> 90-100→×1.2 · 80-89→×1.0 · 70-79→×0.5 · &lt;70→×0 ·{" "}
+          <b>ผิดร้ายแรง</b> = จำนวนเคสผิดร้ายแรง (หักตามนโยบาย) ·{" "}
+          <b>ปรับจากโต้แย้ง</b> = เคสที่ผู้จัดการแก้คะแนนแล้ว · <b>แก้ไขเอง</b>{" "}
+          บันทึกในเครื่อง
         </div>
       </>
     </AppShell>

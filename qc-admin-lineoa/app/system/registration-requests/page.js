@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
+import { roleLabel } from "@/lib/ui-labels";
 
 export default function RegistrationRequests() {
   const [rows, setRows] = useState([]);
@@ -95,7 +96,9 @@ export default function RegistrationRequests() {
                     <td>{r.display_name || "—"}</td>
                     <td className="muted">{r.email || "—"}</td>
                     <td>
-                      <span className="badge">{r.requested_role}</span>
+                      <span className="badge">
+                        {roleLabel(r.requested_role)}
+                      </span>
                     </td>
                     <td className="muted">{r.linked_admin_name || "—"}</td>
                     <td

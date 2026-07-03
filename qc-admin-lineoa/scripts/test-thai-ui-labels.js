@@ -10,7 +10,7 @@ let pass = 0,
   fail = 0;
 const violations = [];
 
-// raw category key ที่ห้ามโชว์บน UI
+// raw category key / template ที่ห้ามโชว์บน UI (literal substring)
 const RAW_KEYS = [
   "creditDepositWithdraw",
   "problemSolving",
@@ -21,13 +21,16 @@ const RAW_KEYS = [
   "minorError",
   "fatalError",
   "[object Object]",
+  "${s}s", // เวลาต้องใช้ formatDuration (x วินาที/นาที) ไม่ใช่ 50s
+  "${Math.floor(s / 60)}m",
 ];
-// label อังกฤษที่อ่านแล้วงง (ต้องเป็นไทย) — regex ตรงคำ
+// label อังกฤษ / คำ technical ที่อ่านแล้วงง (ต้องเป็นไทย) — regex ตรงคำ
 //   อนุญาต: KYC, SOP, AI, QC, LINE OA
 const CONFUSING = [
   /\bRESP\b/,
   /\bBAD\b/,
   /\bAVG QA\b/i,
+  /QA Coverage/,
   /Team Average & Trend/,
   /Bottleneck Analysis/,
   /Skill Radar/,
@@ -43,6 +46,10 @@ const CONFUSING = [
   /Marketing —/,
   /AI QC PROGRAM · QC MONITORING/,
   /\bFATAL\b/,
+  /Fatal\/Minor/,
+  /\bTier\b/,
+  />\d+s</, // JSX เวลา 50s ที่ hardcode
+  />\d+m</, // JSX เวลา 1m ที่ hardcode
 ];
 
 function walk(dir) {

@@ -152,10 +152,10 @@ export default function Register() {
           onChange={set("requested_role")}
           style={inp}
         >
-          <option value="admin">Admin (QC Operator)</option>
-          <option value="leader">Leader</option>
-          <option value="manager">Manager</option>
-          <option value="marketing">Marketing</option>
+          <option value="admin">แอดมิน (ผู้ตอบแชท)</option>
+          <option value="leader">หัวหน้าทีม</option>
+          <option value="manager">ผู้จัดการ</option>
+          <option value="marketing">การตลาด</option>
         </select>
         <label style={{ fontSize: 12 }}>ผูกกับชื่อแอดมิน (ถ้ามี)</label>
         <input

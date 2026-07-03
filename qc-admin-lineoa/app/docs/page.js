@@ -161,8 +161,8 @@ export default function Docs() {
         <h2>7. Commission</h2>
         <ul>
           <li>
-            Tier ตามคะแนน: 90–100 ×1.2 Excellent · 80–89 ×1.0 Standard · 70–79
-            ×0.5 Warning · &lt;70 ×0 Critical
+            ระดับตามคะแนน: 90–100 ×1.2 ดีเยี่ยม · 80–89 ×1.0 มาตรฐาน · 70–79
+            ×0.5 ต้องปรับปรุง · &lt;70 ×0 วิกฤต
           </li>
           <li>
             commission = upsell × 1% × multiplier (รวม dispute adjustment +

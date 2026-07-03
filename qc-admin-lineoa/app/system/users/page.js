@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell";
+import { roleLabel } from "@/lib/ui-labels";
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -145,7 +146,7 @@ export default function Users() {
                     </td>
                     <td>{u.display_name || "—"}</td>
                     <td>
-                      <span className="badge">{u.role}</span>
+                      <span className="badge">{roleLabel(u.role)}</span>
                     </td>
                     <td>
                       <span
@@ -290,7 +291,7 @@ export default function Users() {
             >
               {roles.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {roleLabel(r)}
                 </option>
               ))}
             </select>

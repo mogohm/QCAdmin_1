@@ -6,6 +6,7 @@ import {
   safeText,
   formatDuration,
   formatFail,
+  roleLabel,
   PENALTY_CODES,
 } from "@/lib/ui-labels";
 import { ScoringCriteriaButton } from "./components/ScoringCriteriaPanel";
@@ -183,7 +184,8 @@ export default function Dashboard() {
           <ScoringCriteriaButton />
           {me?.authenticated && (
             <span className="exec-user">
-              👤 {me.name} <span className="exec-role">{me.role}</span>
+              👤 {me.name}{" "}
+              <span className="exec-role">{roleLabel(me.role)}</span>
               <button
                 onClick={logout}
                 className="ghost"

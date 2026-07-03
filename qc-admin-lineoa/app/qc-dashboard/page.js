@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ScoringCriteriaButton } from "../components/ScoringCriteriaPanel";
+import { formatDuration, roleLabel } from "@/lib/ui-labels";
 
 const toISO = (d) => d.toISOString().slice(0, 10);
 const weekAgo = () => toISO(new Date(Date.now() - 7 * 864e5));
 const today = () => toISO(new Date());
 const sc = (v) =>
   v >= 90 ? "#22d39a" : v >= 80 ? "#5fd0ff" : v >= 70 ? "#f5b341" : "#ff6b6b";
-const fmtSec = (s) =>
-  s == null ? "—" : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
+const fmtSec = formatDuration; // "x วินาที" / "x นาที"
 
 const RADAR_AXES = [
   ["greeting_closing", "ทักทาย/ปิดเคส"],
@@ -316,7 +316,7 @@ export default function QCDashboard() {
             ตรวจสอบคุณภาพการตอบแบบเรียลไทม์
           </div>
           <div style={{ fontSize: 12, color: "#8fb0dd", marginTop: 2 }}>
-            เฝ้าดูคะแนน QC ทีมงาน · เคสผิดพลาด (Fatal/Minor) · เวลาตอบ ·
+            เฝ้าดูคะแนน QC ทีมงาน · เคสผิดร้ายแรง/ผิดเล็กน้อย · เวลาตอบ ·
             เคสที่ต้องตรวจสอบ
           </div>
         </div>
@@ -355,7 +355,7 @@ export default function QCDashboard() {
                 marginLeft: 4,
               }}
             >
-              {role}
+              {roleLabel(role)}
             </span>
           </div>
           <button onClick={logout} style={{ ...btn, background: "#2a3b57" }}>
@@ -402,7 +402,7 @@ export default function QCDashboard() {
               <p style={title}>ภาพรวมผลงาน · {me.name}</p>
               <div style={{ display: "flex", gap: 8 }}>
                 <Gauge
-                  label="คะแนนเฉลี่ย QA"
+                  label="คะแนน QC เฉลี่ย"
                   value={tot.avg_score}
                   sub="score"
                 />
@@ -430,7 +430,7 @@ export default function QCDashboard() {
                   ${commission?.toFixed(2) ?? "—"}
                 </div>
                 <div style={{ fontSize: 11, color: "#7d92b5" }}>
-                  ตาม Tier คะแนน QA ({tot.avg_score ?? 0})
+                  ตามระดับคะแนน QC ({tot.avg_score ?? 0})
                 </div>
               </div>
             </div>
