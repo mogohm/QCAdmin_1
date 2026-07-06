@@ -21,10 +21,11 @@
     "test:uat-feedback": "node scripts/test-uat-feedback.js",
     "test:uat-feedback:strict": "node scripts/test-uat-feedback.js --strict",
     "test:thai-ui": "node scripts/test-thai-ui-labels.js",
+    "test:evidence": "node scripts/test-evidence-capture.js",
     "audit:scraper": "node scripts/audit-scraper-output.js",
     "scraper:login": "node scripts/line-login.js",
     "scraper:watch": "node scraper.js --watch",
-    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:uat-feedback && npm run test:uat-feedback:strict"
+    "uat:check": "npm run build && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:evidence && npm run test:uat-feedback && npm run test:uat-feedback:strict"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",

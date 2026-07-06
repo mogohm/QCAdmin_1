@@ -347,6 +347,7 @@ export async function POST(req) {
       inserted_messages: insertedMessages,
       skipped_duplicates: 0,
       qc_score_id: qc?.id || null,
+      conversation_id: convId,
       final_score: qc?.finalScore ?? null,
       matched_sop: qc?.matchedSop?.topic || null,
       response_seconds: responseSeconds,

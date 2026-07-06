@@ -75,8 +75,29 @@ export async function saveQcEvidence(qc, ctx = {}) {
     !qc.slaException
       ? Number(ctx.responseSeconds) > Number(ctx.responseLimitMinutes) * 60
       : false;
-  // เก็บ chat_text + raw_json เสมอสำหรับเคส fail/late/fatal (ให้หัวหน้าตรวจย้อนได้)
+  // เก็บ chat_text + raw_json + summary เสมอสำหรับเคส fail/late/fatal (ให้หัวหน้าตรวจย้อนได้)
   if (failed || late) {
+    // summary_json — คู่ข้อความที่ใช้ให้คะแนน (customer/admin + เวลา + คะแนน + เหตุผล)
+    items.push({
+      evidence_type: "summary_json",
+      title: "สรุปเคส (คู่ข้อความที่ให้คะแนน)",
+      data: {
+        customer_name: ctx.customerName || null,
+        admin_name: ctx.adminName || null,
+        customer_text: ctx.customerText || "",
+        admin_text: ctx.adminText || "",
+        customer_message_id: ctx.customerMessageId || null,
+        admin_message_id: ctx.adminMessageId || null,
+        customer_created_at: ctx.customerCreatedAt || null,
+        admin_created_at: ctx.createdAt || null,
+        response_seconds: ctx.responseSeconds ?? null,
+        final_score: qc.finalScore,
+        is_fatal: !!qc.isFatal,
+        intent: qc.intent,
+        matched_sop_topic: ctx.sop?.topic || null,
+        score_reason: (qc.failReasons || []).join(" · ") || null,
+      },
+    });
     items.push({
       evidence_type: "chat_text",
       title: "บทสนทนา (ลูกค้า/แอดมิน)",

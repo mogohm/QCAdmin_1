@@ -20,6 +20,13 @@ const API_KEY = process.env.QC_API_KEY || process.env.ADMIN_API_KEY || "";
 const LINE_OA_URL = process.env.LINE_OA_URL || "https://chat.line.biz";
 const AUTH_FILE = path.join(__dirname, ".storage", "line-auth.json");
 const DEBUG_DIR = path.join(__dirname, ".storage", "debug");
+const EVIDENCE_DIR = path.join(__dirname, ".storage", "evidence");
+// โหมดเก็บภาพหลักฐานแชทจริง: flagged_only (เฉพาะเคสมีปัญหา) | all | off
+const EVIDENCE_MODE = (
+  process.env.EVIDENCE_CAPTURE_MODE || "flagged_only"
+).toLowerCase();
+const RESP_LIMIT_SEC =
+  (parseInt(process.env.QC_RESPONSE_LIMIT_MINUTES || "5", 10) || 5) * 60;
 
 const argv = process.argv.slice(2);
 const hasFlag = (f) => argv.includes(f);
@@ -31,7 +38,9 @@ const getArg = (name) => {
 const WATCH = hasFlag("--watch");
 const HEADED = hasFlag("--headed");
 const DRY_RUN = hasFlag("--dry-run");
-const HEADLESS = HEADED ? false : !/^(0|false|no)$/i.test(process.env.SCRAPER_HEADLESS || "true");
+const HEADLESS = HEADED
+  ? false
+  : !/^(0|false|no)$/i.test(process.env.SCRAPER_HEADLESS || "true");
 const DEBUG = /^(1|true|yes)$/i.test(process.env.SCRAPER_DEBUG || "");
 const EVIDENCE = DEBUG || DRY_RUN; // dry-run เก็บ debug evidence เสมอ
 const DRY_CHATS = 3; // dry-run scrape กี่แชทแรก
@@ -40,7 +49,8 @@ const LIMIT = getArg("limit") ? parseInt(getArg("limit"), 10) : Infinity; // จ
 const POLL_MS = 10000;
 
 const toISO = (d) => new Date(d).toISOString().slice(0, 10);
-const log = (...a) => console.log(`[${new Date().toISOString().slice(11, 19)}]`, ...a);
+const log = (...a) =>
+  console.log(`[${new Date().toISOString().slice(11, 19)}]`, ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- API ----------
@@ -48,20 +58,108 @@ async function api(endpoint, opts = {}) {
   if (!API_URL) throw new Error("ตั้ง QC_API_URL ก่อน (ปลายทาง Next.js)");
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...opts,
-    headers: { "Content-Type": "application/json", "x-api-key": API_KEY, ...(opts.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY,
+      ...(opts.headers || {}),
+    },
   });
   return res.json().catch(() => ({}));
 }
 const pollJob = () => api("/api/scraper/poll");
-const patchJob = (id, fields) => api("/api/scraper/poll", { method: "PATCH", body: JSON.stringify({ id, ...fields }) });
+const patchJob = (id, fields) =>
+  api("/api/scraper/poll", {
+    method: "PATCH",
+    body: JSON.stringify({ id, ...fields }),
+  });
 const listJobs = () => api("/api/scraper/job");
 const createJob = (date_from, date_to) =>
-  api("/api/scraper/job", { method: "POST", body: JSON.stringify({ date_from, date_to }) });
-const postLogReply = (payload) => api("/api/admin/log-reply", { method: "POST", body: JSON.stringify(payload) });
+  api("/api/scraper/job", {
+    method: "POST",
+    body: JSON.stringify({ date_from, date_to }),
+  });
+const postLogReply = (payload) =>
+  api("/api/admin/log-reply", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+const postEvidence = (payload) =>
+  api("/api/evidence", { method: "POST", body: JSON.stringify(payload) });
+
+// แคปภาพแชทจริง (header+panel+ล่าสุด) + HTML → เก็บไฟล์ local + อัปโหลดเข้า case_evidence
+async function captureEvidence(page, { convId, jobId, dateStr, panelHtml }) {
+  if (!convId) return 0;
+  const items = [];
+  const dir = path.join(EVIDENCE_DIR, dateStr, String(jobId), String(convId));
+  ensureDir(dir);
+  const shoot = async (evidence_type, title, fname) => {
+    const buf = await page
+      .screenshot({ type: "jpeg", quality: 55 })
+      .catch(() => null);
+    if (!buf) return;
+    fs.writeFileSync(path.join(dir, fname), buf);
+    items.push({
+      evidence_type,
+      title,
+      file_path: path.relative(__dirname, path.join(dir, fname)),
+      image_base64: `data:image/jpeg;base64,${buf.toString("base64")}`,
+    });
+  };
+  // 1) หน้าแชทปัจจุบัน (บนสุด = ต้นบทสนทนา + header + ชื่อลูกค้า)
+  await shoot(
+    "chat_panel_png",
+    "หน้าแชทจริง (ต้นบทสนทนา)",
+    "panel-current.jpg",
+  );
+  // 2) เลื่อนลงล่างสุด → บทสนทนาล่าสุด (ตอนถูกประเมิน)
+  await page
+    .evaluate(() => {
+      const c = document.querySelector(".chat");
+      let el = c && c.parentElement;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if (
+          (s.overflowY === "auto" ||
+            s.overflowY === "scroll" ||
+            s.overflowY === "overlay") &&
+          el.scrollHeight > el.clientHeight + 50
+        ) {
+          el.scrollTop = el.scrollHeight;
+          return;
+        }
+        el = el.parentElement;
+      }
+    })
+    .catch(() => {});
+  await page.waitForTimeout(500);
+  await shoot("chat_part_png", "บทสนทนา (ล่าสุด)", "conversation-part-01.jpg");
+  // 3) HTML snapshot
+  if (panelHtml) {
+    fs.writeFileSync(path.join(dir, "chat-panel.html"), panelHtml);
+    items.push({
+      evidence_type: "html_snapshot",
+      title: "HTML หน้าแชท",
+      file_path: path.relative(__dirname, path.join(dir, "chat-panel.html")),
+      data: { html: panelHtml.slice(0, 20000) },
+    });
+  }
+  if (!items.length) return 0;
+  await postEvidence({
+    conversation_id: convId,
+    scraper_job_id: jobId,
+    items,
+  }).catch(() => {});
+  return items.length;
+}
 const postNote = (line_user_id, note) =>
   api("/api/customer/note", {
     method: "POST",
-    body: JSON.stringify({ line_user_id, note_text: note.note_text, noted_at: note.noted_at, noted_by: note.noted_by }),
+    body: JSON.stringify({
+      line_user_id,
+      note_text: note.note_text,
+      noted_at: note.noted_at,
+      noted_by: note.noted_by,
+    }),
   });
 
 // ---------- debug evidence ----------
@@ -72,7 +170,9 @@ async function saveScreenshot(page, name) {
   if (!EVIDENCE) return;
   try {
     ensureDir(path.join(DEBUG_DIR, "screenshots"));
-    await page.screenshot({ path: path.join(DEBUG_DIR, "screenshots", `${name}.png`) });
+    await page.screenshot({
+      path: path.join(DEBUG_DIR, "screenshots", `${name}.png`),
+    });
   } catch {}
 }
 function saveHtml(name, html) {
@@ -96,7 +196,9 @@ function logScrape(entry) {
 // ---------- session ----------
 function requireSession() {
   if (!fs.existsSync(AUTH_FILE)) {
-    console.error("\n🔐 LINE session expired, run npm run scraper:login\n   (ไม่พบ .storage/line-auth.json)");
+    console.error(
+      "\n🔐 LINE session expired, run npm run scraper:login\n   (ไม่พบ .storage/line-auth.json)",
+    );
     process.exit(2);
   }
 }
@@ -104,7 +206,10 @@ function requireSession() {
 // ---------- browser page helpers (reuse proven LINE OA selectors) ----------
 async function openLineOA(context) {
   const page = await context.newPage();
-  await page.goto(LINE_OA_URL, { waitUntil: "domcontentloaded", timeout: 45000 });
+  await page.goto(LINE_OA_URL, {
+    waitUntil: "domcontentloaded",
+    timeout: 45000,
+  });
   const listAppeared = await page
     .waitForSelector(".list-group-item-chat", { timeout: 30000 })
     .then(() => true)
@@ -134,7 +239,9 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
     while (el && el !== document.body) {
       const s = getComputedStyle(el);
       if (
-        (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
+        (s.overflowY === "auto" ||
+          s.overflowY === "scroll" ||
+          s.overflowY === "overlay") &&
         el.scrollHeight > el.clientHeight + 50
       ) {
         el.scrollTop = 0;
@@ -168,7 +275,12 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
         let name = (raw.split("\n")[0] || "").trim();
         for (const img of el.querySelectorAll("img[alt]")) {
           const alt = img.alt?.trim();
-          if (alt && alt.length >= 2 && alt.length < 50 && /[฀-๿a-zA-Z0-9]/.test(alt)) {
+          if (
+            alt &&
+            alt.length >= 2 &&
+            alt.length < 50 &&
+            /[฀-๿a-zA-Z0-9]/.test(alt)
+          ) {
             name = alt;
             break;
           }
@@ -193,7 +305,9 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       while (el && el !== document.body) {
         const s = getComputedStyle(el);
         if (
-          (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
+          (s.overflowY === "auto" ||
+            s.overflowY === "scroll" ||
+            s.overflowY === "overlay") &&
           el.scrollHeight > el.clientHeight + 50
         ) {
           const before = el.scrollTop;
@@ -248,7 +362,9 @@ async function scrapeChat(page, item) {
         while (el && el !== document.body) {
           const s = getComputedStyle(el);
           if (
-            (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
+            (s.overflowY === "auto" ||
+              s.overflowY === "scroll" ||
+              s.overflowY === "overlay") &&
             el.scrollHeight > el.clientHeight + 50
           ) {
             el.scrollTop = 0; // ขึ้นบนสุด → trigger โหลดประวัติเก่ากว่า
@@ -279,17 +395,27 @@ async function scrapeChat(page, item) {
   if (lastSnap) htmlSnaps.add(lastSnap);
 
   const panelHtml = [...htmlSnaps].join("\n");
-  saveHtml(`chat-${item.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 60), panelHtml);
+  saveHtml(
+    `chat-${item.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 60),
+    panelHtml,
+  );
 
   // ชื่อลูกค้า + line_user_id จาก URL + profile
   const meta = await page.evaluate(() => {
     const title = (document.title || "").replace(/\s*[|–—].*$/, "").trim();
     const url = location.href;
-    const uid = (url.match(/\/chat\/(U[a-f0-9]{32})/) || [])[1] || (url.match(/(U[a-f0-9]{32})/) || [])[1] || null;
+    const uid =
+      (url.match(/\/chat\/(U[a-f0-9]{32})/) || [])[1] ||
+      (url.match(/(U[a-f0-9]{32})/) || [])[1] ||
+      null;
     let picture = null;
     for (const img of document.querySelectorAll("img[alt]")) {
       const r = img.getBoundingClientRect();
-      if (r.top < window.innerHeight * 0.2 && r.left > window.innerWidth * 0.25 && img.src) {
+      if (
+        r.top < window.innerHeight * 0.2 &&
+        r.left > window.innerWidth * 0.25 &&
+        img.src
+      ) {
         picture = img.src;
         break;
       }
@@ -300,15 +426,31 @@ async function scrapeChat(page, item) {
   // messages (ผ่าน core — dedup + แยก customer/admin) + เก็บ bubble ที่ parse fail
   const failures = [];
   const parsed = core.parseChatHTML(panelHtml, { now: new Date(), failures });
-  const { unique, skipped_duplicate } = core.dedupMessages(parsed, meta.uid || item.name);
+  const { unique, skipped_duplicate } = core.dedupMessages(
+    parsed,
+    meta.uid || item.name,
+  );
 
   // raw HTML ของ bubble ที่ parse fail → debug/html เพื่อแก้ selector ให้ตรง ไม่เดา
   if (failures.length) {
-    const fname = `parse-fail-${item.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50);
-    saveHtml(fname, failures.map((f) => `<!-- ${f.reason} (${f.direction}) -->\n${f.html}`).join("\n\n"));
+    const fname = `parse-fail-${item.name}`
+      .replace(/[^\w฀-๿-]/g, "_")
+      .slice(0, 50);
+    saveHtml(
+      fname,
+      failures
+        .map((f) => `<!-- ${f.reason} (${f.direction}) -->\n${f.html}`)
+        .join("\n\n"),
+    );
   }
 
-  return { meta, messages: unique, panelHtml, dupSkipped: skipped_duplicate, failures };
+  return {
+    meta,
+    messages: unique,
+    panelHtml,
+    dupSkipped: skipped_duplicate,
+    failures,
+  };
 }
 
 // ---------- Job Runner ----------
@@ -335,7 +477,9 @@ async function runJob(job, context) {
   try {
     let chats = await scanChatList(page, fromDate, toDate, shouldCancel);
     if (Number.isFinite(LIMIT)) chats = chats.slice(0, LIMIT);
-    log(`🔍 พบ ${chats.length} แชทในช่วงวันที่${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""}`);
+    log(
+      `🔍 พบ ${chats.length} แชทในช่วงวันที่${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""}`,
+    );
     await patchJob(job.id, { total_chats: chats.length });
 
     for (const item of chats) {
@@ -344,14 +488,21 @@ async function runJob(job, context) {
         break;
       }
       chatIndex++;
-      await patchJob(job.id, { current_chat: item.name, logged_count: inserted });
+      await patchJob(job.id, {
+        current_chat: item.name,
+        logged_count: inserted,
+      });
 
       let res;
       try {
         res = await scrapeChat(page, item);
       } catch (e) {
         failed++;
-        logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "scrape_error:" + e.message });
+        logScrape({
+          chat_index: chatIndex,
+          customer_name: item.name,
+          skipped_reason: "scrape_error:" + e.message,
+        });
         continue;
       }
       if (!res) {
@@ -361,18 +512,30 @@ async function runJob(job, context) {
 
       const lineUserId = res.meta.uid || `name:${item.name}`;
       // กรองเฉพาะข้อความของวันที่เป้าหมาย (แชทอาจมีทั้งวันนี้+เมื่อวานใน history)
-      const windowMsgs = res.messages.filter((m) => core.inDateWindow(m.created_at, fromDate, toDate));
+      const windowMsgs = res.messages.filter((m) =>
+        core.inDateWindow(m.created_at, fromDate, toDate),
+      );
       if (!windowMsgs.length) {
-        logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "no messages in date window" });
+        logScrape({
+          chat_index: chatIndex,
+          customer_name: item.name,
+          skipped_reason: "no messages in date window",
+        });
         continue;
       }
       const pairs = core.pairMessages(windowMsgs, { groupWindowSec: 180 });
 
       // นับฝั่ง
-      const adminCount = windowMsgs.filter((m) => m.direction === "admin").length;
-      const custCount = windowMsgs.filter((m) => m.direction === "customer").length;
+      const adminCount = windowMsgs.filter(
+        (m) => m.direction === "admin",
+      ).length;
+      const custCount = windowMsgs.filter(
+        (m) => m.direction === "customer",
+      ).length;
 
       const sentKeys = new Set();
+      let convForChat = null;
+      let anyFlagged = false;
       for (const pair of pairs) {
         const key = core.qcPairKey({ line_user_id: lineUserId, ...pair });
         if (sentKeys.has(key)) {
@@ -383,12 +546,41 @@ async function runJob(job, context) {
         const payload = core.buildLogReplyPayload(pair, {
           line_user_id: res.meta.uid || null,
           customer_name: item.name || res.meta.title,
-          raw: { detected_date_label: item.label, message_type: pair.message_type },
+          raw: {
+            detected_date_label: item.label,
+            message_type: pair.message_type,
+          },
         });
         payload.scraper_job_id = job.id;
-        const r = await postLogReply(payload).catch((e) => ({ error: e.message }));
+        const r = await postLogReply(payload).catch((e) => ({
+          error: e.message,
+        }));
         if (r?.ok && !r.duplicate) inserted += r.inserted_messages || 1;
         else if (r?.duplicate) skippedDup++;
+        if (r?.conversation_id && !convForChat) convForChat = r.conversation_id;
+        // flagged = คะแนนต่ำ/fatal/minor/ตอบช้า → เก็บภาพหลักฐาน
+        const flagged =
+          r &&
+          (Number(r.final_score) < 70 ||
+            r.qc?.isFatal ||
+            (Array.isArray(r.qc?.minorIssues) && r.qc.minorIssues.length > 0) ||
+            (pair.response_seconds != null &&
+              Number(pair.response_seconds) > RESP_LIMIT_SEC));
+        if (flagged) anyFlagged = true;
+      }
+
+      // เก็บภาพหลักฐานแชทจริง (โหมด all = ทุกแชท, flagged_only = เฉพาะมีเคสปัญหา)
+      if (
+        EVIDENCE_MODE !== "off" &&
+        convForChat &&
+        (EVIDENCE_MODE === "all" || anyFlagged)
+      ) {
+        await captureEvidence(page, {
+          convId: convForChat,
+          jobId: job.id,
+          dateStr: toISO(fromDate),
+          panelHtml: res.panelHtml,
+        }).catch(() => {});
       }
 
       // notes
@@ -415,15 +607,27 @@ async function runJob(job, context) {
     }
 
     if (cancelled) {
-      await patchJob(job.id, { status: "cancelled", error_text: "ยกเลิกโดยผู้ใช้" });
+      await patchJob(job.id, {
+        status: "cancelled",
+        error_text: "ยกเลิกโดยผู้ใช้",
+      });
     } else {
-      await patchJob(job.id, { status: "done", total_chats: chats.length, logged_count: inserted });
-      log(`✅ เสร็จ: inserted=${inserted} dup_skipped=${skippedDup} failed=${failed}`);
+      await patchJob(job.id, {
+        status: "done",
+        total_chats: chats.length,
+        logged_count: inserted,
+      });
+      log(
+        `✅ เสร็จ: inserted=${inserted} dup_skipped=${skippedDup} failed=${failed}`,
+      );
     }
   } catch (e) {
     log(`❌ error: ${e.message}`);
     await saveScreenshot(page, `job-${job.id}-error`);
-    await patchJob(job.id, { status: "error", error_text: String(e.message).slice(0, 500) });
+    await patchJob(job.id, {
+      status: "error",
+      error_text: String(e.message).slice(0, 500),
+    });
   } finally {
     await page.close().catch(() => {});
   }
@@ -433,7 +637,8 @@ async function runJob(job, context) {
 async function extractNotes(page) {
   return page
     .evaluate(() => {
-      const DATE_RE = /^(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+)$/;
+      const DATE_RE =
+        /^(\d{1,2}\/\d{1,2}\/\d{4})[,\s]+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+)$/;
       const out = [];
       for (const el of document.querySelectorAll("div,section,article")) {
         const r = el.getBoundingClientRect();
@@ -457,7 +662,8 @@ async function extractNotes(page) {
           }
         }
         const text = (idx >= 0 ? lines.slice(0, idx) : lines).join("\n").trim();
-        if (text) out.push({ note_text: text, noted_at: notedAt, noted_by: notedBy });
+        if (text)
+          out.push({ note_text: text, noted_at: notedAt, noted_by: notedBy });
       }
       return out;
     })
@@ -471,7 +677,9 @@ async function runDryRunBrowser(chromium, from, to) {
   const context = await browser.newContext({ storageState: AUTH_FILE });
   const page = await openLineOA(context);
   await saveScreenshot(page, "dryrun-list");
-  log(`🧪 DRY-RUN ${from} → ${to} — scrape ${DRY_CHATS} แชทแรก (ไม่ insert DB)`);
+  log(
+    `🧪 DRY-RUN ${from} → ${to} — scrape ${DRY_CHATS} แชทแรก (ไม่ insert DB)`,
+  );
   const chats = (await scanChatList(page, from, to)).slice(0, DRY_CHATS);
   let idx = 0;
   for (const item of chats) {
@@ -483,7 +691,9 @@ async function runDryRunBrowser(chromium, from, to) {
     if (!res) continue;
     await saveScreenshot(page, `dryrun-chat-${idx}`);
     // กรองเฉพาะข้อความของวันที่เป้าหมาย (แชทอาจมีทั้งวันนี้+เมื่อวานใน history)
-    const windowMsgs = res.messages.filter((m) => core.inDateWindow(m.created_at, from, to));
+    const windowMsgs = res.messages.filter((m) =>
+      core.inDateWindow(m.created_at, from, to),
+    );
     const pairs = core.pairMessages(windowMsgs, { groupWindowSec: 180 });
     const notes = await extractNotes(page).catch(() => []);
     const summary = core.summarizeChat({
@@ -509,8 +719,13 @@ async function runDryRunBrowser(chromium, from, to) {
 
 // dry-run แบบ offline (ไม่มี LINE session) — ใช้ fixture เพื่อให้ validation รันได้ทุกที่
 async function runDryRunFixture(from, to) {
-  log(`🧪 DRY-RUN (offline fixture) ${from} → ${to} — tests/fixtures/line-chat-sample.html (ไม่ insert DB)`);
-  const sample = fs.readFileSync(path.join(__dirname, "tests", "fixtures", "line-chat-sample.html"), "utf8");
+  log(
+    `🧪 DRY-RUN (offline fixture) ${from} → ${to} — tests/fixtures/line-chat-sample.html (ไม่ insert DB)`,
+  );
+  const sample = fs.readFileSync(
+    path.join(__dirname, "tests", "fixtures", "line-chat-sample.html"),
+    "utf8",
+  );
   const chats = [
     { name: "ลูกค้า A (fixture)", label: "Yesterday" },
     { name: "ลูกค้า B (fixture)", label: "Today" },
@@ -521,11 +736,20 @@ async function runDryRunFixture(from, to) {
     idx++;
     const failures = [];
     const parsed = core.parseChatHTML(sample, { now: new Date(), failures });
-    const { unique, skipped_duplicate } = core.dedupMessages(parsed, "fixture_" + idx);
+    const { unique, skipped_duplicate } = core.dedupMessages(
+      parsed,
+      "fixture_" + idx,
+    );
     const pairs = core.pairMessages(unique, { groupWindowSec: 180 });
-    saveHtml(`chat-${idx}-${c.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50), sample);
+    saveHtml(
+      `chat-${idx}-${c.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 50),
+      sample,
+    );
     if (failures.length)
-      saveHtml(`parse-fail-${idx}`, failures.map((f) => `<!-- ${f.reason} -->\n${f.html}`).join("\n\n"));
+      saveHtml(
+        `parse-fail-${idx}`,
+        failures.map((f) => `<!-- ${f.reason} -->\n${f.html}`).join("\n\n"),
+      );
     const summary = core.summarizeChat({
       chatIndex: idx,
       customerName: c.name,
@@ -541,7 +765,9 @@ async function runDryRunFixture(from, to) {
       `  #${idx} ${c.name} [${c.label}] msgs=${summary.message_count} (cust=${summary.customer_message_count}/admin=${summary.admin_message_count}) pairs=${summary.pairs} dup=${summary.duplicates}`,
     );
   }
-  log(`✅ dry-run เสร็จ — evidence: ${path.relative(process.cwd(), DEBUG_DIR)}/ (scrape-log.jsonl, html/)`);
+  log(
+    `✅ dry-run เสร็จ — evidence: ${path.relative(process.cwd(), DEBUG_DIR)}/ (scrape-log.jsonl, html/)`,
+  );
 }
 
 // ---------- main ----------
@@ -557,10 +783,13 @@ async function main() {
     try {
       ({ chromium } = require("playwright"));
     } catch {}
-    if (fs.existsSync(AUTH_FILE) && chromium) await runDryRunBrowser(chromium, from, to);
+    if (fs.existsSync(AUTH_FILE) && chromium)
+      await runDryRunBrowser(chromium, from, to);
     else {
       if (!fs.existsSync(AUTH_FILE))
-        log("ℹ️ ไม่พบ LINE session — dry-run offline จาก fixture (production: scraper:login ก่อน)");
+        log(
+          "ℹ️ ไม่พบ LINE session — dry-run offline จาก fixture (production: scraper:login ก่อน)",
+        );
       await runDryRunFixture(from, to);
     }
     return;
@@ -571,7 +800,9 @@ async function main() {
   try {
     ({ chromium } = require("playwright"));
   } catch {
-    console.error("\n❌ ไม่พบ playwright — รัน: npm install playwright && npx playwright install chromium");
+    console.error(
+      "\n❌ ไม่พบ playwright — รัน: npm install playwright && npx playwright install chromium",
+    );
     process.exit(1);
   }
 
@@ -604,12 +835,16 @@ async function main() {
   }
 
   if (!WATCH) {
-    console.log("ใช้: node scraper.js --watch | --yesterday | --date=YYYY-MM-DD | --from=.. --to=..");
+    console.log(
+      "ใช้: node scraper.js --watch | --yesterday | --date=YYYY-MM-DD | --from=.. --to=..",
+    );
     process.exit(0);
   }
 
   // โหมด watch: poll job + (option) สร้าง Yesterday job ตามตาราง
-  log(`👀 watch mode (headless=${HEADLESS}, debug=${DEBUG}${SCHEDULE_MIN ? `, schedule=${SCHEDULE_MIN}m` : ""})`);
+  log(
+    `👀 watch mode (headless=${HEADLESS}, debug=${DEBUG}${SCHEDULE_MIN ? `, schedule=${SCHEDULE_MIN}m` : ""})`,
+  );
   let lastSchedule = 0;
   let lastAutoDate = null;
   while (true) {
@@ -618,8 +853,12 @@ async function main() {
         lastSchedule = Date.now();
         const y = toISO(new Date(Date.now() - 86400000));
         const jobs = await listJobs().catch(() => []);
-        const active = Array.isArray(jobs) && jobs.find((j) => j.status === "pending" || j.status === "running");
-        const doneToday = Array.isArray(jobs) && jobs.find((j) => j.status === "done" && toISO(j.date_from) === y);
+        const active =
+          Array.isArray(jobs) &&
+          jobs.find((j) => j.status === "pending" || j.status === "running");
+        const doneToday =
+          Array.isArray(jobs) &&
+          jobs.find((j) => j.status === "done" && toISO(j.date_from) === y);
         if (!active && !doneToday && lastAutoDate !== y) {
           await createJob(y, y);
           lastAutoDate = y;

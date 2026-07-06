@@ -84,6 +84,7 @@ export async function runQc({
   // UAT: เก็บหลักฐาน (เคส fail/late/fatal) + เข้าคิว AI review เมื่อ AI ไม่มั่นใจ
   const reviewCtx = {
     conversationId,
+    customerMessageId,
     adminMessageId,
     sop,
     customerText,

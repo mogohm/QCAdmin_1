@@ -14,7 +14,11 @@ const PUBLIC = [
   "/api/auth/logout",
 ];
 // route ที่ใช้ x-api-key (service) ผ่าน requireAdmin ได้ (ถือว่า authed)
-const APIKEY_OK = ["/api/auth/setup"];
+const APIKEY_OK = [
+  "/api/auth/setup",
+  "/api/admin/migrate-uat",
+  "/api/evidence",
+];
 // route สำคัญที่ "ต้อง" มี guard/requirePermission (ถ้าไม่มี = CRITICAL)
 const SENSITIVE = [
   "/api/dashboard",

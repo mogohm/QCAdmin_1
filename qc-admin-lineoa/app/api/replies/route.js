@@ -55,7 +55,13 @@ export async function GET(req) {
           q.sentiment_score, q.response_seconds, q.is_fatal, q.minor_issues,
           q.intent, q.sop_confidence,
           q.fail_reasons, q.matched_rules,
-          (SELECT count(*)::int FROM qc_disputes d WHERE d.qc_score_id = q.id) AS dispute_count
+          (SELECT count(*)::int FROM qc_disputes d WHERE d.qc_score_id = q.id) AS dispute_count,
+          (SELECT count(*)::int FROM case_evidence ce
+             WHERE (ce.qc_score_id = q.id OR ce.conversation_id = m.conversation_id)
+               AND ce.evidence_type IN ('chat_panel_png','chat_part_png','chat_header_png','chat_long_png','screenshot')) AS screenshot_count,
+          (SELECT count(*)::int FROM case_evidence ce
+             WHERE (ce.qc_score_id = q.id OR ce.conversation_id = m.conversation_id)
+               AND ce.evidence_type IN ('html_snapshot','html')) AS html_count
         FROM messages m
         LEFT JOIN qc_admins a       ON a.id = m.admin_id
         LEFT JOIN line_customers lc ON lc.line_user_id = m.line_user_id

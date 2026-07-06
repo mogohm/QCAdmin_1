@@ -241,6 +241,24 @@ export default function ChatReview() {
                           โต้แย้ง
                         </span>
                       )}
+                      {Number(r.screenshot_count || 0) > 0 && (
+                        <span
+                          className="badge"
+                          style={{ background: "#0e7490" }}
+                          title="มีภาพหน้าจอแชทจริง"
+                        >
+                          📷 มีภาพแชท
+                        </span>
+                      )}
+                      {Number(r.html_count || 0) > 0 && (
+                        <span
+                          className="badge"
+                          style={{ background: "#3f3f6b" }}
+                          title="มี HTML ต้นฉบับ"
+                        >
+                          มีข้อมูลดิบ
+                        </span>
+                      )}
                       {Number(r.response_seconds || 0) >= 300 && (
                         <span className="score warn" style={{ fontSize: 10 }}>
                           ตอบช้า
