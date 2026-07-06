@@ -12,6 +12,7 @@
     "test:db-id": "node scripts/test-db-id.js",
     "test:case-identity": "node scripts/test-case-identity.js",
     "audit:customer-identity": "node scripts/audit-customer-identity.js",
+    "repair:customer-identity": "node scripts/repair-customer-identity.js",
     "test:qc": "node scripts/test-qc-engine.js",
     "test:qc-accuracy": "node scripts/test-qc-accuracy.js",
     "test:admin-import": "node scripts/test-admin-import.js",
