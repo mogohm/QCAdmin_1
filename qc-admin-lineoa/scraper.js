@@ -240,8 +240,8 @@ async function openLineOA(context) {
 async function scanChatList(page, fromDate, toDate, shouldCancel, mode = "strict") {
   const seen = new Set();
   const openList = [];
-  let stuck = 0,
-    lastCount = -1,
+  let noProgress = 0,
+    lastScrollHeight = -1,
     boundaryStreak = 0,
     targetChats = 0,
     newerSkipped = 0,
@@ -251,26 +251,32 @@ async function scanChatList(page, fromDate, toDate, shouldCancel, mode = "strict
   const to = D.normalizeJobDate(toDate || fromDate);
   const strict = mode !== "deep_history";
 
+  // เริ่มจากบนสุด (แชทใหม่สุด) — หา scroll container ที่เลื่อนได้จริง (delta มากสุด)
   await page.evaluate(() => {
-    const item = document.querySelector(".list-group-item-chat");
-    let el = item && item.parentElement;
+    const items = document.querySelectorAll(".list-group-item-chat");
+    if (!items.length) return;
+    let el = items[0].parentElement,
+      best = null,
+      bestDelta = -1;
     while (el && el !== document.body) {
       const s = getComputedStyle(el);
+      const d = el.scrollHeight - el.clientHeight;
       if (
+        d > bestDelta &&
         (s.overflowY === "auto" ||
           s.overflowY === "scroll" ||
-          s.overflowY === "overlay") &&
-        el.scrollHeight > el.clientHeight + 50
+          s.overflowY === "overlay")
       ) {
-        el.scrollTop = 0;
-        return;
+        best = el;
+        bestDelta = d;
       }
       el = el.parentElement;
     }
+    if (best) best.scrollTop = 0;
   });
-  await sleep(500);
+  await sleep(600);
 
-  for (let round = 0; round < 80; round++) {
+  for (let round = 0; round < 200; round++) {
     if (shouldCancel && (await shouldCancel())) break;
     const items = await page.$$eval(".list-group-item-chat", (els) =>
       els.map((el) => {
@@ -363,32 +369,49 @@ async function scanChatList(page, fromDate, toDate, shouldCancel, mode = "strict
       break;
     }
 
-    // scroll ลงต่อ
-    const scrolled = await page.evaluate(() => {
-      const item = document.querySelector(".list-group-item-chat");
-      let el = item && item.parentElement;
+    // เลื่อนลง "ทีละหน้าจอ" (ไม่กระโดดสุด) → render ทุกช่วง ไม่ข้ามแชทกลางทางใน virtual list
+    //   พอถึงล่างสุดแล้ว "นั่งค้างที่ก้น" (scrollTop=scrollHeight) → กระตุ้น LINE ให้ lazy-load หน้าถัดไป
+    //   (ปลอดภัย: ทุกแชทที่โหลดแล้วอยู่ใน seen แล้ว การกระโดดก้นจึงไม่ข้ามแชทที่ยังไม่เห็น)
+    const info = await page.evaluate(() => {
+      const items = document.querySelectorAll(".list-group-item-chat");
+      if (!items.length) return { ok: false };
+      let el = items[0].parentElement,
+        best = null,
+        bestDelta = -1;
       while (el && el !== document.body) {
         const s = getComputedStyle(el);
+        const d = el.scrollHeight - el.clientHeight;
         if (
+          d > bestDelta &&
           (s.overflowY === "auto" ||
             s.overflowY === "scroll" ||
-            s.overflowY === "overlay") &&
-          el.scrollHeight > el.clientHeight + 50
+            s.overflowY === "overlay")
         ) {
-          const before = el.scrollTop;
-          el.scrollTop += el.clientHeight * 0.8;
-          return el.scrollTop !== before;
+          best = el;
+          bestDelta = d;
         }
         el = el.parentElement;
       }
-      return false;
+      if (!best) return { ok: false };
+      const before = best.scrollTop;
+      const atBottom = before >= best.scrollHeight - best.clientHeight - 4;
+      if (atBottom) best.scrollTop = best.scrollHeight; // ค้างก้น → โหลดหน้าถัดไป
+      else best.scrollTop += Math.max(200, best.clientHeight * 0.85);
+      best.dispatchEvent(new Event("scroll")); // ช่วยกระตุ้น lazy-load บาง implementation
+      return { ok: true, scrollHeight: best.scrollHeight, atBottom };
     });
-    await sleep(450);
-    if (seen.size === lastCount) {
-      if (++stuck >= 3) break;
-    } else stuck = 0;
-    lastCount = seen.size;
-    if (!scrolled) break;
+    await sleep(info.atBottom ? 1100 : 700); // ที่ก้นรอ lazy-load นานขึ้น
+
+    // ความคืบหน้า: มีแชทใหม่ หรือ list ยาวขึ้น = ไล่ต่อได้; ไม่มีทั้งคู่ติดกัน 8 รอบ = สุดรายการจริง
+    //   (LINE โหลดทีละหน้า ~25 ห้อง และใช้หลายรอบกว่าจะโผล่ → อดทนกว่าปกติ)
+    const grew = info.ok && info.scrollHeight > lastScrollHeight;
+    if (info.ok) lastScrollHeight = Math.max(lastScrollHeight, info.scrollHeight);
+    if (newThisBatch > 0 || grew) noProgress = 0;
+    else noProgress++;
+    if (!info.ok || noProgress >= 8) {
+      log(`[SCAN] สุดรายการ (ไม่มีแชทเก่ากว่าให้โหลดต่อหลังรอ ${noProgress} รอบ) — หยุดที่ ${seen.size} ห้อง`);
+      break;
+    }
   }
   log(
     `[SCAN] ✅ mode=${strict ? "strict" : "deep_history"} visible=${seen.size} จะเปิด=${openList.length} (target=${targetChats} newerSkipped=${newerSkipped} older=${olderSeen}) · range ${from}→${to}`,
