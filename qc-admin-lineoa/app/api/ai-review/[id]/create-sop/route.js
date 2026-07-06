@@ -3,6 +3,7 @@
 //   ต้องมีสิทธิ์ sop.create (หรือ sop.update)
 import { query } from "@/lib/db";
 import { guard } from "@/lib/permissions";
+import { validateEntityId } from "@/lib/db-id";
 
 const arr = (v) =>
   Array.isArray(v)
@@ -18,13 +19,25 @@ export async function POST(req, { params }) {
   const gate = guard(req, "sop.create", "sop.update");
   if (gate) return gate;
   const { id } = await params;
+  const v = validateEntityId(id, "uuid");
+  if (!v.ok)
+    return Response.json(
+      {
+        error:
+          "ไม่สามารถดำเนินการได้ เนื่องจากข้อมูลเคสไม่ถูกต้อง กรุณาลองใหม่หรือติดต่อผู้ดูแลระบบ",
+      },
+      { status: 400 },
+    );
   const b = await req.json().catch(() => ({}));
   if (!b.topic || !b.answer)
-    return Response.json({ error: "topic, answer required" }, { status: 400 });
+    return Response.json(
+      { error: "กรุณากรอกหัวข้อ SOP และคำตอบให้ครบ" },
+      { status: 400 },
+    );
   try {
-    const q = await query`SELECT * FROM ai_review_queue WHERE id = ${id}`;
+    const q = await query`SELECT * FROM ai_review_queue WHERE id = ${v.value}::uuid`;
     if (!q[0])
-      return Response.json({ error: "review case not found" }, { status: 404 });
+      return Response.json({ error: "ไม่พบเคสนี้ในระบบ" }, { status: 404 });
     const rows = await query`
       INSERT INTO sop_scripts (topic, question, answer, intent, category_code, knowledge_type,
         required_keywords, example_questions, source_case_id, training_status, is_active)
@@ -37,11 +50,18 @@ export async function POST(req, { params }) {
       RETURNING *`;
     // mark review case = corrected + link sop
     await query`UPDATE ai_review_queue SET status='corrected', review_action='create_sop',
-                  corrected_sop_id=${rows[0].id}, reviewed_at=now() WHERE id = ${id}`.catch(
+                  corrected_sop_id=${rows[0].id}, reviewed_at=now() WHERE id = ${v.value}::uuid`.catch(
       () => {},
     );
     return Response.json({ ok: true, sop: rows[0] });
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    console.error("[ai-review create-sop]", e.message);
+    return Response.json(
+      {
+        error:
+          "ไม่สามารถสร้าง SOP จากเคสนี้ได้ กรุณาลองใหม่อีกครั้ง หากยังพบปัญหาโปรดติดต่อผู้ดูแลระบบ",
+      },
+      { status: 500 },
+    );
   }
 }

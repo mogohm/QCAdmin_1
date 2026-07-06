@@ -439,7 +439,7 @@ CREATE TABLE IF NOT EXISTS ai_review_queue (
   detected_intent TEXT, intent_confidence NUMERIC,
   matched_sop_id INTEGER, sop_confidence NUMERIC,
   reason TEXT, status TEXT DEFAULT 'pending',
-  reviewed_by UUID, review_action TEXT, corrected_intent TEXT, corrected_sop_id INTEGER,
+  reviewed_by TEXT, review_action TEXT, corrected_intent TEXT, corrected_sop_id INTEGER,
   reviewer_note TEXT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ);
 CREATE INDEX IF NOT EXISTS idx_ai_review_status ON ai_review_queue (status, created_at DESC);
 

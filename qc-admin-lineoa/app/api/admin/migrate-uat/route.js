@@ -38,6 +38,14 @@ export async function POST(req) {
         ALTER TABLE ai_review_queue ALTER COLUMN corrected_sop_id TYPE INTEGER USING NULL;
       END IF;
     END $$;`;
+    // reviewed_by: UUID → TEXT ให้ตรงกับ qc_disputes/registration (เก็บชื่อผู้ตรวจ)
+    //   เดิมเป็น UUID แต่ session uid = app_users.id (SERIAL/integer) → insert แล้วพัง
+    //   "invalid input syntax for type uuid: 23" ปลอดภัย: ค่าเดิมเป็น NULL ทั้งหมด (insert เคยพังมาตลอด)
+    await query`DO $$ BEGIN
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='ai_review_queue' AND column_name='reviewed_by') = 'uuid' THEN
+        ALTER TABLE ai_review_queue ALTER COLUMN reviewed_by TYPE TEXT USING reviewed_by::text;
+      END IF;
+    END $$;`;
 
     // ---- Case evidence: หลักฐานอ้างอิงแต่ละเคส (screenshot/html/raw/late_response) ----
     await query`CREATE TABLE IF NOT EXISTS case_evidence (
@@ -108,6 +116,7 @@ export async function POST(req) {
         "external_chat_key",
         "pending_reply_messages",
         "scraper_jobs.mode",
+        "ai_review_queue.reviewed_by:text",
       ],
     });
   } catch (e) {
