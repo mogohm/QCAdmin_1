@@ -26,13 +26,13 @@ export default function FunnelChart({ steps = [] }) {
               <div
                 style={{
                   width: w + "%",
-                  margin: "0 auto",
+                  margin: 0,
                   background: `linear-gradient(90deg, ${s.color || palette[i % 4]}, ${s.color || palette[i % 4]}66)`,
                   borderRadius: 8,
                   padding: "8px 12px",
                   fontWeight: 800,
                   color: "#08142e",
-                  textAlign: "center",
+                  textAlign: "left",
                   boxShadow: "0 0 12px rgba(56,189,248,.25)",
                 }}
               >
