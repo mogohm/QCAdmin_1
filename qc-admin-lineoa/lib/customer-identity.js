@@ -36,6 +36,8 @@ function normalizeCustomerName(value) {
 }
 
 // ดูเหมือน "ข้อความแชท/ประโยค" ไม่ใช่ชื่อ
+//   *เน้น precision* — ชื่อ LINE ที่ผู้ใช้ตั้งเองมี !/。/เว้นวรรคแปลก ๆ ได้ (เช่น "BANK。888",
+//   "7OP!!", "R Y A N K I K", "天不给…") ห้าม flag ชื่อจริงพวกนี้ (เคยทำข้อมูลจริงโดน false positive)
 function isLikelyMessageText(value) {
   const s = String(value ?? "");
   if (!s.trim()) return false;
@@ -44,13 +46,10 @@ function isLikelyMessageText(value) {
   if (norm.length > MAX_NAME_LEN) return true; // ยาวเกินชื่อ
   const low = norm.toLowerCase();
   if (SERVICE_PHRASES.some((p) => norm.includes(p))) return true; // วลีบริการ
-  // ประโยคภาษาไทยลงท้ายสุภาพ = ข้อความ ไม่ใช่ชื่อ
-  if (/(ครับ|ค่ะ|คะ|นะคะ|จ้า|ค่า)\s*$/.test(norm) && norm.length > 12) return true;
-  if (/[?!？！。]/.test(norm)) return true; // เครื่องหมายจบประโยค
-  // หลายคำเกินไป (ประโยค) — ชื่อคนมักไม่เกิน ~5 คำ
-  const words = norm.split(" ").filter(Boolean);
-  if (words.length > 6) return true;
-  // มี URL/emoji-heavy/ตัวเลขล้วนยาว
+  // ประโยคไทยลงท้ายสุภาพ = ข้อความ (จ้า/ค่า ไม่นับ — ชื่อเล่นไทยลงท้าย "จ้า" พบบ่อย)
+  if (/(ครับ|ค่ะ|คะ|นะคะ)\s*$/.test(norm) && norm.length > 12) return true;
+  // เครื่องหมายคำถาม = ประโยคถาม (! และ 。ไม่นับ — พบในชื่อจริงบ่อย)
+  if (/[?？]/.test(norm)) return true;
   if (/https?:\/\//i.test(low)) return true;
   return false;
 }
