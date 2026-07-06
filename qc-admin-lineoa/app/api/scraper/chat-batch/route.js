@@ -14,6 +14,7 @@ import { runQc } from "@/lib/qc-runner";
 import { isPkName } from "@/lib/admin-name";
 import core from "@/lib/scraper-core";
 import { messageInTargetRange } from "@/lib/scraper-date";
+import { resolveCustomerIdentity, UNKNOWN } from "@/lib/customer-identity";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +35,13 @@ export async function POST(req) {
   const extKey = cust.external_chat_key || null;
   // เก็บได้แม้ไม่มี LINE user id — ใช้ external_chat_key เป็นตัวระบุแทน (คงที่ทุกครั้งที่รัน)
   const lineUserId = cust.line_user_id || extKey;
+  // ชื่อลูกค้าต้องไม่ใช่ข้อความแชท/ข้อความระบบ (กัน "ขณะนี้ระบบฝาก-ถอน...ปิดให้บริการ" กลายเป็นชื่อ)
+  const resolvedName = resolveCustomerIdentity({
+    chatListName: cust.customer_name,
+    chatHeaderName: cust.chat_header_name,
+    lineProfileName: cust.line_profile_name,
+  });
+  const safeCustomerName = resolvedName === UNKNOWN ? null : resolvedName;
   const jobId = b.scraper_job_id || null;
   const from = b.target?.from || null;
   const to = b.target?.to || from;
@@ -65,7 +73,7 @@ export async function POST(req) {
   try {
     // 1) upsert customer (เก็บ external_chat_key ไว้ด้วย เพื่อ map เข้า customer เดิมตอน rerun)
     await query`INSERT INTO line_customers (line_user_id, display_name, picture_url, external_chat_key)
-      VALUES (${lineUserId}, ${cust.customer_name || null}, ${cust.picture_url || null}, ${extKey})
+      VALUES (${lineUserId}, ${safeCustomerName}, ${cust.picture_url || null}, ${extKey})
       ON CONFLICT (line_user_id) DO UPDATE SET
         display_name      = COALESCE(EXCLUDED.display_name, line_customers.display_name),
         picture_url       = COALESCE(EXCLUDED.picture_url, line_customers.picture_url),
@@ -152,7 +160,7 @@ export async function POST(req) {
           responseSeconds: p.response_seconds,
           createdAt: p.admin_created_at,
           adminName: p.admin_name,
-          customerName: cust.customer_name,
+          customerName: safeCustomerName,
           scraperJobId: jobId,
         });
         counts.qc_pairs_created++;

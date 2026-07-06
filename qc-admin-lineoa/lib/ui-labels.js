@@ -158,6 +158,12 @@ export function statusLabel(key) {
   if (key == null) return "-";
   return STATUS_LABELS[key] || String(key);
 }
+// intent ในระบบ = category code (poker/deposit/withdraw/...) — ใช้ป้ายไทยชุดเดียวกัน
+export function intentLabel(key) {
+  if (key == null || key === "" || key === "unknown" || key === "general")
+    return "ไม่ระบุ";
+  return categoryLabel(key);
+}
 export function roleLabel(key) {
   if (key == null) return "-";
   return ROLE_LABELS[key] || String(key);

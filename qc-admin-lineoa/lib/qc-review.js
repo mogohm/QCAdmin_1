@@ -1,6 +1,7 @@
 // qc-review — เก็บเคสที่ AI ไม่มั่นใจเข้า ai_review_queue + บันทึกหลักฐานลง case_evidence
 //   เรียกจาก runQc (log-reply / admin-reply / manual-case) หลัง insert qc_scores
 import { query } from "@/lib/db";
+import { resolveCustomerIdentity, UNKNOWN } from "@/lib/customer-identity";
 
 const CONF_THRESHOLD = 60; // ต่ำกว่านี้ = AI ไม่มั่นใจ
 const LOW_SCORE = 70;
@@ -32,6 +33,14 @@ export async function enqueueAiReview(qc, ctx = {}) {
         await query`SELECT id FROM ai_review_queue WHERE qc_score_id = ${qc.id} LIMIT 1`;
       if (dup[0]) return dup[0].id;
     }
+    // ป้องกันขั้นสุดท้าย: customer_name ต้องไม่ใช่ข้อความแชท/ข้อความระบบ
+    //   ถ้า ctx.customerName เป็นข้อความ (ยาว/เป็นประโยค/วลีบริการ) → "ไม่ทราบชื่อลูกค้า"
+    const safeCustomerName = resolveCustomerIdentity({
+      chatListName: ctx.customerName,
+      existingName: ctx.existingCustomerName,
+      lineUserId: ctx.lineUserId,
+      externalChatKey: ctx.externalChatKey,
+    });
     const rows = await query`
       INSERT INTO ai_review_queue (
         qc_score_id, conversation_id, message_id, customer_name, admin_name,
@@ -39,7 +48,7 @@ export async function enqueueAiReview(qc, ctx = {}) {
         matched_sop_id, sop_confidence, reason, status)
       VALUES (
         ${qc.id || null}, ${ctx.conversationId || null}, ${ctx.adminMessageId || null},
-        ${ctx.customerName || null}, ${ctx.adminName || null},
+        ${safeCustomerName === UNKNOWN ? null : safeCustomerName}, ${ctx.adminName || null},
         ${ctx.customerText || null}, ${ctx.adminText || null},
         ${qc.intent || null}, ${qc.sopConfidence ?? null},
         ${sop?.id || null}, ${qc.sopConfidence ?? null}, ${reason}, 'pending')

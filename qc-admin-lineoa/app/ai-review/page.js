@@ -1,6 +1,51 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import { statusLabel, intentLabel } from "@/lib/ui-labels";
+import { deriveCaseRef } from "@/lib/customer-identity";
+
+// ---- ยืนยันชื่อลูกค้า (client guard) — ถ้าดูเหมือนข้อความแชท/ระบบ → ไม่ทราบชื่อลูกค้า ----
+const SERVICE_HINT =
+  /(ระบบฝาก|ฝาก-ถอน|ปิดให้บริการ|ขอบคุณที่ใช้บริการ|กรุณา|แจ้งยืนยัน|ตรวจสอบแล้ว|ทำรายการ|สอบถาม|ขออภัย|โปรโมชั่น)/;
+function looksLikeMessage(v) {
+  const s = String(v || "");
+  if (!s.trim()) return false;
+  if (s.includes("\n") || s.length > 80) return true;
+  if (SERVICE_HINT.test(s)) return true;
+  if (/[?!？！。]/.test(s)) return true;
+  if (/(ครับ|ค่ะ|คะ|นะคะ)\s*$/.test(s.trim()) && s.trim().length > 12) return true;
+  return s.trim().split(/\s+/).length > 6;
+}
+function displayCustomerName(name) {
+  const s = String(name || "").trim();
+  if (!s || looksLikeMessage(s)) return "ไม่ทราบชื่อลูกค้า";
+  return s;
+}
+// เวลาไทย: "06 ก.ค. 2026 · 02:13 น."
+const TH_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+function fmtBkk(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
+  const b = new Date(d.getTime() + 7 * 3600000); // → เวลาไทย
+  const dd = String(b.getUTCDate()).padStart(2, "0");
+  const mo = TH_MONTHS[b.getUTCMonth()];
+  const yy = b.getUTCFullYear();
+  const hh = String(b.getUTCHours()).padStart(2, "0");
+  const mi = String(b.getUTCMinutes()).padStart(2, "0");
+  return `${dd} ${mo} ${yy} · ${hh}:${mi} น.`;
+}
+const clip = (s, n) => {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  return t.length > n ? t.slice(0, n) + "…" : t;
+};
+// รหัสเคสอ่านง่าย: ใช้ case_ref ถ้ามี ไม่งั้น derive จาก qc_score_id + วันที่
+function caseRef(r) {
+  if (r.case_ref) return r.case_ref;
+  const src = r.qc_score_id || r.id;
+  if (!src) return "—";
+  return deriveCaseRef({ sourceId: src, createdAt: r.customer_created_at || r.created_at });
+}
 
 // AI Review Queue — เคสที่ AI ไม่มั่นใจ/ไม่เข้าใจ ให้หัวหน้าตรวจ + แก้ + สร้าง SOP ให้ AI เรียนรู้
 export default function AiReview() {
@@ -110,11 +155,14 @@ export default function AiReview() {
           <table className="table">
             <thead>
               <tr>
+                <th>วันที่/เวลา</th>
+                <th>รหัสเคส</th>
                 <th>ลูกค้า</th>
                 <th>แอดมิน</th>
-                <th>เหตุผล</th>
-                <th>Intent</th>
-                <th>SOP conf.</th>
+                <th>คำถามย่อ</th>
+                <th>เหตุผลที่ส่งตรวจ</th>
+                <th>ความมั่นใจ</th>
+                <th>หลักฐาน</th>
                 <th>สถานะ</th>
                 <th></th>
               </tr>
@@ -122,50 +170,63 @@ export default function AiReview() {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan="7" className="empty">
+                  <td colSpan="10" className="empty">
                     <span className="spin">⏳</span> โหลด...
                   </td>
                 </tr>
               )}
               {!loading &&
-                items.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.customer_name || "—"}</td>
-                    <td>{r.admin_name || "—"}</td>
-                    <td
-                      className="muted"
-                      style={{ fontSize: 12, maxWidth: 220 }}
-                    >
-                      {r.reason}
-                    </td>
-                    <td>
-                      <span className="badge">{r.detected_intent || "—"}</span>
-                    </td>
-                    <td
-                      className={r.sop_confidence < 60 ? "score bad" : "muted"}
-                    >
-                      {r.sop_confidence != null ? r.sop_confidence + "%" : "—"}
-                    </td>
-                    <td>
-                      <span
-                        className={`score ${r.status === "pending" ? "warn" : r.status === "not_relevant" ? "bad" : "good"}`}
+                items.map((r) => {
+                  const hasImg = (r.evidence_count ?? r.has_screenshot) ? true : false;
+                  return (
+                    <tr key={r.id}>
+                      <td style={{ fontSize: 11, whiteSpace: "nowrap", color: "#8fb0dd" }}>
+                        {fmtBkk(r.customer_created_at || r.created_at)}
+                      </td>
+                      <td style={{ fontSize: 11, fontFamily: "monospace", color: "#5fd0ff" }}>
+                        {caseRef(r)}
+                      </td>
+                      <td
+                        style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        title={displayCustomerName(r.customer_name)}
                       >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <button
-                        onClick={() => setSel(r)}
-                        style={{ padding: "3px 8px", fontSize: 11 }}
+                        {displayCustomerName(r.customer_name)}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>{r.admin_name || "—"}</td>
+                      <td
+                        className="muted"
+                        style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}
+                        title={r.customer_text || ""}
                       >
-                        ตรวจ
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {clip(r.customer_text, 60) || "—"}
+                      </td>
+                      <td className="muted" style={{ fontSize: 12, maxWidth: 200 }}>
+                        {r.reason}
+                      </td>
+                      <td className={r.sop_confidence < 60 ? "score bad" : "muted"}>
+                        {r.sop_confidence != null ? r.sop_confidence + "%" : "—"}
+                      </td>
+                      <td style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                        {hasImg ? "📷 มีภาพ" : <span className="muted">ไม่มีภาพ</span>}
+                      </td>
+                      <td>
+                        <span
+                          className={`score ${r.status === "pending" ? "warn" : r.status === "not_relevant" ? "bad" : "good"}`}
+                        >
+                          {statusLabel(r.status)}
+                        </span>
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button onClick={() => setSel(r)} style={{ padding: "3px 8px", fontSize: 11 }}>
+                          ตรวจ
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               {!loading && !items.length && (
                 <tr>
-                  <td colSpan="7" className="empty">
+                  <td colSpan="10" className="empty">
                     ไม่มีเคสในคิว
                   </td>
                 </tr>
@@ -199,13 +260,38 @@ export default function AiReview() {
             }}
           >
             <h3 style={{ marginTop: 0 }}>ตรวจเคส AI</h3>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+                fontSize: 12,
+                marginBottom: 10,
+                paddingBottom: 8,
+                borderBottom: "1px solid #26406b",
+              }}
+            >
+              <span style={{ fontFamily: "monospace", color: "#5fd0ff" }}>
+                {caseRef(sel)}
+              </span>
+              <span style={{ color: "#8fb0dd" }}>
+                🕒 {fmtBkk(sel.customer_created_at || sel.created_at)}
+              </span>
+              <span style={{ color: "#eaf2ff" }}>
+                👤 {displayCustomerName(sel.customer_name)}
+              </span>
+              {sel.admin_name && (
+                <span style={{ color: "#8fb0dd" }}>🧑‍💼 {sel.admin_name}</span>
+              )}
+              <span className="badge">{intentLabel(sel.detected_intent)}</span>
+            </div>
             <div className="case" style={{ fontSize: 13 }}>
               <div>
-                ลูกค้า:{" "}
+                ข้อความลูกค้า:{" "}
                 <b style={{ color: "#eaf2ff" }}>{sel.customer_text || "—"}</b>
               </div>
               <div>
-                แอดมิน:{" "}
+                ข้อความแอดมิน:{" "}
                 <b style={{ color: "#eaf2ff" }}>{sel.admin_text || "—"}</b>
               </div>
               <div className="muted" style={{ marginTop: 6 }}>

@@ -21,7 +21,11 @@ export async function GET(req) {
   try {
     // join SOP ที่ AI เดา (matched_sop_id) เพื่อให้หัวหน้าเทียบกับคำตอบจริง
     const rows = await query`
-      SELECT r.*, s.topic AS matched_sop_topic, s.answer AS matched_sop_answer
+      SELECT r.*, s.topic AS matched_sop_topic, s.answer AS matched_sop_answer,
+        (SELECT count(*)::int FROM case_evidence e
+           WHERE (r.qc_score_id IS NOT NULL AND e.qc_score_id = r.qc_score_id)
+              OR (r.conversation_id IS NOT NULL AND e.conversation_id = r.conversation_id)
+        ) AS evidence_count
       FROM ai_review_queue r
       LEFT JOIN sop_scripts s ON s.id = r.matched_sop_id
       WHERE (${status}::text = 'all' OR r.status = ${status})
