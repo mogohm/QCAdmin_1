@@ -66,8 +66,9 @@ export async function POST(req) {
     await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS pending_reply BOOLEAN DEFAULT false`;
     await query`CREATE INDEX IF NOT EXISTS idx_messages_hash ON messages (conversation_id, message_hash)`;
 
-    // ---- scraper_jobs: counters (JSONB) ครบตาม spec ----
+    // ---- scraper_jobs: counters (JSONB) + mode (strict|deep_history) ----
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
+    await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict'`;
 
     // ---- line_customers/conversations: external_chat_key (เก็บแชทที่ไม่มี LINE user id ได้) ----
     await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;
@@ -106,6 +107,7 @@ export async function POST(req) {
         "scraper_chat_results",
         "external_chat_key",
         "pending_reply_messages",
+        "scraper_jobs.mode",
       ],
     });
   } catch (e) {

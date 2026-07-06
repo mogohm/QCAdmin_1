@@ -8,7 +8,7 @@ import { validateScrapeRange } from "@/lib/scraper-date";
 export async function POST(req) {
   const g = guard(req, "scraper.run", "scraper.schedule");
   if (g) return g;
-  const { date_from, date_to } = await req.json();
+  const { date_from, date_to, mode } = await req.json();
   if (!date_from || !date_to)
     return Response.json(
       { error: "date_from, date_to required" },
@@ -19,19 +19,22 @@ export async function POST(req) {
   const v = validateScrapeRange(date_from, date_to);
   if (!v.ok) return Response.json({ error: v.error }, { status: 400 });
 
+  // โหมดการเก็บ: strict (ค่าเริ่มต้น production) | deep_history (backfill)
+  const jobMode = /^deep_?history$/i.test(mode || "") ? "deep_history" : "strict";
+
   // ยกเลิก pending/running job เก่า
   await query`UPDATE scraper_jobs SET status='cancelled' WHERE status IN ('pending','running')`;
 
   // เก็บเป็น DATE (ไม่ใช่ timestamp)
   const rows = await query`
-    INSERT INTO scraper_jobs (date_from, date_to, status)
-    VALUES (${v.from}::date, ${v.to}::date, 'pending')
+    INSERT INTO scraper_jobs (date_from, date_to, status, mode)
+    VALUES (${v.from}::date, ${v.to}::date, 'pending', ${jobMode})
     RETURNING *
   `;
   return Response.json({
     ok: true,
     job: rows[0],
-    normalized_range: { from: v.from, to: v.to, timezone: "Asia/Bangkok" },
+    normalized_range: { from: v.from, to: v.to, timezone: "Asia/Bangkok", mode: jobMode },
   });
 }
 

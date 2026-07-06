@@ -63,19 +63,29 @@ function dayLabelToDate(label, now = new Date()) {
     return d;
   }
 
-  // ชื่อวัน (TH/EN) → วันล่าสุดในอดีตที่ตรงกับวันนั้น
-  for (const [name, dayNum] of Object.entries(DAY_MAP)) {
-    if (sl === name || sl.includes(name)) {
-      const d = new Date(today);
-      let diff = (d.getDay() - dayNum + 7) % 7;
-      if (diff === 0) diff = 7; // ชื่อเดียวกับวันนี้ = สัปดาห์ก่อน
-      d.setDate(d.getDate() - diff);
-      return d;
+  // "Thu, Jun 4" / "Wed, Jul 1" (date separator ของ LINE OA) — ตัดชื่อวันหน้า+จุลภาค
+  //   ต้องทำก่อน loop ชื่อวัน (ไม่งั้น "thu" ใน "thu, jun 4" ถูกจับเป็นวันพฤหัส)
+  const wd = s.match(
+    /^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*,\s*(.+)$/i,
+  );
+  const core = wd ? wd[1].trim() : s;
+  const coreLower = core.toLowerCase();
+
+  // ชื่อวันเดี่ยว (TH/EN) → วันล่าสุดในอดีตที่ตรงกับวันนั้น  (เฉพาะกรณีไม่มีเดือน/วันตามหลัง)
+  if (!wd) {
+    for (const [name, dayNum] of Object.entries(DAY_MAP)) {
+      if (coreLower === name || coreLower.includes(name)) {
+        const d = new Date(today);
+        let diff = (d.getDay() - dayNum + 7) % 7;
+        if (diff === 0) diff = 7; // ชื่อเดียวกับวันนี้ = สัปดาห์ก่อน
+        d.setDate(d.getDate() - diff);
+        return d;
+      }
     }
   }
 
-  // "May 20" / "May 20, 2026"
-  const md = s.match(
+  // "May 20" / "May 20, 2026" / "Jun 4" (หลังตัดชื่อวันออกแล้ว)
+  const md = core.match(
     /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+(\d{1,2})(?:[,\s]+(\d{4}))?$/i,
   );
   if (md) {
@@ -87,12 +97,12 @@ function dayLabelToDate(label, now = new Date()) {
   }
 
   // ISO 2026-05-13
-  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const iso = core.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (iso)
     return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]));
 
   // M/D/YYYY หรือ D/M/YYYY หรือ M/D  (ตัวเลข > 12 = วัน)
-  const num = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  const num = core.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
   if (num) {
     const a = parseInt(num[1]);
     const b = parseInt(num[2]);
@@ -143,19 +153,19 @@ function resolveLabelDay(label, now = new Date()) {
   return `${y}-${mo}-${da}`;
 }
 
-// จัดกลุ่ม candidate ตาม latest activity เทียบช่วง [fromDate, toDate]
-//   direct  : from <= day <= to        (active ในช่วงวันเป้าหมาย)
-//   history : day > to                 (active หลังช่วง — อาจมีประวัติของช่วงอยู่)
-//   too_old : day < from               (เก่ากว่าช่วง — หยุด scroll ได้)
-//   unknown : label ตัดสินไม่ได้        (เก็บไว้เป็น candidate เพื่อความปลอดภัย)
+// จัดกลุ่ม chat ตามวันที่ (resolve จาก label) เทียบช่วงเป้าหมาย [fromDate, toDate]
+//   target  : from <= day <= to   (ตรงวันที่เลือก → เปิด)
+//   too_new : day > to            (ใหม่กว่า/วันนี้ → strict: ข้าม, ไม่เปิด)
+//   too_old : day < from          (เก่ากว่า → ขอบล่าง หยุด scroll)
+//   unknown : label ตัดสินไม่ได้   (strict: ข้าม; deep: เปิดเพื่อความปลอดภัย)
 function classifyCandidate(label, fromDate, toDate, now = new Date()) {
   const day = resolveLabelDay(label, now);
   if (!day) return "unknown";
   const from = String(fromDate).slice(0, 10);
   const to = String(toDate || fromDate).slice(0, 10);
   if (day < from) return "too_old";
-  if (day > to) return "history";
-  return "direct";
+  if (day > to) return "too_new";
+  return "target";
 }
 
 // สร้าง external_chat_key ที่ "คงที่ทุกครั้งที่รัน" สำหรับแชทที่ไม่มี LINE user id
@@ -201,10 +211,11 @@ function parseChatHTML(html, opts = {}) {
   const out = [];
   const failures = opts.failures; // อาเรย์ (ถ้าส่งมา) เก็บ raw HTML ของ bubble ที่ parse ไม่ได้ เพื่อแก้ selector
   // หา marker เปิดของ date separator และ bubble ตามลำดับเอกสาร
-  //   class ต้องขึ้นต้นด้วย chatsys-date / chat-reverse / chat (ตามด้วยช่องว่างหรือ ") เท่านั้น
-  //   เพื่อไม่ให้ <div class="chat-item-text"> (ข้อความ) ถูกจับเป็น bubble แยก
+  //   real LINE OA: date separator = class="chatsys chatsys-date ..." (ขึ้นต้นด้วย "chatsys ")
+  //   bubble = class="chat ..." / "chat chat-reverse ..." (ขึ้นต้นด้วย "chat ")
+  //   ต้องจับ chatsys ด้วย ไม่งั้น currentDate = null → ข้อความทั้งหมดถูก stamp เป็น "วันนี้" (บั๊ก)
   const markerRe =
-    /<div\b[^>]*\bclass="((?:chatsys-date|chat-reverse|chat)(?=[ "])[^"]*)"[^>]*>/gi;
+    /<div\b[^>]*\bclass="((?:chatsys-date|chatsys|chat-reverse|chat)(?=[ "])[^"]*)"[^>]*>/gi;
   const markers = [];
   let m;
   while ((m = markerRe.exec(html)))
@@ -225,10 +236,13 @@ function parseChatHTML(html, opts = {}) {
     const cls = markers[i].cls;
 
     if (/\bchatsys-date\b/.test(cls)) {
-      const raw = stripTags(seg);
-      if (raw) currentDate = dayLabelToDate(raw, now) || currentDate;
+      // date separator: ข้อความมักเป็น "Thu, Jun 4" — เอาเฉพาะช่วงก่อน nested div (v-portal)
+      const rawFull = stripTags(seg.split(/<div\b/i)[0] || seg);
+      if (rawFull) currentDate = dayLabelToDate(rawFull, now) || currentDate;
       continue;
     }
+    // chatsys อื่น ๆ (chatsys-content = ข้อความระบบ/แจ้งเตือน) — ไม่ใช่ bubble ลูกค้า/แอดมิน → ข้าม
+    if (/\bchatsys\b/.test(cls)) continue;
 
     const direction = /\bchat-reverse\b/.test(cls) ? "admin" : "customer";
 

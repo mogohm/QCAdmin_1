@@ -48,6 +48,13 @@ const DRY_CHATS = 3; // dry-run scrape กี่แชทแรก
 const SCHEDULE_MIN = parseInt(getArg("schedule") || "0", 10);
 const LIMIT = getArg("limit") ? parseInt(getArg("limit"), 10) : Infinity; // จำกัดจำนวนแชทต่อ job (ทดสอบ/ปลอดภัย)
 const POLL_MS = 10000;
+// โหมดการเก็บตามวันที่ (ค่าเริ่มต้น = strict — โหมด production ปกติ)
+//   strict       : เปิดเฉพาะห้องที่ label ตรงวันที่เลือก, ข้ามห้องวันนี้/ใหม่กว่า, ไม่ไล่ค้น history
+//   deep_history : (backfill) เปิดห้องที่ใหม่กว่าเพื่อค้นย้อนหลังได้ — ใช้ --deep-history เท่านั้น
+const CLI_DATE_MODE =
+  hasFlag("--deep-history") || /^deep_?history$/i.test(process.env.SCRAPER_DATE_MODE || "")
+    ? "deep_history"
+    : "strict";
 
 const toISO = (d) => new Date(d).toISOString().slice(0, 10);
 const log = (...a) =>
@@ -74,10 +81,10 @@ const patchJob = (id, fields) =>
     body: JSON.stringify({ id, ...fields }),
   });
 const listJobs = () => api("/api/scraper/job");
-const createJob = (date_from, date_to) =>
+const createJob = (date_from, date_to, mode = CLI_DATE_MODE) =>
   api("/api/scraper/job", {
     method: "POST",
-    body: JSON.stringify({ date_from, date_to }),
+    body: JSON.stringify({ date_from, date_to, mode }),
   });
 const postLogReply = (payload) =>
   api("/api/admin/log-reply", {
@@ -230,18 +237,19 @@ async function openLineOA(context) {
 }
 
 // scroll chat list + เก็บ chat item ที่ label อยู่ในช่วงวันที่
-async function scanChatList(page, fromDate, toDate, shouldCancel) {
+async function scanChatList(page, fromDate, toDate, shouldCancel, mode = "strict") {
   const seen = new Set();
-  const inRange = [];
+  const openList = [];
   let stuck = 0,
     lastCount = -1,
     boundaryStreak = 0,
-    direct = 0,
-    history = 0,
-    tooOldSeen = 0;
+    targetChats = 0,
+    newerSkipped = 0,
+    olderSeen = 0;
   const NOW = new Date();
   const from = D.normalizeJobDate(fromDate);
   const to = D.normalizeJobDate(toDate || fromDate);
+  const strict = mode !== "deep_history";
 
   await page.evaluate(() => {
     const item = document.querySelector(".list-group-item-chat");
@@ -299,11 +307,11 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       }),
     );
 
-    // จัดกลุ่ม candidate ด้วย toDate:
-    //   direct  = active ในช่วง [from,to]  → เก็บ
-    //   history = active หลัง to           → เก็บ (อาจมีประวัติของช่วงใน history)
-    //   unknown = label ตัดสินไม่ได้        → เก็บ (ปลอดภัยไว้ก่อน)
-    //   too_old = active ก่อน from          → ข้าม
+    // นโยบายวันที่ (strict = ค่าเริ่มต้น):
+    //   target  = label ตรงช่วง [from,to]  → เปิด
+    //   too_new = ใหม่กว่า to / วันนี้       → strict: [SKIP] ไม่เปิด ; deep: เปิด (backfill)
+    //   too_old = เก่ากว่า from             → ข้าม + นับขอบล่าง
+    //   unknown = ตัดสินไม่ได้              → strict: ข้าม ; deep: เปิด
     let newThisBatch = 0;
     for (const it of items) {
       const key = `${it.name}|${it.label}`;
@@ -311,14 +319,27 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       seen.add(key);
       newThisBatch++;
       const cls = core.classifyCandidate(it.label, from, to, NOW);
+      const day = core.resolveLabelDay(it.label, NOW) || "?";
       if (cls === "too_old") {
-        tooOldSeen++;
+        olderSeen++;
         continue;
       }
-      it.candidate_type = cls;
-      if (cls === "direct") direct++;
-      else if (cls === "history") history++;
-      inRange.push(it);
+      if (cls === "target") {
+        targetChats++;
+        it.candidate_type = "target";
+        openList.push(it);
+        continue;
+      }
+      // too_new หรือ unknown
+      if (strict) {
+        newerSkipped++;
+        const reason = cls === "unknown" ? "unresolved_label" : "current_or_newer_not_target";
+        log(`[SKIP] customer=${it.name} reason=${reason} latest_activity=${day} target=${from === to ? from : from + ".." + to}`);
+      } else {
+        newerSkipped++; // ในโหมด deep นับไว้แต่ยังเปิด
+        it.candidate_type = cls;
+        openList.push(it);
+      }
     }
 
     // ขอบล่างจริง: วันที่ "เก่าสุดที่ resolve ได้" ในรอบนี้ (ทุก item ที่มองเห็น) < fromDate
@@ -335,7 +356,7 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
     if (boundaryHit) boundaryStreak++;
     else boundaryStreak = 0;
     log(
-      `[SCAN] round=${round} visible=${seen.size} new=${newThisBatch} oldest=${oldestResolvedActivityDate || "?"} candidate=${inRange.length} direct=${direct} history=${history} tooOld=${tooOldSeen} boundaryStreak=${boundaryStreak}`,
+      `[SCAN] round=${round} visible=${seen.size} new=${newThisBatch} oldest=${oldestResolvedActivityDate || "?"} target=${targetChats} newerSkipped=${newerSkipped} older=${olderSeen} boundaryStreak=${boundaryStreak}`,
     );
     if (boundaryStreak >= 2) {
       log(`[SCAN] ถึงขอบล่าง (oldest ${oldestResolvedActivityDate} < ${from}) — หยุด scroll list`);
@@ -370,12 +391,12 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
     if (!scrolled) break;
   }
   log(
-    `[SCAN] ✅ visible=${seen.size} candidate=${inRange.length} (direct=${direct} history=${history} tooOld=${tooOldSeen}) · range ${from}→${to}`,
+    `[SCAN] ✅ mode=${strict ? "strict" : "deep_history"} visible=${seen.size} จะเปิด=${openList.length} (target=${targetChats} newerSkipped=${newerSkipped} older=${olderSeen}) · range ${from}→${to}`,
   );
-  inRange.direct_candidates = direct;
-  inRange.history_candidates = history;
-  inRange.too_old_seen = tooOldSeen;
-  return inRange;
+  openList.target_date_chats = targetChats;
+  openList.newer_chats_skipped = newerSkipped;
+  openList.older_chats_seen = olderSeen;
+  return openList;
 }
 
 // เปิด chat (คลิกจากชื่อ) แล้วดึง HTML ของ chat panel + ข้อความ + notes + profile
@@ -520,7 +541,9 @@ async function scrapeChat(page, item, fromDate) {
 async function runJob(job, context) {
   const fromDate = D.normalizeJobDate(job.date_from);
   const toDate = D.normalizeJobDate(job.date_to);
-  log(`[JOB] ${job.id} · ช่วงวันที่เลือก ${fromDate} → ${toDate} (Asia/Bangkok)`);
+  // โหมด: job.mode (จาก DB) มาก่อน แล้วค่อย fallback เป็น CLI/env
+  const mode = /^deep_?history$/i.test(job.mode || "") ? "deep_history" : CLI_DATE_MODE;
+  log(`[JOB] ${job.id} · mode=${mode} · target=${fromDate}${fromDate === toDate ? "" : "→" + toDate} · today_bangkok=${D.bangkokToday()} (Asia/Bangkok)`);
   await patchJob(job.id, { status: "running" });
 
   let cancelled = false;
@@ -533,12 +556,12 @@ async function runJob(job, context) {
   const page = await openLineOA(context);
   await saveScreenshot(page, `job-${job.id}-list`);
 
-  // counters รวม (ตาม spec J)
+  // counters (นโยบายวันที่แบบ strict)
   const C = {
-    candidate_chats: 0,
-    direct_candidates: 0,
-    history_candidates: 0,
-    too_old_seen: 0,
+    mode,
+    target_date_chats: 0,
+    newer_chats_skipped: 0,
+    older_chats_seen: 0,
     processed_chats: 0,
     collected_chats: 0,
     no_uid_chats_stored: 0,
@@ -556,13 +579,14 @@ async function runJob(job, context) {
   };
   let chatIndex = 0;
   try {
-    let chats = await scanChatList(page, fromDate, toDate, shouldCancel);
-    C.candidate_chats = chats.length;
-    C.direct_candidates = chats.direct_candidates || 0;
-    C.history_candidates = chats.history_candidates || 0;
-    C.too_old_seen = chats.too_old_seen || 0;
+    let chats = await scanChatList(page, fromDate, toDate, shouldCancel, mode);
+    C.target_date_chats = chats.target_date_chats || 0;
+    C.newer_chats_skipped = chats.newer_chats_skipped || 0;
+    C.older_chats_seen = chats.older_chats_seen || 0;
     if (Number.isFinite(LIMIT)) chats = chats.slice(0, LIMIT);
-    log(`[SCAN] candidate=${C.candidate_chats} (direct=${C.direct_candidates} history=${C.history_candidates} tooOld=${C.too_old_seen})${Number.isFinite(LIMIT) ? ` · จำกัด ${LIMIT}` : ""} · target ${fromDate}→${toDate}`);
+    log(`[SCAN] จะเปิด=${chats.length} target=${C.target_date_chats} newerSkipped=${C.newer_chats_skipped} older=${C.older_chats_seen}${Number.isFinite(LIMIT) ? ` · จำกัด ${LIMIT}` : ""} · target ${fromDate}${fromDate === toDate ? "" : "→" + toDate}`);
+    if (!chats.length)
+      log(`[SKIP] ไม่มีห้องที่ตรงวันที่ ${fromDate} — ข้ามห้องวันนี้/ใหม่กว่า ${C.newer_chats_skipped} ห้อง (ไม่เปิดแชท)`);
     await patchJob(job.id, { total_chats: chats.length, counters: { ...C } });
 
     for (const item of chats) {
@@ -658,7 +682,7 @@ async function runJob(job, context) {
       await patchJob(job.id, { status: "cancelled", error_text: "ยกเลิกโดยผู้ใช้" });
     } else {
       await patchJob(job.id, { status: "done", total_chats: chats.length, counters: { ...C }, logged_count: C.messages_inserted });
-      log(`[DONE] ✅ candidate=${C.candidate_chats} (direct=${C.direct_candidates} history=${C.history_candidates} tooOld=${C.too_old_seen}) collected=${C.collected_chats} noUidStored=${C.no_uid_chats_stored} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending(cases=${C.pending_reply_cases}/msgs=${C.pending_reply_messages})`);
+      log(`[DONE] ✅ mode=${mode} opened=${C.processed_chats} target=${C.target_date_chats} newerSkipped=${C.newer_chats_skipped} older=${C.older_chats_seen} collected=${C.collected_chats} noUidStored=${C.no_uid_chats_stored} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending(cases=${C.pending_reply_cases}/msgs=${C.pending_reply_messages})`);
     }
   } catch (e) {
     log(`❌ error: ${e.message}`);
@@ -899,9 +923,10 @@ async function main() {
           Array.isArray(jobs) &&
           jobs.find((j) => j.status === "done" && D.normalizeJobDate(j.date_from) === y);
         if (!active && !doneToday && lastAutoDate !== y) {
-          await createJob(y, y);
+          // ตัวตั้งเวลา (daily) ต้องเป็น strict เสมอ — ไม่ไล่เข้า current-day chats
+          await createJob(y, y, "strict");
           lastAutoDate = y;
-          log(`🔄 auto-job Yesterday (${y})`);
+          log(`🔄 auto-job Yesterday (${y}) · mode=strict`);
         }
       }
 

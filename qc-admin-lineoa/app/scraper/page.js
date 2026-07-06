@@ -64,10 +64,9 @@ function fmtDateTH(iso) {
 
 // ป้ายไทยของ counters (spec J)
 const COUNTER_LABELS = [
-  ["candidate_chats", "ห้องที่ต้องตรวจ", "#3b82f6"],
-  ["direct_candidates", "ห้อง active ในช่วงวันที่", "#3b82f6"],
-  ["history_candidates", "ห้องที่อาจมีประวัติในช่วง", "#6366f1"],
-  ["too_old_seen", "ห้องเก่ากว่าช่วง (ข้าม)", "#9ca3af"],
+  ["target_date_chats", "ห้องตรงวันที่เลือก", "#3b82f6"],
+  ["newer_chats_skipped", "ห้องวันนี้/ใหม่กว่า (ข้าม)", "#9ca3af"],
+  ["older_chats_seen", "ห้องเก่ากว่า (ขอบล่าง)", "#9ca3af"],
   ["processed_chats", "ห้องที่เปิดแล้ว", "#3b82f6"],
   ["collected_chats", "ห้องที่มีข้อความตรงวันที่", "#22c55e"],
   ["no_uid_chats_stored", "ห้องไม่มี LINE id (เก็บด้วย key สำรอง)", "#0891b2"],
@@ -348,6 +347,7 @@ export default function ScraperPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [scrapeMode, setScrapeMode] = useState("strict"); // strict (แนะนำ) | deep_history
 
   // schedule
   const [cfg, setCfg] = useState(null);
@@ -434,7 +434,7 @@ export default function ScraperPage() {
       const r = await fetch("/api/scraper/job", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": key },
-        body: JSON.stringify({ date_from: from, date_to: to }),
+        body: JSON.stringify({ date_from: from, date_to: to, mode: scrapeMode }),
       });
       const d = await r.json();
       if (d.ok) {
@@ -923,6 +923,57 @@ export default function ScraperPage() {
             >
               ℹ️ ระบบไม่เก็บข้อมูลของวันนี้ เพราะแอดมินยังอยู่ระหว่างปฏิบัติงาน
               ระบบจะเก็บข้อมูลย้อนหลังเท่านั้น (เลือกได้ถึง “เมื่อวาน” เป็นอย่างช้าสุด)
+            </div>
+
+            {/* โหมดการเก็บ (strict = แนะนำ) */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+                โหมดการเก็บ
+              </div>
+              {[
+                {
+                  v: "strict",
+                  t: "เก็บตรงตามวันที่ (แนะนำ)",
+                  d: "เปิดเฉพาะห้องที่แสดงวันที่ตรงกับวันที่เลือก และจะไม่เปิดแชทของวันนี้หรือวันที่ใหม่กว่า",
+                },
+                {
+                  v: "deep_history",
+                  t: "ค้นย้อนหลังในห้องแชท",
+                  d: "เปิดห้องที่ใหม่กว่าเพื่อไล่ค้นประวัติย้อนหลัง (ใช้เฉพาะ backfill — ช้ากว่าและเปิดแชทมากขึ้น)",
+                },
+              ].map((o) => (
+                <label
+                  key={o.v}
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "flex-start",
+                    padding: "8px 10px",
+                    marginBottom: 6,
+                    border: `1px solid ${scrapeMode === o.v ? "#22c55e" : "#e5e7eb"}`,
+                    background: scrapeMode === o.v ? "#f0fdf4" : "#fff",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="scrapeMode"
+                    checked={scrapeMode === o.v}
+                    onChange={() => setScrapeMode(o.v)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                      {o.v === "strict" ? "● " : "○ "}
+                      {o.t}
+                    </span>
+                    <span style={{ display: "block", fontSize: 11, color: "#888", lineHeight: 1.4 }}>
+                      {o.d}
+                    </span>
+                  </span>
+                </label>
+              ))}
             </div>
             <div style={{ marginBottom: 10 }}>
               <label

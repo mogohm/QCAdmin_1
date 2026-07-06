@@ -300,8 +300,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_line_customers_extkey
   ON line_customers (external_chat_key) WHERE external_chat_key IS NOT NULL;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS external_chat_key TEXT;
 
--- scraper_jobs: counters แบบ JSONB (ครบทุกตัวนับตาม spec — candidate/collected/messages/qc/pending ...)
+-- scraper_jobs: counters แบบ JSONB + mode (strict = ปกติ / deep_history = backfill)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict';
 
 -- scraper_chat_results: ผลเก็บข้อมูลต่อแชท (audit + counters ต่อห้อง)
 CREATE TABLE IF NOT EXISTS scraper_chat_results (
