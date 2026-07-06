@@ -294,20 +294,29 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS source              TEXT;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraped_at     TIMESTAMPTZ;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraper_job_id UUID;
 
+-- external_chat_key: ตัวระบุแชทที่คงที่ เมื่อไม่มี LINE user id (เก็บทุกแชทได้)
+ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_line_customers_extkey
+  ON line_customers (external_chat_key) WHERE external_chat_key IS NOT NULL;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS external_chat_key TEXT;
+
 -- scraper_jobs: counters แบบ JSONB (ครบทุกตัวนับตาม spec — candidate/collected/messages/qc/pending ...)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;
 
 -- scraper_chat_results: ผลเก็บข้อมูลต่อแชท (audit + counters ต่อห้อง)
 CREATE TABLE IF NOT EXISTS scraper_chat_results (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  scraper_job_id UUID, conversation_id UUID, line_user_id TEXT,
+  scraper_job_id UUID, conversation_id UUID, line_user_id TEXT, external_chat_key TEXT,
   target_date_from DATE, target_date_to DATE,
   messages_found INTEGER DEFAULT 0, messages_inserted INTEGER DEFAULT 0,
   customer_messages INTEGER DEFAULT 0, admin_messages INTEGER DEFAULT 0,
   system_messages INTEGER DEFAULT 0, qc_pairs_created INTEGER DEFAULT 0,
-  pending_reply_count INTEGER DEFAULT 0, duplicates_skipped INTEGER DEFAULT 0,
+  pending_reply_count INTEGER DEFAULT 0, pending_reply_messages INTEGER DEFAULT 0,
+  duplicates_skipped INTEGER DEFAULT 0,
   status TEXT DEFAULT 'ok', error_text TEXT, created_at TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE scraper_chat_results ADD COLUMN IF NOT EXISTS external_chat_key TEXT;
+ALTER TABLE scraper_chat_results ADD COLUMN IF NOT EXISTS pending_reply_messages INTEGER DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_scraper_chat_results_job ON scraper_chat_results (scraper_job_id);
 
 -- unique indexes ป้องกัน insert ข้อความ/คู่ QC ซ้ำ (partial — เฉพาะแถวที่มี hash)

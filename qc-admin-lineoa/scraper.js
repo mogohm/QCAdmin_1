@@ -235,7 +235,13 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
   const inRange = [];
   let stuck = 0,
     lastCount = -1,
-    oldBatches = 0;
+    boundaryStreak = 0,
+    direct = 0,
+    history = 0,
+    tooOldSeen = 0;
+  const NOW = new Date();
+  const from = D.normalizeJobDate(fromDate);
+  const to = D.normalizeJobDate(toDate || fromDate);
 
   await page.evaluate(() => {
     const item = document.querySelector(".list-group-item-chat");
@@ -293,25 +299,48 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       }),
     );
 
-    // candidate = แชทที่ latest activity >= fromDate (อาจมีข้อความวันเป้าหมายใน history)
-    //   หมายเหตุ: candidate != collected — ยืนยัน "collected" หลังเปิดแชท + กรองข้อความจริง
-    let newCandidateThisBatch = 0;
+    // จัดกลุ่ม candidate ด้วย toDate:
+    //   direct  = active ในช่วง [from,to]  → เก็บ
+    //   history = active หลัง to           → เก็บ (อาจมีประวัติของช่วงใน history)
+    //   unknown = label ตัดสินไม่ได้        → เก็บ (ปลอดภัยไว้ก่อน)
+    //   too_old = active ก่อน from          → ข้าม
+    let newThisBatch = 0;
     for (const it of items) {
       const key = `${it.name}|${it.label}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (core.labelOnOrAfter(it.label, fromDate) === true) {
-        inRange.push(it);
-        newCandidateThisBatch++;
+      newThisBatch++;
+      const cls = core.classifyCandidate(it.label, from, to, NOW);
+      if (cls === "too_old") {
+        tooOldSeen++;
+        continue;
       }
+      it.candidate_type = cls;
+      if (cls === "direct") direct++;
+      else if (cls === "history") history++;
+      inRange.push(it);
     }
-    // หยุดเมื่อรายการล่างสุดเก่ากว่า fromDate ติดกัน 2 batch (list เรียงใหม่→เก่า)
-    if (newCandidateThisBatch === 0) {
-      if (++oldBatches >= 2) {
-        log(`[SCAN] ถึงขอบล่าง (label < ${fromDate}) — หยุด scroll list`);
-        break;
-      }
-    } else oldBatches = 0;
+
+    // ขอบล่างจริง: วันที่ "เก่าสุดที่ resolve ได้" ในรอบนี้ (ทุก item ที่มองเห็น) < fromDate
+    //   หยุดเฉพาะเมื่อขอบล่างต่ำกว่า fromDate ติดกัน 2 รอบ — ไม่หยุดเพียงเพราะไม่มี candidate ใหม่
+    //   (กัน virtual list ซ้อนทับกันแล้วหยุดก่อนเวลา)
+    let oldestResolvedActivityDate = null;
+    for (const it of items) {
+      const day = core.resolveLabelDay(it.label, NOW);
+      if (day && (oldestResolvedActivityDate === null || day < oldestResolvedActivityDate))
+        oldestResolvedActivityDate = day;
+    }
+    const boundaryHit =
+      oldestResolvedActivityDate !== null && oldestResolvedActivityDate < from;
+    if (boundaryHit) boundaryStreak++;
+    else boundaryStreak = 0;
+    log(
+      `[SCAN] round=${round} visible=${seen.size} new=${newThisBatch} oldest=${oldestResolvedActivityDate || "?"} candidate=${inRange.length} direct=${direct} history=${history} tooOld=${tooOldSeen} boundaryStreak=${boundaryStreak}`,
+    );
+    if (boundaryStreak >= 2) {
+      log(`[SCAN] ถึงขอบล่าง (oldest ${oldestResolvedActivityDate} < ${from}) — หยุด scroll list`);
+      break;
+    }
 
     // scroll ลงต่อ
     const scrolled = await page.evaluate(() => {
@@ -340,7 +369,12 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
     lastCount = seen.size;
     if (!scrolled) break;
   }
-  log(`[SCAN] visible=${seen.size} candidate=${inRange.length} (fromDate=${fromDate})`);
+  log(
+    `[SCAN] ✅ visible=${seen.size} candidate=${inRange.length} (direct=${direct} history=${history} tooOld=${tooOldSeen}) · range ${from}→${to}`,
+  );
+  inRange.direct_candidates = direct;
+  inRange.history_candidates = history;
+  inRange.too_old_seen = tooOldSeen;
   return inRange;
 }
 
@@ -424,6 +458,13 @@ async function scrapeChat(page, item, fromDate) {
       (url.match(/\/chat\/(U[a-f0-9]{32})/) || [])[1] ||
       (url.match(/(U[a-f0-9]{32})/) || [])[1] ||
       null;
+    // chat id ที่อยู่หลัง /chat/ (อาจไม่ใช่ U... — เป็น id ลูกค้าของ OA) + account id (segment แรก)
+    const path = location.pathname || "";
+    const chatUrlId = (path.match(/\/chat\/([^/?#]+)/) || [])[1] || null;
+    const accountId =
+      (path.match(/^\/?([^/]+)\/chat\//) || [])[1] ||
+      path.split("/").filter(Boolean)[0] ||
+      null;
     let picture = null;
     for (const img of document.querySelectorAll("img[alt]")) {
       const r = img.getBoundingClientRect();
@@ -436,7 +477,7 @@ async function scrapeChat(page, item, fromDate) {
         break;
       }
     }
-    return { title, uid, picture };
+    return { title, uid, picture, chatUrlId, accountId };
   });
 
   // messages (ผ่าน core — dedup + แยก customer/admin) + เก็บ bubble ที่ parse fail
@@ -495,8 +536,12 @@ async function runJob(job, context) {
   // counters รวม (ตาม spec J)
   const C = {
     candidate_chats: 0,
+    direct_candidates: 0,
+    history_candidates: 0,
+    too_old_seen: 0,
     processed_chats: 0,
     collected_chats: 0,
+    no_uid_chats_stored: 0,
     empty_chats: 0,
     failed_chats: 0,
     messages_found: 0,
@@ -506,14 +551,18 @@ async function runJob(job, context) {
     admin_messages: 0,
     system_messages: 0,
     qc_pairs_created: 0,
-    pending_reply_count: 0,
+    pending_reply_cases: 0,
+    pending_reply_messages: 0,
   };
   let chatIndex = 0;
   try {
     let chats = await scanChatList(page, fromDate, toDate, shouldCancel);
     C.candidate_chats = chats.length;
+    C.direct_candidates = chats.direct_candidates || 0;
+    C.history_candidates = chats.history_candidates || 0;
+    C.too_old_seen = chats.too_old_seen || 0;
     if (Number.isFinite(LIMIT)) chats = chats.slice(0, LIMIT);
-    log(`[SCAN] candidate=${C.candidate_chats}${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""} · target ${fromDate}→${toDate}`);
+    log(`[SCAN] candidate=${C.candidate_chats} (direct=${C.direct_candidates} history=${C.history_candidates} tooOld=${C.too_old_seen})${Number.isFinite(LIMIT) ? ` · จำกัด ${LIMIT}` : ""} · target ${fromDate}→${toDate}`);
     await patchJob(job.id, { total_chats: chats.length, counters: { ...C } });
 
     for (const item of chats) {
@@ -538,30 +587,41 @@ async function runJob(job, context) {
         C.failed_chats++;
         continue;
       }
-      const lineUserId = res.meta.uid || `name:${item.name}`;
+      // external_chat_key คงที่ — เก็บได้แม้ไม่มี LINE user id (เก็บทุกแชท)
+      //   ลำดับ: uid จริง → chat id จาก URL (ถ้าต่างจาก uid) → hash(account + ชื่อ)
+      const chatIdFromUrl =
+        res.meta.chatUrlId && res.meta.chatUrlId !== res.meta.uid
+          ? res.meta.chatUrlId
+          : null;
+      const externalChatKey = core.buildExternalChatKey({
+        accountId: res.meta.accountId,
+        chatId: chatIdFromUrl,
+        name: item.name || res.meta.title,
+      });
+      const lineUserId = res.meta.uid || externalChatKey;
 
       // FILTER: เฉพาะข้อความในช่วงวันเป้าหมาย (เวลาไทย) — กัน "วันนี้" รั่ว
       const targetMsgs = res.messages.filter((m) => D.messageInTargetRange(m.created_at, fromDate, toDate));
-      log(`[CHAT ${chatIndex}/${chats.length}] ${item.name} [${item.label}] · [FILTER] all=${res.messages.length} target=${targetMsgs.length}`);
+      log(`[CHAT ${chatIndex}/${chats.length}] ${item.name} [${item.label}]${res.meta.uid ? "" : " (no-uid→" + externalChatKey + ")"} · [FILTER] all=${res.messages.length} target=${targetMsgs.length}`);
       if (!targetMsgs.length) {
         C.empty_chats++;
         logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "no target-date messages" });
         continue;
       }
 
-      // SAVE: เก็บ "ทุกข้อความ" ก่อน (customer-only ก็เก็บ) → chat-batch จับคู่ QC เป็นขั้นที่ 2
+      // SAVE: เก็บ "ทุกข้อความ" ก่อน (customer-only + ไม่มี uid ก็เก็บ) → chat-batch จับคู่ QC เป็นขั้นที่ 2
       const payload = {
         scraper_job_id: job.id,
-        customer: { line_user_id: res.meta.uid || null, customer_name: item.name || res.meta.title, picture_url: res.meta.picture || null },
+        customer: {
+          line_user_id: res.meta.uid || null,
+          external_chat_key: externalChatKey,
+          customer_name: item.name || res.meta.title,
+          picture_url: res.meta.picture || null,
+        },
         chat: { detected_list_label: item.label, latest_activity_date: D.normalizeJobDate(D.bangkokDayOf(targetMsgs[targetMsgs.length - 1].created_at)) },
         target: { from: fromDate, to: toDate },
         messages: targetMsgs.map((m) => ({ direction: m.direction, message_type: m.message_type || "text", text: m.message_text, created_at: m.created_at, admin_name: m.admin_name || null })),
       };
-      if (!res.meta.uid) {
-        C.empty_chats++;
-        log(`[SKIP] [CHAT ${chatIndex}] ${item.name} — ไม่พบ line_user_id`);
-        continue;
-      }
       const r = await postChatBatch(payload).catch((e) => ({ error: e.message }));
       if (!r || r.error) {
         C.failed_chats++;
@@ -569,6 +629,7 @@ async function runJob(job, context) {
         continue;
       }
       C.collected_chats++;
+      if (!res.meta.uid) C.no_uid_chats_stored++;
       C.messages_found += r.messages_found || 0;
       C.messages_inserted += r.messages_inserted || 0;
       C.duplicates_skipped += r.duplicates_skipped || 0;
@@ -576,8 +637,9 @@ async function runJob(job, context) {
       C.admin_messages += r.admin_messages || 0;
       C.system_messages += r.system_messages || 0;
       C.qc_pairs_created += r.qc_pairs_created || 0;
-      C.pending_reply_count += r.pending_reply_count || 0;
-      log(`[SAVE] inserted=${r.messages_inserted} dup=${r.duplicates_skipped} cust=${r.customer_messages} admin=${r.admin_messages} · [QC] pairs=${r.qc_pairs_created} pending=${r.pending_reply_count}`);
+      C.pending_reply_cases += r.pending_reply_cases || 0;
+      C.pending_reply_messages += r.pending_reply_messages || 0;
+      log(`[SAVE] inserted=${r.messages_inserted} dup=${r.duplicates_skipped} cust=${r.customer_messages} admin=${r.admin_messages} · [QC] pairs=${r.qc_pairs_created} pending(cases=${r.pending_reply_cases}/msgs=${r.pending_reply_messages})`);
 
       // เก็บภาพหลักฐาน (mode all = ทุกแชท, flagged_only = เฉพาะมีเคสปัญหา)
       if (EVIDENCE_MODE !== "off" && r.conversation_id && (EVIDENCE_MODE === "all" || (r.flagged || 0) > 0)) {
@@ -596,7 +658,7 @@ async function runJob(job, context) {
       await patchJob(job.id, { status: "cancelled", error_text: "ยกเลิกโดยผู้ใช้" });
     } else {
       await patchJob(job.id, { status: "done", total_chats: chats.length, counters: { ...C }, logged_count: C.messages_inserted });
-      log(`[DONE] ✅ candidate=${C.candidate_chats} collected=${C.collected_chats} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending=${C.pending_reply_count}`);
+      log(`[DONE] ✅ candidate=${C.candidate_chats} (direct=${C.direct_candidates} history=${C.history_candidates} tooOld=${C.too_old_seen}) collected=${C.collected_chats} noUidStored=${C.no_uid_chats_stored} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending(cases=${C.pending_reply_cases}/msgs=${C.pending_reply_messages})`);
     }
   } catch (e) {
     log(`❌ error: ${e.message}`);

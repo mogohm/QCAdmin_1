@@ -1,9 +1,13 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
-const today = () => new Date().toISOString().slice(0, 10);
-const yesterday = () =>
-  new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+// วันที่ตามเวลาไทย (Asia/Bangkok, UTC+7) — คำนวณจาก epoch จึงถูกต้องทุกโซนเครื่อง
+//   *สำคัญ*: ห้ามใช้ new Date().toISOString() ตรง ๆ (นั่นคือ UTC) — ช่วง 00:00–06:59 ไทยจะเพี้ยนไป 1 วัน
+const TZ_BKK_MS = 7 * 3600 * 1000;
+const bangkokToday = () =>
+  new Date(Date.now() + TZ_BKK_MS).toISOString().slice(0, 10);
+const bangkokYesterday = () =>
+  new Date(Date.now() + TZ_BKK_MS - 86400000).toISOString().slice(0, 10);
 
 function statusColor(s) {
   return s === "done"
@@ -61,8 +65,12 @@ function fmtDateTH(iso) {
 // ป้ายไทยของ counters (spec J)
 const COUNTER_LABELS = [
   ["candidate_chats", "ห้องที่ต้องตรวจ", "#3b82f6"],
+  ["direct_candidates", "ห้อง active ในช่วงวันที่", "#3b82f6"],
+  ["history_candidates", "ห้องที่อาจมีประวัติในช่วง", "#6366f1"],
+  ["too_old_seen", "ห้องเก่ากว่าช่วง (ข้าม)", "#9ca3af"],
   ["processed_chats", "ห้องที่เปิดแล้ว", "#3b82f6"],
   ["collected_chats", "ห้องที่มีข้อความตรงวันที่", "#22c55e"],
+  ["no_uid_chats_stored", "ห้องไม่มี LINE id (เก็บด้วย key สำรอง)", "#0891b2"],
   ["empty_chats", "ห้องที่ไม่มีข้อความตรงวันที่", "#9ca3af"],
   ["failed_chats", "ห้องที่ผิดพลาด", "#ef4444"],
   ["messages_found", "ข้อความที่พบ", "#f59e0b"],
@@ -72,7 +80,8 @@ const COUNTER_LABELS = [
   ["admin_messages", "ข้อความแอดมิน", "#1d4ed8"],
   ["system_messages", "ข้อความระบบ", "#9ca3af"],
   ["qc_pairs_created", "คู่ข้อความ QC", "#a855f7"],
-  ["pending_reply_count", "เคสรอตอบ", "#ea580c"],
+  ["pending_reply_cases", "เคสรอตอบ", "#ea580c"],
+  ["pending_reply_messages", "ข้อความรอตอบ", "#f97316"],
 ];
 function CountersPanel({ counters }) {
   if (!counters || typeof counters !== "object") return null;
@@ -334,8 +343,8 @@ function ScrapeDiagram() {
 
 export default function ScraperPage() {
   const [key, setKey] = useState("");
-  const [dateFrom, setDateFrom] = useState(yesterday());
-  const [dateTo, setDateTo] = useState(yesterday());
+  const [dateFrom, setDateFrom] = useState(bangkokYesterday());
+  const [dateTo, setDateTo] = useState(bangkokYesterday());
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -461,7 +470,7 @@ export default function ScraperPage() {
     setCountdown(intervalMs);
     setMsg("");
     // เก็บ "เมื่อวาน" เสมอ — ระบบไม่เก็บข้อมูลของวันนี้ (แอดมินยังทำงานอยู่)
-    submitJob(yesterday(), yesterday(), true).then((ok) => {
+    submitJob(bangkokYesterday(), bangkokYesterday(), true).then((ok) => {
       if (ok) setMsg(`✅ สร้าง job เมื่อวานทันที — รันครั้งหน้าใน ${intervalMin} นาที`);
     });
   }
@@ -973,7 +982,7 @@ export default function ScraperPage() {
                 <input
                   type="date"
                   value={dateFrom}
-                  max={yesterday()}
+                  max={bangkokYesterday()}
                   onChange={(e) => setDateFrom(e.target.value)}
                   style={{
                     width: "100%",
@@ -1009,7 +1018,7 @@ export default function ScraperPage() {
                 <input
                   type="date"
                   value={dateTo}
-                  max={yesterday()}
+                  max={bangkokYesterday()}
                   onChange={(e) => setDateTo(e.target.value)}
                   style={{
                     width: "100%",

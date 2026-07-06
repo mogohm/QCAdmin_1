@@ -133,6 +133,44 @@ function labelOnOrAfter(label, fromDate, now = new Date()) {
   return d.getTime() >= new Date(fromDate).setHours(0, 0, 0, 0);
 }
 
+// resolve label ของ chat list → "YYYY-MM-DD" (วันตามหน้าจอ LINE OA) หรือ null ถ้าตัดสินไม่ได้
+function resolveLabelDay(label, now = new Date()) {
+  const d = dayLabelToDate(label, now);
+  if (!d) return null;
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+}
+
+// จัดกลุ่ม candidate ตาม latest activity เทียบช่วง [fromDate, toDate]
+//   direct  : from <= day <= to        (active ในช่วงวันเป้าหมาย)
+//   history : day > to                 (active หลังช่วง — อาจมีประวัติของช่วงอยู่)
+//   too_old : day < from               (เก่ากว่าช่วง — หยุด scroll ได้)
+//   unknown : label ตัดสินไม่ได้        (เก็บไว้เป็น candidate เพื่อความปลอดภัย)
+function classifyCandidate(label, fromDate, toDate, now = new Date()) {
+  const day = resolveLabelDay(label, now);
+  if (!day) return "unknown";
+  const from = String(fromDate).slice(0, 10);
+  const to = String(toDate || fromDate).slice(0, 10);
+  if (day < from) return "too_old";
+  if (day > to) return "history";
+  return "direct";
+}
+
+// สร้าง external_chat_key ที่ "คงที่ทุกครั้งที่รัน" สำหรับแชทที่ไม่มี LINE user id
+//   ลำดับความสำคัญ: chatId จาก URL/DOM (ถ้ามี) → hash(account + ชื่อลูกค้า normalize)
+//   ไม่ใช้ค่าสุ่ม — rerun ต้องได้ key เดิม เพื่อ map เข้า customer/conversation เดิม
+function buildExternalChatKey({ accountId, chatId, name } = {}) {
+  const acct = String(accountId || "oa").trim();
+  if (chatId) return `chat:${acct}:${String(chatId).trim()}`;
+  const norm = String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  return `scraper:${hashText(acct + "|" + norm)}`;
+}
+
 // created_at อยู่ในช่วงวันที่เป้าหมายไหม (กรอง message ให้เหลือเฉพาะวันที่ scrape)
 function inDateWindow(created_at, fromDate, toDate) {
   if (!created_at) return false;
@@ -504,6 +542,9 @@ module.exports = {
   buildLogReplyPayload,
   summarizeChat,
   labelOnOrAfter,
+  resolveLabelDay,
+  classifyCandidate,
+  buildExternalChatKey,
   inDateWindow,
   DAY_MAP,
 };

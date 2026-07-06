@@ -4,14 +4,21 @@
 const TZ_OFFSET_MS = 7 * 3600 * 1000; // +07:00
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// วัน (เวลาไทย) ของ epoch ที่กำหนด + เลื่อนวัน → "YYYY-MM-DD"  (testable, ไม่ผูกกับ Date.now)
+function bangkokDayAt(epochMs, offsetDays = 0) {
+  return new Date(epochMs + TZ_OFFSET_MS + offsetDays * 86400000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 // วันที่ปัจจุบันตามเวลาไทย → "YYYY-MM-DD"
 function bangkokToday() {
-  return new Date(Date.now() + TZ_OFFSET_MS).toISOString().slice(0, 10);
+  return bangkokDayAt(Date.now(), 0);
 }
 
 // เมื่อวาน (ตามเวลาไทย) → "YYYY-MM-DD"
 function bangkokYesterday() {
-  return new Date(Date.now() + TZ_OFFSET_MS - 86400000).toISOString().slice(0, 10);
+  return bangkokDayAt(Date.now(), -1);
 }
 
 // แปลงค่า (Date/timestamp/สตริง) → "YYYY-MM-DD" ตามเวลาไทย
@@ -78,6 +85,7 @@ function validateScrapeRange(from, to) {
 
 module.exports = {
   TZ_OFFSET_MS,
+  bangkokDayAt,
   bangkokToday,
   bangkokYesterday,
   normalizeJobDate,

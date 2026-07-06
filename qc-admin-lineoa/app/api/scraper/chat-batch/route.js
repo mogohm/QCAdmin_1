@@ -31,13 +31,18 @@ export async function POST(req) {
     return Response.json({ error: "unauthorized" }, { status: 401, headers: CORS });
   const b = await req.json().catch(() => ({}));
   const cust = b.customer || {};
-  const lineUserId = cust.line_user_id;
+  const extKey = cust.external_chat_key || null;
+  // เก็บได้แม้ไม่มี LINE user id — ใช้ external_chat_key เป็นตัวระบุแทน (คงที่ทุกครั้งที่รัน)
+  const lineUserId = cust.line_user_id || extKey;
   const jobId = b.scraper_job_id || null;
   const from = b.target?.from || null;
   const to = b.target?.to || from;
   const msgs = Array.isArray(b.messages) ? b.messages : [];
   if (!lineUserId)
-    return Response.json({ error: "customer.line_user_id required" }, { status: 400, headers: CORS });
+    return Response.json(
+      { error: "customer.line_user_id หรือ external_chat_key อย่างใดอย่างหนึ่ง" },
+      { status: 400, headers: CORS },
+    );
 
   // กรองเฉพาะข้อความในช่วงวันเป้าหมาย (เวลาไทย) — กัน "วันนี้" รั่ว
   const target = from
@@ -52,22 +57,24 @@ export async function POST(req) {
     admin_messages: 0,
     system_messages: 0,
     qc_pairs_created: 0,
-    pending_reply_count: 0,
+    pending_reply_cases: 0,
+    pending_reply_messages: 0,
     flagged: 0,
   };
 
   try {
-    // 1) upsert customer
-    await query`INSERT INTO line_customers (line_user_id, display_name, picture_url)
-      VALUES (${lineUserId}, ${cust.customer_name || null}, ${cust.picture_url || null})
+    // 1) upsert customer (เก็บ external_chat_key ไว้ด้วย เพื่อ map เข้า customer เดิมตอน rerun)
+    await query`INSERT INTO line_customers (line_user_id, display_name, picture_url, external_chat_key)
+      VALUES (${lineUserId}, ${cust.customer_name || null}, ${cust.picture_url || null}, ${extKey})
       ON CONFLICT (line_user_id) DO UPDATE SET
-        display_name = COALESCE(EXCLUDED.display_name, line_customers.display_name),
-        picture_url  = COALESCE(EXCLUDED.picture_url, line_customers.picture_url)`;
+        display_name      = COALESCE(EXCLUDED.display_name, line_customers.display_name),
+        picture_url       = COALESCE(EXCLUDED.picture_url, line_customers.picture_url),
+        external_chat_key = COALESCE(EXCLUDED.external_chat_key, line_customers.external_chat_key)`;
 
-    // 2) upsert conversation (open)
+    // 2) upsert conversation (open) — key ด้วย line_user_id (= uid จริง หรือ external_chat_key)
     let conv = await query`SELECT id FROM conversations WHERE line_user_id = ${lineUserId} AND status='open' ORDER BY opened_at DESC LIMIT 1`;
     if (!conv[0])
-      conv = await query`INSERT INTO conversations (line_user_id, status, source) VALUES (${lineUserId}, 'open', 'scraper') RETURNING id`;
+      conv = await query`INSERT INTO conversations (line_user_id, status, source, external_chat_key) VALUES (${lineUserId}, 'open', 'scraper', ${extKey}) RETURNING id`;
     const convId = conv[0].id;
 
     // resolve admin id จากชื่อ (cache ต่อ request) — เฉพาะชื่อ PK จริง
@@ -156,23 +163,34 @@ export async function POST(req) {
     }
 
     // 5) pending_reply — ลูกค้าที่ยังไม่ได้ตอบ (ข้อความลูกค้าหลัง admin คนสุดท้าย)
+    //   เคส (cases) = จำนวน "บล็อกข้อความลูกค้าติดกัน" ไม่ใช่จำนวนข้อความ
+    //   เช่น ลูกค้าส่ง 5 ข้อความรวด โดยไม่มีแอดมินตอบ = 1 เคสรอตอบ (ไม่ใช่ 5)
     const sorted = [...target].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
     let lastAdminIdx = -1;
     sorted.forEach((m, i) => { if (m.direction === "admin") lastAdminIdx = i; });
-    const pendingCust = sorted.filter((m, i) => m.direction === "customer" && i > lastAdminIdx);
-    counts.pending_reply_count = pendingCust.length;
-    for (const pm of pendingCust) {
-      const id = idByKey.get(keyOf("customer", pm.text, pm.created_at));
-      if (id) await query`UPDATE messages SET pending_reply=true WHERE id=${id}`.catch(() => {});
+    const tail = sorted.slice(lastAdminIdx + 1); // ทุกข้อความหลัง admin คนสุดท้าย
+    let cases = 0;
+    let prevWasCustomer = false;
+    for (const m of tail) {
+      if (m.direction === "customer") {
+        if (!prevWasCustomer) cases++; // เริ่มบล็อกใหม่ = 1 เคส
+        prevWasCustomer = true;
+        counts.pending_reply_messages++;
+        const id = idByKey.get(keyOf("customer", m.text, m.created_at));
+        if (id) await query`UPDATE messages SET pending_reply=true WHERE id=${id}`.catch(() => {});
+      } else {
+        prevWasCustomer = false; // system/admin คั่น → ตัดบล็อก
+      }
     }
+    counts.pending_reply_cases = cases;
 
     // 6) conversation meta + scraper_chat_results
     await query`UPDATE conversations SET last_scraped_at=now(), last_scraper_job_id=${jobId}, source=COALESCE(source,'scraper') WHERE id=${convId}`.catch(() => {});
-    await query`INSERT INTO scraper_chat_results (scraper_job_id, conversation_id, line_user_id, target_date_from, target_date_to,
-        messages_found, messages_inserted, customer_messages, admin_messages, system_messages, qc_pairs_created, pending_reply_count, duplicates_skipped, status)
-      VALUES (${jobId}, ${convId}, ${lineUserId}, ${from}::date, ${to}::date,
+    await query`INSERT INTO scraper_chat_results (scraper_job_id, conversation_id, line_user_id, external_chat_key, target_date_from, target_date_to,
+        messages_found, messages_inserted, customer_messages, admin_messages, system_messages, qc_pairs_created, pending_reply_count, pending_reply_messages, duplicates_skipped, status)
+      VALUES (${jobId}, ${convId}, ${lineUserId}, ${extKey}, ${from}::date, ${to}::date,
         ${counts.messages_found}, ${counts.messages_inserted}, ${counts.customer_messages}, ${counts.admin_messages},
-        ${counts.system_messages}, ${counts.qc_pairs_created}, ${counts.pending_reply_count}, ${counts.duplicates_skipped},
+        ${counts.system_messages}, ${counts.qc_pairs_created}, ${counts.pending_reply_cases}, ${counts.pending_reply_messages}, ${counts.duplicates_skipped},
         ${counts.messages_found ? "ok" : "empty"})`.catch((e) => console.error("chat_results:", e.message));
 
     return Response.json({ ok: true, conversation_id: convId, messages_received: msgs.length, ...counts }, { headers: CORS });

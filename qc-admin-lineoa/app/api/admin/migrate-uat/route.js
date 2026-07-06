@@ -69,6 +69,11 @@ export async function POST(req) {
     // ---- scraper_jobs: counters (JSONB) ครบตาม spec ----
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
 
+    // ---- line_customers/conversations: external_chat_key (เก็บแชทที่ไม่มี LINE user id ได้) ----
+    await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;
+    await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_line_customers_extkey ON line_customers (external_chat_key) WHERE external_chat_key IS NOT NULL`;
+    await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;
+
     // ---- conversations: scraper meta ----
     await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS source TEXT`;
     await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraped_at TIMESTAMPTZ`;
@@ -84,6 +89,9 @@ export async function POST(req) {
       system_messages INTEGER DEFAULT 0, qc_pairs_created INTEGER DEFAULT 0,
       pending_reply_count INTEGER DEFAULT 0, duplicates_skipped INTEGER DEFAULT 0,
       status TEXT DEFAULT 'ok', error_text TEXT, created_at TIMESTAMPTZ DEFAULT now())`;
+    // เพิ่มคอลัมน์ให้ตารางที่สร้างไว้ก่อนหน้า (rerun-safe)
+    await query`ALTER TABLE scraper_chat_results ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;
+    await query`ALTER TABLE scraper_chat_results ADD COLUMN IF NOT EXISTS pending_reply_messages INTEGER DEFAULT 0`;
     await query`CREATE INDEX IF NOT EXISTS idx_scraper_chat_results_job ON scraper_chat_results (scraper_job_id)`;
 
     // สรุปรายการที่ migrate สำเร็จ (idempotent — เรียกซ้ำได้)
@@ -96,6 +104,8 @@ export async function POST(req) {
         "messages.source/scraper_job_id/message_hash/pending_reply",
         "conversations.scraper_meta",
         "scraper_chat_results",
+        "external_chat_key",
+        "pending_reply_messages",
       ],
     });
   } catch (e) {
