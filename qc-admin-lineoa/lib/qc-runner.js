@@ -22,6 +22,8 @@ export async function runQc({
   customerName = null,
   responseLimitMinutes = 5,
   scraperJobId = null,
+  customerCreatedAt = null,
+  source = null,
 }) {
   const { sops, fatalRules } = await loadKnowledge();
   const sla = await isSlaException(createdAt || new Date());
@@ -94,7 +96,9 @@ export async function runQc({
     responseSeconds,
     responseLimitMinutes,
     createdAt,
+    customerCreatedAt,
     scraperJobId,
+    source,
   };
   await saveQcEvidence(qc, reviewCtx).catch(() => {});
   await enqueueAiReview(qc, reviewCtx).catch(() => {});

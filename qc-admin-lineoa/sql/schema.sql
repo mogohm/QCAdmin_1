@@ -442,6 +442,16 @@ CREATE TABLE IF NOT EXISTS ai_review_queue (
   reviewed_by TEXT, review_action TEXT, corrected_intent TEXT, corrected_sop_id INTEGER,
   reviewer_note TEXT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ);
 CREATE INDEX IF NOT EXISTS idx_ai_review_status ON ai_review_queue (status, created_at DESC);
+-- case identity + เชื่อมโยงตรงถึงคู่ข้อความ (ห้ามพึ่งชื่อลูกค้า/เดาวันที่)
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS customer_message_id UUID;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS admin_message_id UUID;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS customer_created_at TIMESTAMPTZ;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS admin_created_at TIMESTAMPTZ;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS response_seconds INT;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS scraper_job_id UUID;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS case_ref TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_review_case_ref ON ai_review_queue (case_ref) WHERE case_ref IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS case_evidence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

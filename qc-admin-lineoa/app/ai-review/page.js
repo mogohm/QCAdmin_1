@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-import { statusLabel, intentLabel } from "@/lib/ui-labels";
+import { statusLabel, intentLabel, categoryLabel } from "@/lib/ui-labels";
 import { deriveCaseRef } from "@/lib/customer-identity";
+import EvidenceViewer from "../components/EvidenceViewer";
 
 // ---- ยืนยันชื่อลูกค้า (client guard) — ถ้าดูเหมือนข้อความแชท/ระบบ → ไม่ทราบชื่อลูกค้า ----
 const SERVICE_HINT =
@@ -55,6 +56,20 @@ export default function AiReview() {
   const [loading, setLoading] = useState(false);
   const [sel, setSel] = useState(null); // เคสที่เปิดตรวจ
   const [sop, setSop] = useState({ topic: "", answer: "", intent: "" });
+  const [detail, setDetail] = useState(null); // รายละเอียดเคสเต็ม (4 แท็บ)
+  const [tab, setTab] = useState("chat");
+  const [showEvidence, setShowEvidence] = useState(false);
+
+  // เปิดเคส → โหลดรายละเอียดเต็ม (timeline/วิเคราะห์/หลักฐาน/ประวัติ)
+  const openCase = (r) => {
+    setSel(r);
+    setTab("chat");
+    setDetail(null);
+    fetch(`/api/ai-review/${r.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => setDetail(d))
+      .catch(() => setDetail(null));
+  };
 
   const load = () => {
     setLoading(true);
@@ -217,7 +232,7 @@ export default function AiReview() {
                         </span>
                       </td>
                       <td style={{ whiteSpace: "nowrap" }}>
-                        <button onClick={() => setSel(r)} style={{ padding: "3px 8px", fontSize: 11 }}>
+                        <button onClick={() => openCase(r)} style={{ padding: "3px 8px", fontSize: 11 }}>
                           ตรวจ
                         </button>
                       </td>
@@ -285,22 +300,179 @@ export default function AiReview() {
               )}
               <span className="badge">{intentLabel(sel.detected_intent)}</span>
             </div>
-            <div className="case" style={{ fontSize: 13 }}>
-              <div>
-                ข้อความลูกค้า:{" "}
-                <b style={{ color: "#eaf2ff" }}>{sel.customer_text || "—"}</b>
-              </div>
-              <div>
-                ข้อความแอดมิน:{" "}
-                <b style={{ color: "#eaf2ff" }}>{sel.admin_text || "—"}</b>
-              </div>
-              <div className="muted" style={{ marginTop: 6 }}>
-                เหตุผลที่เข้าคิว: {sel.reason}
-              </div>
-              <div className="muted">
-                SOP ที่เดา: {sel.matched_sop_topic || "— ไม่พบ —"}
-              </div>
+            {/* ---- 4 แท็บ: บทสนทนา / การวิเคราะห์ AI / หลักฐาน / ประวัติ ---- */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+              {[
+                ["chat", "💬 บทสนทนา"],
+                ["ai", "🤖 การวิเคราะห์ AI"],
+                ["evidence", `📷 หลักฐาน${detail?.evidence?.length ? ` (${detail.evidence.length})` : ""}`],
+                ["history", "🕘 ประวัติการตรวจ"],
+              ].map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={tab === k ? "" : "ghost"}
+                  style={{ padding: "4px 12px", fontSize: 12 }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+
+            {!detail && (
+              <div className="muted" style={{ padding: 12, fontSize: 12 }}>
+                <span className="spin">⏳</span> กำลังโหลดรายละเอียดเคส...
+              </div>
+            )}
+
+            {/* Tab 1: บทสนทนา — timeline จริง highlight คู่ข้อความที่ใช้ให้คะแนน */}
+            {detail && tab === "chat" && (
+              <div style={{ maxHeight: 320, overflow: "auto", padding: 4 }}>
+                {!detail.timeline?.length && (
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    ไม่พบบทสนทนาใน conversation นี้ — แสดงเฉพาะคู่ข้อความที่บันทึกไว้
+                    <div className="case" style={{ marginTop: 8 }}>
+                      <div>ลูกค้า: <b style={{ color: "#eaf2ff" }}>{sel.customer_text || "—"}</b></div>
+                      <div>แอดมิน: <b style={{ color: "#eaf2ff" }}>{sel.admin_text || "—"}</b></div>
+                    </div>
+                  </div>
+                )}
+                {(detail.timeline || []).map((m) => {
+                  const isPair =
+                    m.id === detail.item?.customer_message_id ||
+                    m.id === detail.item?.admin_message_id;
+                  const isAdmin = m.direction === "admin";
+                  return (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: isAdmin ? "flex-end" : "flex-start",
+                        margin: "4px 0",
+                      }}
+                    >
+                      <div
+                        style={{
+                          maxWidth: "78%",
+                          fontSize: 12,
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          background: isAdmin ? "#0b5cab" : "#1b2c4d",
+                          border: isPair ? "2px solid #f6c65b" : "1px solid #26406b",
+                          boxShadow: isPair ? "0 0 10px rgba(246,198,91,.35)" : "none",
+                        }}
+                      >
+                        <div style={{ fontSize: 10, color: "#8fb0dd", marginBottom: 2 }}>
+                          {isAdmin ? `🧑‍💼 ${m.admin_name || "แอดมิน"}` : "👤 ลูกค้า"} · {fmtBkk(m.created_at)}
+                          {isPair && <b style={{ color: "#f6c65b" }}> ★ คู่ที่ตรวจ</b>}
+                        </div>
+                        {m.message_text || `[${m.message_type || "media"}]`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Tab 2: การวิเคราะห์ AI */}
+            {detail && tab === "ai" && (
+              <div style={{ fontSize: 13 }}>
+                <div className="case">
+                  <div>Intent: <span className="badge">{intentLabel(sel.detected_intent)}</span>
+                    {sel.intent_confidence != null && <span className="muted"> ({sel.intent_confidence}%)</span>}
+                  </div>
+                  <div>SOP ที่เดา: <b style={{ color: "#eaf2ff" }}>{sel.matched_sop_topic || "— ไม่พบ —"}</b>
+                    {sel.sop_confidence != null && <span className="muted"> · ความมั่นใจ {sel.sop_confidence}%</span>}
+                  </div>
+                  <div className="muted" style={{ marginTop: 4 }}>เหตุผลที่เข้าคิว: {sel.reason}</div>
+                  {detail.analysis?.score && (
+                    <div style={{ marginTop: 6 }}>
+                      คะแนนรวม: <b style={{ color: detail.analysis.score.final_score >= 70 ? "#22c55e" : "#ef4444" }}>
+                        {detail.analysis.score.final_score}
+                      </b>
+                      {detail.item?.response_seconds != null && (
+                        <span className="muted"> · ตอบใน {detail.item.response_seconds} วินาที</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {detail.analysis?.details?.length > 0 && (
+                  <table className="table" style={{ marginTop: 8, fontSize: 12 }}>
+                    <thead><tr><th>มิติ</th><th>คะแนน</th><th>ผ่าน</th><th>หมายเหตุ</th></tr></thead>
+                    <tbody>
+                      {detail.analysis.details.map((d, i) => (
+                        <tr key={i}>
+                          <td>{categoryLabel(d.category_code)}</td>
+                          <td>{d.weighted_score}/{d.max_score}</td>
+                          <td>{d.pass === false ? "❌" : d.pass === true ? "✅" : "—"}</td>
+                          <td className="muted" style={{ maxWidth: 200, fontSize: 11 }}>
+                            {d.fail_reason || d.suggestion || ""}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: หลักฐาน */}
+            {detail && tab === "evidence" && (
+              <div style={{ fontSize: 12 }}>
+                {!detail.evidence?.length ? (
+                  <div className="muted" style={{ padding: 8 }}>
+                    ยังไม่มีภาพหลักฐานของเคสนี้ — ดูข้อความ/เวลาได้จากแท็บบทสนทนา
+                    {sel.scraper_job_id && (
+                      <div style={{ marginTop: 4 }}>scraper job: <code>{sel.scraper_job_id}</code></div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <table className="table" style={{ fontSize: 12 }}>
+                      <thead><tr><th>ประเภท</th><th>ชื่อ</th><th>เวลา</th><th>ไฟล์</th></tr></thead>
+                      <tbody>
+                        {detail.evidence.map((e) => (
+                          <tr key={e.id}>
+                            <td><span className="badge">{e.evidence_type}</span></td>
+                            <td>{e.title || "—"}</td>
+                            <td style={{ fontSize: 11 }}>{fmtBkk(e.created_at)}</td>
+                            <td>{e.has_file ? "📎" : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <button
+                      onClick={() => setShowEvidence(true)}
+                      style={{ marginTop: 8, background: "#0b5cab" }}
+                    >
+                      🖼 เปิด Evidence Viewer (ภาพจริง)
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Tab 4: ประวัติการตรวจ */}
+            {detail && tab === "history" && (
+              <div style={{ fontSize: 12 }}>
+                {(detail.history || []).map((h, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      padding: "6px 0",
+                      borderBottom: "1px solid #1b2c4d",
+                    }}
+                  >
+                    <span style={{ color: "#8fb0dd", whiteSpace: "nowrap" }}>{fmtBkk(h.at)}</span>
+                    <span style={{ color: "#eaf2ff", whiteSpace: "nowrap" }}>{statusLabel(h.action) || h.action}</span>
+                    <span className="muted">โดย {h.by}</span>
+                    {h.note && <span className="muted" style={{ flex: 1 }}>· {h.note}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
             <div
               style={{
                 display: "flex",
@@ -365,6 +537,16 @@ export default function AiReview() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Evidence Viewer — เปิดด้วย linkage ของเคสเดียวกันเป๊ะ (qc_score_id + conversation_id) */}
+      {showEvidence && sel && (
+        <EvidenceViewer
+          qcScoreId={sel.qc_score_id}
+          conversationId={sel.conversation_id}
+          caseRef={caseRef(sel)}
+          onClose={() => setShowEvidence(false)}
+        />
       )}
     </AppShell>
   );

@@ -45,15 +45,28 @@ export async function enqueueAiReview(qc, ctx = {}) {
       INSERT INTO ai_review_queue (
         qc_score_id, conversation_id, message_id, customer_name, admin_name,
         customer_text, admin_text, detected_intent, intent_confidence,
-        matched_sop_id, sop_confidence, reason, status)
+        matched_sop_id, sop_confidence, reason, status,
+        customer_message_id, admin_message_id, customer_created_at, admin_created_at,
+        response_seconds, scraper_job_id, source)
       VALUES (
         ${qc.id || null}, ${ctx.conversationId || null}, ${ctx.adminMessageId || null},
         ${safeCustomerName === UNKNOWN ? null : safeCustomerName}, ${ctx.adminName || null},
         ${ctx.customerText || null}, ${ctx.adminText || null},
         ${qc.intent || null}, ${qc.sopConfidence ?? null},
-        ${sop?.id || null}, ${qc.sopConfidence ?? null}, ${reason}, 'pending')
+        ${sop?.id || null}, ${qc.sopConfidence ?? null}, ${reason}, 'pending',
+        ${ctx.customerMessageId || null}, ${ctx.adminMessageId || null},
+        ${ctx.customerCreatedAt || null}, ${ctx.createdAt || null},
+        ${ctx.responseSeconds ?? null}, ${ctx.scraperJobId || null},
+        ${ctx.source || (ctx.scraperJobId ? "scraper" : "manual")})
       RETURNING id`;
-    return rows[0]?.id || null;
+    const newId = rows[0]?.id || null;
+    // case_ref: QC-YYYYMMDD-XXXXXX (Bangkok day + md5 สั้น) — เสถียรต่อแถว, unique
+    if (newId)
+      await query`UPDATE ai_review_queue SET case_ref =
+          'QC-' || to_char((COALESCE(customer_created_at, created_at)) AT TIME ZONE 'Asia/Bangkok','YYYYMMDD')
+          || '-' || upper(substr(md5(id::text),1,6))
+        WHERE id = ${newId}::uuid AND case_ref IS NULL`.catch(() => {});
+    return newId;
   } catch (e) {
     console.error("enqueueAiReview:", e.message);
     return null;

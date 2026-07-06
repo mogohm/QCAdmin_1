@@ -4,6 +4,87 @@ import { query } from "@/lib/db";
 import { guard, getCurrentUser } from "@/lib/permissions";
 import { validateEntityId, parseNumericId } from "@/lib/db-id";
 
+// GET /api/ai-review/:id — รายละเอียดเคสเต็ม (บทสนทนา/การวิเคราะห์/หลักฐาน/ประวัติ)
+//   เชื่อมโยงด้วย id → qc_score_id → conversation_id → message ids (ไม่พึ่งชื่อ/เดาวันที่)
+export async function GET(req, { params }) {
+  const gate = guard(req, "qc.dispute.review", "qc.score.override");
+  if (gate) return gate;
+  const { id } = await params;
+  const v = validateEntityId(id, "uuid");
+  if (!v.ok)
+    return Response.json({ error: "รหัสเคสไม่ถูกต้อง" }, { status: 400 });
+  try {
+    const rows = await query`
+      SELECT r.*, s.topic AS matched_sop_topic, s.answer AS matched_sop_answer
+      FROM ai_review_queue r
+      LEFT JOIN sop_scripts s ON s.id = r.matched_sop_id
+      WHERE r.id = ${v.value}::uuid`;
+    const item = rows[0];
+    if (!item)
+      return Response.json({ error: "ไม่พบเคสนี้ในระบบ" }, { status: 404 });
+
+    // Tab 1: บทสนทนา — timeline จริงจาก conversation (highlight คู่ข้อความด้วย message ids)
+    const timeline = item.conversation_id
+      ? await query`SELECT id, direction, message_text, message_type, admin_name, created_at
+          FROM messages WHERE conversation_id = ${item.conversation_id}
+          ORDER BY created_at ASC LIMIT 200`.catch(() => [])
+      : [];
+
+    // Tab 2: การวิเคราะห์ AI — คะแนน + รายมิติ
+    const score = item.qc_score_id
+      ? (await query`SELECT * FROM qc_scores WHERE id = ${item.qc_score_id}`.catch(() => []))[0] || null
+      : null;
+    const details = item.qc_score_id
+      ? await query`SELECT category_code, raw_score, weighted_score, max_score, pass, fail_reason, suggestion
+          FROM qc_score_details WHERE qc_score_id = ${item.qc_score_id} ORDER BY category_code`.catch(() => [])
+      : [];
+
+    // Tab 3: หลักฐาน — รายการแบบเบา (ภาพจริงเปิดผ่าน EvidenceViewer/case-evidence)
+    const evidence = await query`
+      SELECT id, evidence_type, title, file_path, url, created_at,
+             (data->>'dataUrl' IS NOT NULL OR url IS NOT NULL OR file_path IS NOT NULL) AS has_file
+      FROM case_evidence
+      WHERE (${item.qc_score_id}::uuid IS NOT NULL AND qc_score_id = ${item.qc_score_id}::uuid)
+         OR (${item.conversation_id}::uuid IS NOT NULL AND conversation_id = ${item.conversation_id}::uuid)
+      ORDER BY created_at DESC LIMIT 50`.catch(() => []);
+
+    // Tab 4: ประวัติการตรวจ — จากแถวเอง + log การซ่อมข้อมูล (ถ้ามี)
+    const history = [];
+    history.push({
+      action: "สร้างเคสเข้าคิว",
+      by: item.source || "system",
+      at: item.created_at,
+      note: item.reason,
+    });
+    if (item.reviewed_at)
+      history.push({
+        action: item.review_action || item.status,
+        by: item.reviewed_by || "-",
+        at: item.reviewed_at,
+        note: item.reviewer_note || null,
+      });
+    const repairs = await query`SELECT field, old_value, new_value, reason, created_at
+      FROM data_repair_logs WHERE table_name='ai_review_queue' AND row_id=${String(item.id)}
+      ORDER BY created_at`.catch(() => []);
+    for (const rp of repairs)
+      history.push({
+        action: `ซ่อมข้อมูล (${rp.field})`,
+        by: "system",
+        at: rp.created_at,
+        note: `"${(rp.old_value || "").slice(0, 60)}" → "${rp.new_value || "ไม่ทราบชื่อลูกค้า"}"`,
+      });
+    history.sort((a, b) => new Date(a.at) - new Date(b.at));
+
+    return Response.json({ ok: true, item, timeline, analysis: { score, details }, evidence, history });
+  } catch (e) {
+    console.error("[ai-review GET detail]", e.message);
+    return Response.json(
+      { error: "ไม่สามารถโหลดรายละเอียดเคสได้ กรุณาลองใหม่อีกครั้ง" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(req, { params }) {
   const gate = guard(req, "qc.dispute.review", "qc.score.override");
   if (gate) return gate;

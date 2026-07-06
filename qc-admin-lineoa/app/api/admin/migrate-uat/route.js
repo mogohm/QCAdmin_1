@@ -38,6 +38,37 @@ export async function POST(req) {
         ALTER TABLE ai_review_queue ALTER COLUMN corrected_sop_id TYPE INTEGER USING NULL;
       END IF;
     END $$;`;
+    // ---- ai_review_queue: เชื่อมโยงตรงถึงคู่ข้อความ + case identity (ห้ามพึ่ง customer_name/เดาวันที่) ----
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS customer_message_id UUID`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS admin_message_id UUID`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS customer_created_at TIMESTAMPTZ`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS admin_created_at TIMESTAMPTZ`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS response_seconds INT`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS scraper_job_id UUID`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS source TEXT`;
+    await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS case_ref TEXT`;
+    await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_review_case_ref ON ai_review_queue (case_ref) WHERE case_ref IS NOT NULL`;
+    // backfill จาก qc_scores (แหล่งความจริงของคู่ข้อความ)
+    await query`UPDATE ai_review_queue r SET
+        customer_message_id = COALESCE(r.customer_message_id, q.customer_message_id),
+        admin_message_id    = COALESCE(r.admin_message_id, q.admin_message_id),
+        response_seconds    = COALESCE(r.response_seconds, q.response_seconds),
+        scraper_job_id      = COALESCE(r.scraper_job_id, q.scraper_job_id),
+        source              = COALESCE(r.source, q.source)
+      FROM qc_scores q WHERE q.id = r.qc_score_id`;
+    // backfill เวลาแต่ละฝั่งจาก messages จริง
+    await query`UPDATE ai_review_queue r SET customer_created_at = m.created_at
+      FROM messages m WHERE m.id = r.customer_message_id AND r.customer_created_at IS NULL`;
+    await query`UPDATE ai_review_queue r SET admin_created_at = m.created_at
+      FROM messages m WHERE m.id = r.admin_message_id AND r.admin_created_at IS NULL`;
+    // message_id เดิม (ถ้ามี) = admin message
+    await query`UPDATE ai_review_queue SET admin_message_id = COALESCE(admin_message_id, message_id) WHERE message_id IS NOT NULL`;
+    // case_ref: QC-YYYYMMDD-XXXXXX (Bangkok day + md5 สั้นจาก id — เสถียร, unique)
+    await query`UPDATE ai_review_queue SET case_ref =
+        'QC-' || to_char((COALESCE(customer_created_at, created_at)) AT TIME ZONE 'Asia/Bangkok','YYYYMMDD')
+        || '-' || upper(substr(md5(id::text),1,6))
+      WHERE case_ref IS NULL`;
+
     // reviewed_by: UUID → TEXT ให้ตรงกับ qc_disputes/registration (เก็บชื่อผู้ตรวจ)
     //   เดิมเป็น UUID แต่ session uid = app_users.id (SERIAL/integer) → insert แล้วพัง
     //   "invalid input syntax for type uuid: 23" ปลอดภัย: ค่าเดิมเป็น NULL ทั้งหมด (insert เคยพังมาตลอด)
@@ -117,6 +148,7 @@ export async function POST(req) {
         "pending_reply_messages",
         "scraper_jobs.mode",
         "ai_review_queue.reviewed_by:text",
+        "ai_review_queue.case_detail_linkage",
       ],
     });
   } catch (e) {

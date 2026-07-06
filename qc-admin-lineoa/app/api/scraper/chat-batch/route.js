@@ -159,9 +159,11 @@ export async function POST(req) {
           adminText: p.admin_text,
           responseSeconds: p.response_seconds,
           createdAt: p.admin_created_at,
+          customerCreatedAt: p.customer_created_at || null,
           adminName: p.admin_name,
           customerName: safeCustomerName,
           scraperJobId: jobId,
+          source: "scraper",
         });
         counts.qc_pairs_created++;
         if (qc && (Number(qc.finalScore) < 70 || qc.isFatal || (qc.minorIssues || []).length)) counts.flagged++;
