@@ -226,26 +226,13 @@ async function scrapeChat(page, item) {
   if (!clicked) return null;
   await page.waitForTimeout(1200);
 
-  // scroll chat panel ขึ้นเพื่อโหลด history แล้วเก็บ HTML สะสม (กัน virtual scroll)
+  // โหลดประวัติ: scroll ขึ้นบนสุดซ้ำ ๆ จน scrollHeight ไม่โตอีก
+  //   LINE ใช้ virtual/lazy list — ข้อความ "เมื่อวาน" อยู่ด้านบน ต้อง scroll ขึ้นหลายรอบให้ lazy-load
+  //   (ของเดิม scrollTop=0 ครั้งเดียวแล้ว scroll ลง → โหลดแค่ batch เดียว ไม่ถึงเมื่อวาน)
   const htmlSnaps = new Set();
-  await page
-    .evaluate(() => {
-      const c = document.querySelector(".chat");
-      let el = c && c.parentElement;
-      while (el && el !== document.body) {
-        const s = getComputedStyle(el);
-        if (
-          (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
-          el.scrollHeight > el.clientHeight + 50
-        ) {
-          el.scrollTop = 0;
-          return;
-        }
-        el = el.parentElement;
-      }
-    })
-    .catch(() => {});
-  for (let i = 0; i < 30; i++) {
+  let prevH = -1,
+    stable = 0;
+  for (let i = 0; i < 50; i++) {
     const snap = await page
       .evaluate(() =>
         Array.from(document.querySelectorAll(".chatsys-date, .chat"))
@@ -254,26 +241,42 @@ async function scrapeChat(page, item) {
       )
       .catch(() => "");
     if (snap) htmlSnaps.add(snap);
-    const pos = await page.evaluate(() => {
-      const c = document.querySelector(".chat");
-      let el = c && c.parentElement;
-      while (el && el !== document.body) {
-        const s = getComputedStyle(el);
-        if (
-          (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
-          el.scrollHeight > el.clientHeight + 50
-        ) {
-          const before = el.scrollTop;
-          el.scrollTop = Math.min(el.scrollHeight, el.scrollTop + el.clientHeight * 0.7);
-          return { before, after: el.scrollTop, bottom: el.scrollTop + el.clientHeight >= el.scrollHeight - 5 };
+    const h = await page
+      .evaluate(() => {
+        const c = document.querySelector(".chat");
+        let el = c && c.parentElement;
+        while (el && el !== document.body) {
+          const s = getComputedStyle(el);
+          if (
+            (s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") &&
+            el.scrollHeight > el.clientHeight + 50
+          ) {
+            el.scrollTop = 0; // ขึ้นบนสุด → trigger โหลดประวัติเก่ากว่า
+            return el.scrollHeight;
+          }
+          el = el.parentElement;
         }
-        el = el.parentElement;
-      }
-      return null;
-    });
-    await page.waitForTimeout(400);
-    if (!pos || pos.bottom || pos.after === pos.before) break;
+        return -1;
+      })
+      .catch(() => -1);
+    if (h < 0) break; // ไม่มี scroll container
+    if (h === prevH) {
+      if (++stable >= 3) break; // scrollHeight ไม่โตติดกัน 3 ครั้ง = โหลดประวัติครบแล้ว
+    } else {
+      stable = 0;
+      prevH = h;
+    }
+    await page.waitForTimeout(650); // รอ lazy-load ประวัติ
   }
+  // snapshot สุดท้าย (หลังโหลดครบ)
+  const lastSnap = await page
+    .evaluate(() =>
+      Array.from(document.querySelectorAll(".chatsys-date, .chat"))
+        .map((n) => n.outerHTML)
+        .join("\n"),
+    )
+    .catch(() => "");
+  if (lastSnap) htmlSnaps.add(lastSnap);
 
   const panelHtml = [...htmlSnaps].join("\n");
   saveHtml(`chat-${item.name}`.replace(/[^\w฀-๿-]/g, "_").slice(0, 60), panelHtml);
