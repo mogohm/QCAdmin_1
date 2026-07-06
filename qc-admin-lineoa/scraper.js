@@ -186,12 +186,18 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   const dir = path.join(EVIDENCE_DIR, dateStr, String(jobId), String(convId));
   ensureDir(dir);
 
-  // locate ทุก bubble ของคู่ (ลูกค้าทุกใบ + แอดมินทุกใบ) — occurrence คำนวณจากรายการ item เอง
+  // ล้าง tag เก่าทั้งหมดก่อน — tag ค้างจากคู่ก่อนหน้าใน chat เดียวกันทำให้อ่านข้อความผิด bubble
+  //   (บั๊กจริงที่ post-capture verification จับได้: querySelector เจอ tag ซ้ำของคู่แรก)
+  await page.evaluate(() => {
+    document.querySelectorAll("[data-qa-ev]").forEach((el) => el.removeAttribute("data-qa-ev"));
+  }).catch(() => {});
+  // locate ทุก bubble ของคู่ — tag ไม่ซ้ำข้ามเคส (ใส่ suffix จาก qc id)
+  const tagSuffix = String(qcRes.qc_score_id).replace(/-/g, "").slice(0, 8);
   const metas = [];
   (qcRes.customer_items || []).forEach((m, i) =>
-    metas.push({ direction: "customer", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-c${i}` }));
+    metas.push({ direction: "customer", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-${tagSuffix}-c${i}` }));
   (qcRes.admin_items || []).forEach((m, i) =>
-    metas.push({ direction: "admin", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-a${i}` }));
+    metas.push({ direction: "admin", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-${tagSuffix}-a${i}` }));
   if (!metas.length) return { saved: 0, verification: null };
 
   let foundCount = 0, confSum = 0;
@@ -221,8 +227,8 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
     }
     return out;
   }, metas.map((m) => m.tag)).catch(() => ({}));
-  const capturedCustomer = metas.filter((m) => m.tag.startsWith("qa-c")).map((m) => capturedTexts[m.tag]).filter(Boolean);
-  const capturedAdmin = metas.filter((m) => m.tag.startsWith("qa-a")).map((m) => capturedTexts[m.tag]).filter(Boolean);
+  const capturedCustomer = metas.filter((m) => /-c\d+$/.test(m.tag)).map((m) => capturedTexts[m.tag]).filter(Boolean);
+  const capturedAdmin = metas.filter((m) => /-a\d+$/.test(m.tag)).map((m) => capturedTexts[m.tag]).filter(Boolean);
 
   const EI = require("./lib/evidence-integrity");
   const captureManifest = {
