@@ -11,6 +11,7 @@
 // ============================================================
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { storeImage, evidenceStorageMode } from "@/lib/evidence-storage";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -50,26 +51,30 @@ export async function POST(req) {
     );
 
   let saved = 0;
+  const stored = new Set();
   try {
     for (const it of items) {
       if (!it || !it.evidence_type) continue;
-      // รูปภาพ → เก็บเป็น data URL ใน data.image
-      let data = it.data || {};
-      if (it.image_base64) {
-        const b64 = String(it.image_base64);
-        data = {
-          ...data,
-          image: b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`,
-        };
+      const data = it.data || {};
+      let url = it.url || null;
+      // รูปภาพ → อัปโหลดผ่าน storage adapter (blob → https url, ไม่งั้น data URL)
+      if (it.image_base64 && !url) {
+        const key = `${b.conversation_id || b.qc_score_id}/${it.evidence_type}-${Date.now()}`;
+        const r = await storeImage(it.image_base64, key);
+        url = r.url;
+        stored.add(r.storage);
       }
       await query`
         INSERT INTO case_evidence (qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data)
         VALUES (${b.qc_score_id || null}, ${b.conversation_id || null}, ${b.scraper_job_id || null},
-                ${it.evidence_type}, ${it.title || null}, ${it.file_path || null}, ${it.url || null},
+                ${it.evidence_type}, ${it.title || null}, ${it.file_path || null}, ${url},
                 ${JSON.stringify(data)})`;
       saved++;
     }
-    return Response.json({ ok: true, saved }, { headers: CORS });
+    return Response.json(
+      { ok: true, saved, storage: evidenceStorageMode(), used: [...stored] },
+      { headers: CORS },
+    );
   } catch (e) {
     return Response.json(
       { error: e.message, saved },

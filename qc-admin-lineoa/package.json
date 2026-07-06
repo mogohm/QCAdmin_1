@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",
+    "@vercel/blob": "^2.5.0",
     "dotenv": "latest",
     "lucide-react": "latest",
     "next": "latest",

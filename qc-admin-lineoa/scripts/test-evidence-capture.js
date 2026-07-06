@@ -124,26 +124,42 @@ const jget = (p, cookie) =>
     ok(
       "upload evidence (/api/evidence) สำเร็จ",
       up.status === 200 && upj.saved >= 1,
-      `saved ${upj.saved}`,
+      `saved ${upj.saved} · storage ${upj.storage} (${(upj.used || []).join(",")})`,
     );
 
-    // gallery API
+    // gallery API — ตรวจ contract ตรงกับ EvidenceViewer เป๊ะ
     const g = await jget(
       `/api/case-evidence?qc_score_id=${mc.qc_score_id}`,
       sys,
     ).then((r) => r.json());
     ok(
-      "case-evidence คืน gallery structure",
-      Array.isArray(g.screenshots) &&
+      "case-evidence contract ครบ (summary/screenshots/htmlSnapshots/rawData/timeline/masked)",
+      "summary" in g &&
+        Array.isArray(g.screenshots) &&
         Array.isArray(g.htmlSnapshots) &&
-        Array.isArray(g.rawData),
+        Array.isArray(g.rawData) &&
+        "timeline" in g &&
+        "masked" in g,
     );
-    ok(
-      "gallery มี screenshot ที่ upload",
-      (g.screenshots || []).some(
-        (s) => s.url && s.url.startsWith("data:image"),
-      ),
-    );
+    // negative: ต้องไม่ใช่ contract เก่า { evidence: [...] }
+    ok("ไม่ใช่ contract เก่า { evidence: [] }", !("evidence" in g));
+    const shot = (g.screenshots || [])[0];
+    ok("screenshots[0].url ไม่เป็น null", !!shot?.url, shot?.url?.slice(0, 40));
+    // production mode: url ต้องเป็น https (blob); โหมด fallback = data URL (ยังแสดงได้)
+    const httpsOk = shot?.url?.startsWith("https://");
+    const inlineOk = shot?.url?.startsWith("data:image");
+    if (process.env.EVIDENCE_STRICT_HTTPS === "true")
+      ok(
+        "screenshots[0].url เป็น https:// (blob)",
+        httpsOk,
+        shot?.url?.slice(0, 40),
+      );
+    else
+      ok(
+        "screenshots[0].url เป็น https หรือ data URL (แสดงบน UI ได้)",
+        httpsOk || inlineOk,
+        httpsOk ? "https(blob)" : "data-url(fallback)",
+      );
     ok(
       "gallery มี summary (customer/admin/score/timestamps)",
       g.summary &&
