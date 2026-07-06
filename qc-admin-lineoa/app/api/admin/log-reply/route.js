@@ -154,6 +154,7 @@ export async function POST(req) {
         inserted_messages: 0,
         skipped_duplicates: 1,
         qc_score_id: null,
+        conversation_id: dup[0].conversation_id,
       },
       { headers: CORS },
     );
