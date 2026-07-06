@@ -63,6 +63,11 @@ export async function POST(req) {
       FROM messages m WHERE m.id = r.admin_message_id AND r.admin_created_at IS NULL`;
     // message_id เดิม (ถ้ามี) = admin message
     await query`UPDATE ai_review_queue SET admin_message_id = COALESCE(admin_message_id, message_id) WHERE message_id IS NOT NULL`;
+    // source: แถวเก่าที่ qc_scores ไม่มี → ใช้ source ของ conversation / scraper_job จาก messages
+    await query`UPDATE ai_review_queue r SET source = c.source
+      FROM conversations c WHERE c.id = r.conversation_id AND r.source IS NULL AND c.source IS NOT NULL`;
+    await query`UPDATE ai_review_queue r SET scraper_job_id = m.scraper_job_id
+      FROM messages m WHERE m.id = r.admin_message_id AND r.scraper_job_id IS NULL AND m.scraper_job_id IS NOT NULL`;
     // case_ref: QC-YYYYMMDD-XXXXXX (Bangkok day + md5 สั้นจาก id — เสถียร, unique)
     await query`UPDATE ai_review_queue SET case_ref =
         'QC-' || to_char((COALESCE(customer_created_at, created_at)) AT TIME ZONE 'Asia/Bangkok','YYYYMMDD')
