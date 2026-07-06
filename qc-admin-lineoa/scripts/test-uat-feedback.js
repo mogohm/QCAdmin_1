@@ -150,11 +150,15 @@ const code = (p, cookie, method = "GET", body) =>
       sys,
     );
     const evj = await ev.json().catch(() => ({}));
+    // case-evidence คืน gallery structure {screenshots, htmlSnapshots, rawData, ...}
+    const evCount =
+      (evj.rawData?.length || 0) +
+      (evj.screenshots?.length || 0) +
+      (evj.htmlSnapshots?.length || 0);
     ok(
       "Manual case มีหลักฐาน (case_evidence)",
-      ev.status === 200 &&
-        Array.isArray(evj.evidence) &&
-        evj.evidence.length > 0,
+      ev.status === 200 && evCount > 0,
+      `count ${evCount}`,
     );
   }
 
