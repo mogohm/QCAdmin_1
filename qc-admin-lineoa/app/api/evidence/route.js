@@ -64,11 +64,21 @@ export async function POST(req) {
         url = r.url;
         stored.add(r.storage);
       }
+      // exact-pair contract: scope/match ต่อ item (fallback ค่าระดับ payload)
+      const scope = it.evidence_scope || b.evidence_scope || null;
+      const matchStatus = it.match_status || b.match_status || null;
+      const matchConf = it.match_confidence ?? b.match_confidence ?? null;
       await query`
-        INSERT INTO case_evidence (qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data)
+        INSERT INTO case_evidence (qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data,
+          case_ref, customer_message_id, admin_message_id, customer_source_keys, admin_source_keys,
+          evidence_scope, match_status, match_confidence)
         VALUES (${b.qc_score_id || null}, ${b.conversation_id || null}, ${b.scraper_job_id || null},
                 ${it.evidence_type}, ${it.title || null}, ${it.file_path || null}, ${url},
-                ${JSON.stringify(data)})`;
+                ${JSON.stringify(data)},
+                ${b.case_ref || null}, ${b.customer_message_id || null}, ${b.admin_message_id || null},
+                ${b.customer_source_keys ? JSON.stringify(b.customer_source_keys) : null},
+                ${b.admin_source_keys ? JSON.stringify(b.admin_source_keys) : null},
+                ${scope}, ${matchStatus}, ${matchConf})`;
       saved++;
     }
     return Response.json(

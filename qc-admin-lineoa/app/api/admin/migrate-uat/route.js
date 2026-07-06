@@ -38,6 +38,29 @@ export async function POST(req) {
         ALTER TABLE ai_review_queue ALTER COLUMN corrected_sop_id TYPE INTEGER USING NULL;
       END IF;
     END $$;`;
+    // ---- EVIDENCE EXACT-PAIR: source_message_key + qc pair ids/keys + evidence contract ----
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS source_message_key TEXT`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_source_key ON messages (source_message_key)`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS customer_message_ids JSONB`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS admin_message_ids JSONB`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS customer_source_keys JSONB`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS admin_source_keys JSONB`;
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_ref TEXT`;
+    await query`UPDATE qc_scores SET case_ref =
+        'QC-' || to_char(created_at AT TIME ZONE 'Asia/Bangkok','YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
+      WHERE case_ref IS NULL`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS case_ref TEXT`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS customer_message_id UUID`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS admin_message_id UUID`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS customer_source_keys JSONB`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS admin_source_keys JSONB`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS evidence_scope TEXT`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_status TEXT`;
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_confidence NUMERIC`;
+    // legacy: ภาพเดิมที่ link แค่ conversation → จัดเป็น "ภาพอ้างอิงระดับห้องแชท" ห้ามแสดงเป็นหลักฐาน exact
+    await query`UPDATE case_evidence SET evidence_scope='conversation_reference', match_status='legacy_unlinked'
+      WHERE evidence_scope IS NULL`;
+
     // ---- ai_review_queue: เชื่อมโยงตรงถึงคู่ข้อความ + case identity (ห้ามพึ่ง customer_name/เดาวันที่) ----
     await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS customer_message_id UUID`;
     await query`ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS admin_message_id UUID`;
@@ -154,6 +177,7 @@ export async function POST(req) {
         "scraper_jobs.mode",
         "ai_review_queue.reviewed_by:text",
         "ai_review_queue.case_detail_linkage",
+        "evidence.exact_pair_contract",
       ],
     });
   } catch (e) {

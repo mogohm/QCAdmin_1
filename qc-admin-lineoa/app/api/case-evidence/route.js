@@ -22,6 +22,10 @@ const IMG_TYPES = [
   "chat_part_png",
   "chat_long_png",
   "screenshot",
+  // exact-pair evidence (ผูกกับคู่ข้อความที่ให้คะแนนโดยตรง)
+  "pair_focus_png",
+  "pair_context_png",
+  "chat_identity_png",
 ];
 const HTML_TYPES = ["html_snapshot", "html"];
 
@@ -59,7 +63,8 @@ export async function GET(req) {
     // OR: evidence ที่ผูกกับ qc_score นี้ "หรือ" กับ conversation นี้
     //   (scraper เก็บ screenshot ผูก conversation_id, ส่วน summary/chat_text ผูก qc_score_id)
     const rows = await query`
-      SELECT id, qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data, created_at
+      SELECT id, qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data, created_at,
+             case_ref, evidence_scope, match_status, match_confidence, customer_message_id, admin_message_id
       FROM case_evidence
       WHERE (${qcId}::uuid IS NOT NULL AND qc_score_id = ${qcId}::uuid)
          OR (${convId}::uuid IS NOT NULL AND conversation_id = ${convId}::uuid)
@@ -74,6 +79,12 @@ export async function GET(req) {
     for (const ev of rows) {
       const data = canFull ? ev.data : maskData(ev.data);
       if (IMG_TYPES.includes(ev.evidence_type)) {
+        // exact-pair contract: scope/match — ภาพเก่าที่ผูกแค่ conversation = legacy_unlinked
+        //   ห้ามแสดงเป็นหลักฐาน exact ของเคส (แสดงเป็น "ภาพอ้างอิงระดับห้องแชท" พร้อมคำเตือน)
+        const scope = ev.evidence_scope || "conversation_reference";
+        const matchStatus = ev.match_status || "legacy_unlinked";
+        // exact ต้องผูก qc_score เดียวกันจริง (กันภาพ exact ของเคสอื่นใน conversation เดียวกัน)
+        const belongsToCase = qcId && ev.qc_score_id === qcId;
         screenshots.push({
           id: ev.id,
           type: ev.evidence_type,
@@ -81,6 +92,11 @@ export async function GET(req) {
           url: ev.url || data?.image || null, // data URL หรือ external url
           file_path: ev.file_path,
           created_at: ev.created_at,
+          case_ref: ev.case_ref || null,
+          evidence_scope: scope,
+          match_status: belongsToCase || !qcId ? matchStatus : "legacy_unlinked",
+          match_confidence: ev.match_confidence != null ? Number(ev.match_confidence) : null,
+          pair: data?.pair ? (canFull ? data.pair : maskData(data.pair)) : null,
         });
       } else if (HTML_TYPES.includes(ev.evidence_type)) {
         htmlSnapshots.push({

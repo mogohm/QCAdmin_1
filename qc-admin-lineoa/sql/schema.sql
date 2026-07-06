@@ -453,6 +453,23 @@ ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS source TEXT;
 ALTER TABLE ai_review_queue ADD COLUMN IF NOT EXISTS case_ref TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_review_case_ref ON ai_review_queue (case_ref) WHERE case_ref IS NOT NULL;
 
+-- EVIDENCE EXACT-PAIR: หลักฐานต้องชี้คู่ข้อความที่ใช้ให้คะแนนเป๊ะ (ไม่ใช่แค่ระดับห้องแชท)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS source_message_key TEXT;
+CREATE INDEX IF NOT EXISTS idx_messages_source_key ON messages (source_message_key);
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS customer_message_ids JSONB;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS admin_message_ids JSONB;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS customer_source_keys JSONB;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS admin_source_keys JSONB;
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_ref TEXT;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS case_ref TEXT;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS customer_message_id UUID;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS admin_message_id UUID;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS customer_source_keys JSONB;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS admin_source_keys JSONB;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS evidence_scope TEXT;      -- exact_pair | pair_context | chat_identity | conversation_reference
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_status TEXT;        -- exact | probable | uncertain | legacy_unlinked
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_confidence NUMERIC;
+
 CREATE TABLE IF NOT EXISTS case_evidence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qc_score_id UUID, conversation_id UUID, scraper_job_id UUID,

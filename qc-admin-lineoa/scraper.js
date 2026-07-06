@@ -96,6 +96,189 @@ const postEvidence = (payload) =>
 const postChatBatch = (payload) =>
   api("/api/scraper/chat-batch", { method: "POST", body: JSON.stringify(payload) });
 
+// ---------- EXACT-PAIR EVIDENCE ----------
+// เวลาไทย HH:MM จาก created_at (ใช้เทียบกับเวลาบน bubble)
+const bkkHHMM = (iso) => {
+  if (!iso) return null;
+  const t = new Date(iso);
+  if (isNaN(t.getTime())) return null;
+  const b = new Date(t.getTime() + 7 * 3600000);
+  return `${String(b.getUTCHours()).padStart(2, "0")}:${String(b.getUTCMinutes()).padStart(2, "0")}`;
+};
+
+// หา bubble เป้าหมายใน DOM — ห้าม match ด้วย text อย่างเดียว
+//   สัญญาณ: direction + normalized text + เวลา (HH:MM) + ลำดับ occurrence (ข้อความซ้ำหลายครั้ง)
+//   คืน { found, confidence, matchedSignals, candidateCount, tag } — element ถูกแท็ก data-qa-ev=<tag>
+async function locateMessageBubble(page, meta, tag) {
+  return page.evaluate(
+    ({ meta, tag }) => {
+      const norm = (s) => String(s || "").replace(/\s+/g, " ").trim();
+      const bubbles = [...document.querySelectorAll(".chat")].filter(
+        (el) => el.querySelector(".chat-item-text") || /\[(sticker|image|file|media)\]/.test(el.innerText),
+      );
+      const items = bubbles.map((el, i) => {
+        const dir = el.className.includes("chat-reverse") ? "admin" : "customer";
+        const text = norm(el.querySelector(".chat-item-text")?.innerText || "");
+        const times = (el.innerText.match(/\b\d{1,2}:\d{2}\b/g) || []);
+        return { el, i, dir, text, time: times[times.length - 1] || null };
+      });
+      const target = norm(meta.text);
+      // 1) direction + text
+      let cands = items.filter((x) => x.dir === meta.direction && x.text === target);
+      const candidateCount = cands.length;
+      const signals = [];
+      if (cands.length) signals.push("direction+text");
+      // 2) เวลา (HH:MM ไทย)
+      if (cands.length > 1 && meta.time) {
+        const t = cands.filter((x) => x.time === meta.time);
+        if (t.length) { cands = t; signals.push("timestamp"); }
+      }
+      // 3) ลำดับ occurrence ใน DOM (ข้อความ+เวลาซ้ำกันหลายใบ)
+      if (cands.length > 1 && Number.isInteger(meta.occurrence)) {
+        const pick = cands[Math.min(meta.occurrence, cands.length - 1)];
+        if (pick) { cands = [pick]; signals.push("dom_order"); }
+      }
+      if (!cands.length) return { found: false, confidence: 0, matchedSignals: [], candidateCount };
+      const chosen = cands[0];
+      chosen.el.setAttribute("data-qa-ev", tag);
+      // confidence: text+dir=60, +time=30, unique=10
+      let conf = 60;
+      if (signals.includes("timestamp") || (chosen.time && chosen.time === meta.time)) { conf += 30; if (!signals.includes("timestamp")) signals.push("timestamp"); }
+      if (candidateCount === 1) conf += 10;
+      else if (cands.length === 1) conf += 5; // แยกได้ด้วยสัญญาณเพิ่ม
+      return { found: true, confidence: Math.min(100, conf), matchedSignals: signals, candidateCount, tag };
+    },
+    { meta, tag },
+  );
+}
+
+// เลื่อนให้ "คู่ที่ตรวจ" อยู่ในจอเดียวกัน — bubble แรก ~32% จากบนจอ แล้วตรวจซ้ำว่า tag ยังอยู่
+async function scrollPairIntoView(page, firstTag, lastTag) {
+  const ok = await page.evaluate(
+    ({ firstTag, lastTag }) => {
+      const first = document.querySelector(`[data-qa-ev="${firstTag}"]`);
+      if (!first) return false;
+      let el = first.parentElement;
+      let container = null;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if ((s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") && el.scrollHeight > el.clientHeight + 50) { container = el; break; }
+        el = el.parentElement;
+      }
+      if (!container) { first.scrollIntoView({ block: "center" }); return true; }
+      const cRect = container.getBoundingClientRect();
+      const fRect = first.getBoundingClientRect();
+      container.scrollTop += fRect.top - cRect.top - container.clientHeight * 0.32;
+      return true;
+    },
+    { firstTag, lastTag },
+  );
+  await page.waitForTimeout(600); // รอ layout นิ่ง
+  // ยืนยัน bubble เป้าหมายยังอยู่ (virtual list อาจ re-render)
+  return ok && (await page.locator(`[data-qa-ev="${firstTag}"]`).count()) > 0;
+}
+
+// capture หลักฐาน "หลังรู้คู่ที่ตรวจแล้ว" — pair_focus / pair_context / chat_identity
+//   ผูกกับ qc_score_id + message ids + source keys; ความมั่นใจต่ำ → match_status=uncertain
+async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
+  if (!qcRes?.qc_score_id) return 0;
+  const caseRef = qcRes.case_ref || `QC-${String(qcRes.qc_score_id).slice(0, 6)}`;
+  const dir = path.join(EVIDENCE_DIR, dateStr, String(jobId), String(convId));
+  ensureDir(dir);
+
+  // locate ทุก bubble ของคู่ (ลูกค้าทุกใบ + แอดมินทุกใบ) — occurrence คำนวณจากรายการ item เอง
+  const metas = [];
+  (qcRes.customer_items || []).forEach((m, i) =>
+    metas.push({ direction: "customer", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-c${i}` }));
+  (qcRes.admin_items || []).forEach((m, i) =>
+    metas.push({ direction: "admin", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-a${i}` }));
+  if (!metas.length) return 0;
+
+  let foundCount = 0, confSum = 0;
+  const signals = new Set();
+  for (const m of metas) {
+    const r = await locateMessageBubble(page, m, m.tag).catch(() => ({ found: false, confidence: 0 }));
+    if (r.found) { foundCount++; confSum += r.confidence; (r.matchedSignals || []).forEach((s) => signals.add(s)); }
+  }
+  const allFound = foundCount === metas.length;
+  const confidence = metas.length ? Math.round(confSum / metas.length) : 0;
+  const matchStatus = allFound && confidence >= 85 ? "exact" : allFound && confidence >= 60 ? "probable" : "uncertain";
+  if (!foundCount) {
+    log(`[EVIDENCE] ${caseRef} — หา bubble ไม่พบเลย (ไม่ capture เป็น exact)`);
+    return 0;
+  }
+  const firstTag = metas[0].tag;
+  const scrolled = await scrollPairIntoView(page, firstTag, metas[metas.length - 1].tag);
+  if (!scrolled) log(`[EVIDENCE] ${caseRef} — scroll แล้ว tag หาย (virtual re-render)`);
+
+  // bounding box รวมของ bubble ที่เจอ → clip สำหรับ pair_focus
+  const box = await page.evaluate((tags) => {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, n = 0;
+    for (const t of tags) {
+      const el = document.querySelector(`[data-qa-ev="${t}"]`);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2) continue;
+      x1 = Math.min(x1, r.left); y1 = Math.min(y1, r.top);
+      x2 = Math.max(x2, r.right); y2 = Math.max(y2, r.bottom); n++;
+    }
+    if (!n) return null;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const pad = 14;
+    return {
+      x: Math.max(0, x1 - pad), y: Math.max(0, y1 - pad),
+      width: Math.min(vw, x2 + pad) - Math.max(0, x1 - pad),
+      height: Math.min(vh, y2 + pad) - Math.max(0, y1 - pad),
+      vw, vh, clippedTall: y2 - y1 > vh - 30,
+    };
+  }, metas.map((m) => m.tag));
+
+  const items = [];
+  const shoot = async (evidence_type, title, fname, clip) => {
+    const buf = await page.screenshot({ type: "jpeg", quality: 60, ...(clip ? { clip } : {}) }).catch(() => null);
+    if (!buf) return;
+    fs.writeFileSync(path.join(dir, fname), buf);
+    items.push({
+      evidence_type, title,
+      file_path: path.relative(__dirname, path.join(dir, fname)),
+      image_base64: `data:image/jpeg;base64,${buf.toString("base64")}`,
+      evidence_scope: evidence_type === "pair_focus_png" ? "exact_pair" : evidence_type === "pair_context_png" ? "pair_context" : "chat_identity",
+      match_status: matchStatus,
+      match_confidence: confidence,
+      data: {
+        pair: {
+          customer_text: qcRes.customer_text, customer_created_at: qcRes.customer_created_at,
+          admin_text: qcRes.admin_text, admin_created_at: qcRes.admin_created_at,
+          response_seconds: qcRes.response_seconds,
+        },
+        matched_signals: [...signals], found: foundCount, total: metas.length,
+      },
+    });
+  };
+  // A) pair_focus — เฉพาะคู่ที่ตรวจ (clip กรอบรวม)
+  if (box && box.width > 30 && box.height > 20)
+    await shoot("pair_focus_png", `คู่ข้อความที่ใช้ให้คะแนน (${caseRef})`, `${caseRef}-pair-focus.jpg`, { x: box.x, y: box.y, width: box.width, height: box.height });
+  // B) pair_context — viewport รอบคู่ (บริบท 2-4 ข้อความ)
+  await shoot("pair_context_png", `บริบทรอบคู่ข้อความ (${caseRef})`, `${caseRef}-context.jpg`);
+  // C) chat_identity — แถบหัวห้อง (ชื่อลูกค้า)
+  await shoot("chat_identity_png", `ตัวตนห้องแชท (${caseRef})`, `${caseRef}-identity.jpg`, { x: 0, y: 0, width: box?.vw || 1280, height: 90 });
+
+  if (!items.length) return 0;
+  const res = await postEvidence({
+    qc_score_id: qcRes.qc_score_id,
+    conversation_id: convId,
+    scraper_job_id: jobId,
+    case_ref: caseRef,
+    customer_message_id: qcRes.customer_message_id || null,
+    admin_message_id: qcRes.admin_message_id || null,
+    customer_source_keys: qcRes.customer_source_keys || null,
+    admin_source_keys: qcRes.admin_source_keys || null,
+    items,
+  }).catch((e) => ({ error: e.message }));
+  log(`[EVIDENCE] ${caseRef} · match=${matchStatus} conf=${confidence}% found=${foundCount}/${metas.length} · saved=${res?.saved ?? 0}${res?.error ? " ⚠️ " + res.error : ""}`);
+  return res?.saved || 0;
+}
+
 // แคปภาพแชทจริง (header+panel+ล่าสุด) + HTML → เก็บไฟล์ local + อัปโหลดเข้า case_evidence
 async function captureEvidence(page, { convId, jobId, dateStr, panelHtml }) {
   if (!convId) return 0;
@@ -688,9 +871,13 @@ async function runJob(job, context) {
       C.pending_reply_messages += r.pending_reply_messages || 0;
       log(`[SAVE] inserted=${r.messages_inserted} dup=${r.duplicates_skipped} cust=${r.customer_messages} admin=${r.admin_messages} · [QC] pairs=${r.qc_pairs_created} pending(cases=${r.pending_reply_cases}/msgs=${r.pending_reply_messages})`);
 
-      // เก็บภาพหลักฐาน (mode all = ทุกแชท, flagged_only = เฉพาะมีเคสปัญหา)
-      if (EVIDENCE_MODE !== "off" && r.conversation_id && (EVIDENCE_MODE === "all" || (r.flagged || 0) > 0)) {
-        await captureEvidence(page, { convId: r.conversation_id, jobId: job.id, dateStr: toISO(fromDate), panelHtml: res.panelHtml }).catch(() => {});
+      // เก็บภาพหลักฐาน "หลังรู้คู่ที่ตรวจแล้ว" — ต่อ QC case (exact pair) ไม่ใช่ viewport ทั่วไป
+      //   ลำดับที่ถูกต้อง: save ทุกข้อความ → pair → runQc → รู้ qc_score_id+message ids → locate → scroll → capture
+      if (EVIDENCE_MODE !== "off" && r.conversation_id && Array.isArray(r.qc_results)) {
+        const toCapture = r.qc_results.filter((q) => q.qc_score_id && (EVIDENCE_MODE === "all" || q.flagged));
+        for (const qcRes of toCapture) {
+          await captureQcPairEvidence(page, { qcRes, convId: r.conversation_id, jobId: job.id, dateStr: toISO(fromDate) }).catch((e) => log(`[EVIDENCE] error: ${e.message}`));
+        }
       }
 
       // notes
@@ -897,6 +1084,79 @@ async function main() {
     const context = await browser.newContext({ storageState: AUTH_FILE });
     return { browser, context };
   };
+
+  // โหมด recapture: ซ่อมหลักฐานเคสเก่าให้ชี้คู่ข้อความเป๊ะ โดยไม่ต้อง scrape ใหม่ทั้งหมด
+  //   node scraper.js --recapture-evidence=<qc_score_id> --headed
+  const recapId = getArg("recapture-evidence");
+  if (recapId) {
+    const info = await api(`/api/scraper/recapture-info?qc_score_id=${recapId}`);
+    if (!info?.ok) {
+      console.error("❌ โหลดข้อมูลเคสไม่ได้:", info?.error || "no response");
+      process.exit(1);
+    }
+    log(`[RECAPTURE] ${info.case_ref} · ลูกค้า=${info.customer_name || info.line_user_id} · score=${info.final_score}`);
+    if (!info.line_user_id || !/^U[a-f0-9]{32}$/.test(info.line_user_id)) {
+      console.error("❌ เคสนี้ไม่มี LINE user id จริง (external key) — เปิดห้องเดิมตรง ๆ ไม่ได้");
+      process.exit(1);
+    }
+    const { browser, context } = await launchAndContext();
+    const page = await openLineOA(context);
+    // ไปห้องแชทของลูกค้าโดยตรง: /{account}/chat/{line_user_id}
+    const account = (new URL(page.url()).pathname.split("/").filter(Boolean))[0] || "";
+    await page.goto(`${new URL(page.url()).origin}/${account}/chat/${info.line_user_id}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await page.waitForTimeout(1800);
+    // โหลดประวัติจนถึงวันของคู่ข้อความ (scroll ขึ้นบนสุดซ้ำ ๆ)
+    const targetDay = D.bangkokDayOf(info.customer_created_at || info.admin_created_at);
+    let prevH = -1, stable = 0;
+    for (let i = 0; i < 60; i++) {
+      const st = await page.evaluate(() => {
+        const c = document.querySelector(".chat");
+        let el = c && c.parentElement;
+        while (el && el !== document.body) {
+          const s = getComputedStyle(el);
+          if ((s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") && el.scrollHeight > el.clientHeight + 50) {
+            el.scrollTop = 0;
+            return el.scrollHeight;
+          }
+          el = el.parentElement;
+        }
+        return -1;
+      }).catch(() => -1);
+      if (st < 0) break;
+      // ถึงวันเป้าหมายหรือยัง (ดูจาก date separator บนสุดที่โหลดแล้ว)
+      const oldestDay = await page.evaluate(() => {
+        const d = document.querySelector(".chatsys-date");
+        return d ? d.innerText.trim() : null;
+      }).catch(() => null);
+      const oldestIso = oldestDay ? D.normalizeJobDate(core.dayLabelToDate(oldestDay, new Date())) : null;
+      if (targetDay && oldestIso && oldestIso <= targetDay) { log(`[RECAPTURE] โหลดประวัติถึง ${oldestIso} (เป้าหมาย ${targetDay})`); break; }
+      if (st === prevH) { if (++stable >= 4) break; } else { stable = 0; prevH = st; }
+      await page.waitForTimeout(700);
+    }
+    const saved = await captureQcPairEvidence(page, {
+      qcRes: {
+        qc_score_id: info.qc_score_id,
+        case_ref: info.case_ref,
+        customer_message_id: info.customer_message_id,
+        admin_message_id: info.admin_message_id,
+        customer_source_keys: info.customer_source_keys,
+        admin_source_keys: info.admin_source_keys,
+        customer_text: info.customer_text,
+        admin_text: info.admin_text,
+        customer_created_at: info.customer_created_at,
+        admin_created_at: info.admin_created_at,
+        response_seconds: info.response_seconds,
+        customer_items: (info.customer_items || []).map((m) => ({ text: m.text, created_at: m.created_at, message_type: m.message_type })),
+        admin_items: (info.admin_items || []).map((m) => ({ text: m.text, created_at: m.created_at, message_type: m.message_type })),
+      },
+      convId: info.conversation_id,
+      jobId: "recapture",
+      dateStr: targetDay || toISO(new Date()),
+    }).catch((e) => { console.error("capture error:", e.message); return 0; });
+    log(`[RECAPTURE] ${info.case_ref} — บันทึกหลักฐาน ${saved} รายการ`);
+    await browser.close().catch(() => {});
+    process.exit(saved > 0 ? 0 : 1);
+  }
 
   // โหมดสั่งครั้งเดียว: --yesterday / --date / --from..--to → สร้าง job แล้วทำจนจบ
   const dateArg = getArg("date");

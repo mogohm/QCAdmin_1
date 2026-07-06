@@ -336,6 +336,10 @@ function parseChatHTML(html, opts = {}) {
       created_at,
       admin_name,
       raw_text: stripTags(seg).slice(0, 500),
+      // locator metadata — ใช้หา bubble เดิมใน DOM ตอน capture หลักฐาน (ห้าม match ด้วย text อย่างเดียว)
+      dom_index: i, // ลำดับ marker ในเอกสาร
+      timestamp_text: time || null,
+      date_separator: currentDate ? new Date(currentDate).toISOString().slice(0, 10) : null,
     });
   }
   return out;
@@ -491,10 +495,29 @@ function pairMessages(messages, opts = {}) {
       reply_group_id: hashText(
         group.map((g) => g.message_text + (g.created_at || "")).join("|"),
       ),
+      // อ้างอิง bubble ต้นทางทุกใบของคู่นี้ — ใช้เก็บ message ids/keys บน qc_score
+      //   (block ลูกค้าหลายข้อความ / admin หลาย bubble ต้องรู้ครบทุกใบ)
+      customer_items: custMsgs.slice(),
+      admin_items: group.slice(),
     });
     pendingCust = [];
   }
   return pairs;
+}
+
+// source_message_key — กุญแจระบุ bubble ต้นทางแบบ deterministic (ห้ามระบุด้วย text อย่างเดียว)
+//   sha256(chatKey | direction | created_at | normalizedText | messageType) → 32 hex
+function sourceMessageKey({ chatKey, direction, created_at, text, message_type } = {}) {
+  const crypto = require("crypto");
+  const norm = normalizeText(text || "");
+  const raw = [
+    String(chatKey || ""),
+    String(direction || ""),
+    created_at ? new Date(created_at).toISOString() : "",
+    norm,
+    String(message_type || "text"),
+  ].join("|");
+  return crypto.createHash("sha256").update(raw, "utf8").digest("hex").slice(0, 32);
 }
 
 // dedup messages — คืน { unique, skipped_duplicate }
@@ -559,6 +582,7 @@ module.exports = {
   resolveLabelDay,
   classifyCandidate,
   buildExternalChatKey,
+  sourceMessageKey,
   inDateWindow,
   DAY_MAP,
 };

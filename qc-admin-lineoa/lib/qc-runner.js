@@ -24,6 +24,11 @@ export async function runQc({
   scraperJobId = null,
   customerCreatedAt = null,
   source = null,
+  // exact-pair evidence: ทุก bubble ที่ประกอบเป็นคู่ (block ลูกค้า/หลาย bubble ของแอดมิน)
+  customerMessageIds = null,
+  adminMessageIds = null,
+  customerSourceKeys = null,
+  adminSourceKeys = null,
 }) {
   const { sops, fatalRules } = await loadKnowledge();
   const sla = await isSlaException(createdAt || new Date());
@@ -54,7 +59,8 @@ export async function runQc({
       final_score, fail_reasons, matched_rules, created_at,
       intent, matched_sop_id, matched_sop_topic, expected_sop_answer, sop_confidence,
       dimension_scores, is_fatal, fatal_reasons, minor_issues, coaching,
-      sla_exception, evidence, commission_tier
+      sla_exception, evidence, commission_tier,
+      customer_message_ids, admin_message_ids, customer_source_keys, admin_source_keys
     ) VALUES (
       ${conversationId}, ${customerMessageId}, ${adminMessageId}, ${adminId}, ${lineUserId || null},
       ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
@@ -63,9 +69,18 @@ export async function runQc({
       ${qc.intent}, ${sop?.id || null}, ${sop?.topic || null}, ${sop?.answer || null}, ${qc.sopConfidence},
       ${JSON.stringify(qc.dimensions)}, ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)},
       ${JSON.stringify(qc.minorIssues)}, ${coaching ? JSON.stringify(coaching) : null},
-      ${qc.slaException}, ${JSON.stringify(qc.evidence)}, ${JSON.stringify(qc.commissionTier)}
+      ${qc.slaException}, ${JSON.stringify(qc.evidence)}, ${JSON.stringify(qc.commissionTier)},
+      ${customerMessageIds ? JSON.stringify(customerMessageIds) : null},
+      ${adminMessageIds ? JSON.stringify(adminMessageIds) : null},
+      ${customerSourceKeys ? JSON.stringify(customerSourceKeys) : null},
+      ${adminSourceKeys ? JSON.stringify(adminSourceKeys) : null}
     ) RETURNING *`;
   qc.id = row[0].id;
+  // case_ref: QC-YYYYMMDD-XXXXXX — ตั้งทันทีหลังรู้ id (เสถียร ใช้เป็นชื่อไฟล์หลักฐาน)
+  const cr = await query`UPDATE qc_scores SET case_ref =
+      'QC-' || to_char(created_at AT TIME ZONE 'Asia/Bangkok','YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
+    WHERE id = ${qc.id} AND case_ref IS NULL RETURNING case_ref`.catch(() => []);
+  qc.caseRef = cr[0]?.case_ref || row[0].case_ref || null;
   qc.coaching = coaching;
 
   // รายมิติ

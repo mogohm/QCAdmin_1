@@ -120,11 +120,19 @@ export async function POST(req) {
         continue;
       }
       const adminId = dir === "admin" ? await resolveAdmin(m.admin_name) : null;
+      // source_message_key — กุญแจระบุ bubble ต้นทาง (chatKey|dir|เวลา|ข้อความ|ชนิด) ใช้ชี้หลักฐานเป๊ะ
+      const srcKey = core.sourceMessageKey({
+        chatKey: extKey || lineUserId,
+        direction: dir,
+        created_at: at,
+        text: m.text,
+        message_type: m.message_type || "text",
+      });
       const row = at
-        ? await query`INSERT INTO messages (conversation_id, line_user_id, direction, message_text, message_type, admin_id, admin_name, source, scraper_job_id, message_hash, created_at)
-            VALUES (${convId}, ${lineUserId}, ${dir}, ${m.text}, ${m.message_type || "text"}, ${adminId}, ${m.admin_name || null}, 'scraper', ${jobId}, ${hash}, ${at}::timestamptz) RETURNING id`
-        : await query`INSERT INTO messages (conversation_id, line_user_id, direction, message_text, message_type, admin_id, admin_name, source, scraper_job_id, message_hash)
-            VALUES (${convId}, ${lineUserId}, ${dir}, ${m.text}, ${m.message_type || "text"}, ${adminId}, ${m.admin_name || null}, 'scraper', ${jobId}, ${hash}) RETURNING id`;
+        ? await query`INSERT INTO messages (conversation_id, line_user_id, direction, message_text, message_type, admin_id, admin_name, source, scraper_job_id, message_hash, source_message_key, created_at)
+            VALUES (${convId}, ${lineUserId}, ${dir}, ${m.text}, ${m.message_type || "text"}, ${adminId}, ${m.admin_name || null}, 'scraper', ${jobId}, ${hash}, ${srcKey}, ${at}::timestamptz) RETURNING id`
+        : await query`INSERT INTO messages (conversation_id, line_user_id, direction, message_text, message_type, admin_id, admin_name, source, scraper_job_id, message_hash, source_message_key)
+            VALUES (${convId}, ${lineUserId}, ${dir}, ${m.text}, ${m.message_type || "text"}, ${adminId}, ${m.admin_name || null}, 'scraper', ${jobId}, ${hash}, ${srcKey}) RETURNING id`;
       counts.messages_inserted++;
       idByKey.set(keyOf(dir, m.text, at), row[0].id);
     }
@@ -140,14 +148,28 @@ export async function POST(req) {
       })),
       { groupWindowSec: 180 },
     );
+    const qc_results = []; // ส่งกลับให้ scraper ใช้ capture หลักฐาน "หลังรู้คู่ที่ตรวจแล้ว"
+    const srcKeyOf = (m) =>
+      core.sourceMessageKey({
+        chatKey: extKey || lineUserId,
+        direction: m.direction === "admin" ? "admin" : m.direction === "customer" ? "customer" : "system",
+        created_at: m.created_at || null,
+        text: m.message_text,
+        message_type: m.message_type || "text",
+      });
     for (const p of pairs) {
       if (!p.customer_text || !p.admin_text) continue; // ไม่มีคู่จริง → ไม่สร้าง QC
       const adminId = await resolveAdmin(p.admin_name);
       if (!adminId) continue; // ชื่อไม่ใช่ PK จริง → ข้าม (ไม่มั่ว)
-      const adminMsgId = idByKey.get(keyOf("admin", p.admin_text.split("\n")[0], p.admin_created_at)) || null;
-      const custMsgId = p.customer_created_at
-        ? idByKey.get(keyOf("customer", p.customer_text.split("\n").slice(-1)[0], p.customer_created_at)) || null
-        : null;
+      // ทุก bubble ของคู่ → ids + source keys (block ลูกค้าหลายข้อความ / admin หลาย bubble)
+      const custItems = p.customer_items || [];
+      const adminItems = p.admin_items || [];
+      const custIds = custItems.map((m) => idByKey.get(keyOf("customer", m.message_text, m.created_at || null))).filter(Boolean);
+      const adminIds = adminItems.map((m) => idByKey.get(keyOf("admin", m.message_text, m.created_at || null))).filter(Boolean);
+      const custKeys = custItems.map(srcKeyOf);
+      const adminKeys = adminItems.map(srcKeyOf);
+      const custMsgId = custIds[custIds.length - 1] || null; // ข้อความสุดท้ายของ block = จุดเริ่มนับเวลา
+      const adminMsgId = adminIds[0] || null;
       try {
         const qc = await runQc({
           conversationId: convId,
@@ -164,9 +186,34 @@ export async function POST(req) {
           customerName: safeCustomerName,
           scraperJobId: jobId,
           source: "scraper",
+          customerMessageIds: custIds,
+          adminMessageIds: adminIds,
+          customerSourceKeys: custKeys,
+          adminSourceKeys: adminKeys,
         });
         counts.qc_pairs_created++;
-        if (qc && (Number(qc.finalScore) < 70 || qc.isFatal || (qc.minorIssues || []).length)) counts.flagged++;
+        const isFlagged = qc && (Number(qc.finalScore) < 70 || qc.isFatal || (qc.minorIssues || []).length > 0);
+        if (isFlagged) counts.flagged++;
+        // metadata ให้ scraper locate + capture คู่นี้ใน DOM (ห้าม match ด้วย text อย่างเดียว)
+        qc_results.push({
+          qc_score_id: qc?.id || null,
+          case_ref: qc?.caseRef || null,
+          flagged: !!isFlagged,
+          final_score: qc?.finalScore ?? null,
+          customer_message_id: custMsgId,
+          admin_message_id: adminMsgId,
+          customer_message_ids: custIds,
+          admin_message_ids: adminIds,
+          customer_source_keys: custKeys,
+          admin_source_keys: adminKeys,
+          customer_text: p.customer_text,
+          admin_text: p.admin_text,
+          customer_created_at: p.customer_created_at,
+          admin_created_at: p.admin_created_at,
+          response_seconds: p.response_seconds,
+          customer_items: custItems.map((m) => ({ text: m.message_text, created_at: m.created_at, time: m.time || m.timestamp_text || null, message_type: m.message_type || "text" })),
+          admin_items: adminItems.map((m) => ({ text: m.message_text, created_at: m.created_at, time: m.time || m.timestamp_text || null, message_type: m.message_type || "text" })),
+        });
       } catch (e) {
         console.error("chat-batch runQc:", e.message);
       }
@@ -203,7 +250,10 @@ export async function POST(req) {
         ${counts.system_messages}, ${counts.qc_pairs_created}, ${counts.pending_reply_cases}, ${counts.pending_reply_messages}, ${counts.duplicates_skipped},
         ${counts.messages_found ? "ok" : "empty"})`.catch((e) => console.error("chat_results:", e.message));
 
-    return Response.json({ ok: true, conversation_id: convId, messages_received: msgs.length, ...counts }, { headers: CORS });
+    return Response.json(
+      { ok: true, conversation_id: convId, messages_received: msgs.length, ...counts, qc_results },
+      { headers: CORS },
+    );
   } catch (e) {
     return Response.json({ error: e.message, ...counts }, { status: 500, headers: CORS });
   }
