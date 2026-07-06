@@ -264,10 +264,12 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   await shoot("chat_identity_png", `ตัวตนห้องแชท (${caseRef})`, `${caseRef}-identity.jpg`, { x: 0, y: 0, width: box?.vw || 1280, height: 90 });
 
   if (!items.length) return 0;
+  // scraper_job_id เป็น UUID — โหมด recapture ใช้ folder "recapture" แต่ห้ามส่งเข้าคอลัมน์ uuid
+  const jobUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(jobId)) ? jobId : null;
   const res = await postEvidence({
     qc_score_id: qcRes.qc_score_id,
     conversation_id: convId,
-    scraper_job_id: jobId,
+    scraper_job_id: jobUuid,
     case_ref: caseRef,
     customer_message_id: qcRes.customer_message_id || null,
     admin_message_id: qcRes.admin_message_id || null,
