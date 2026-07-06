@@ -56,11 +56,13 @@ export async function GET(req) {
       { status: 400 },
     );
   try {
+    // OR: evidence ที่ผูกกับ qc_score นี้ "หรือ" กับ conversation นี้
+    //   (scraper เก็บ screenshot ผูก conversation_id, ส่วน summary/chat_text ผูก qc_score_id)
     const rows = await query`
       SELECT id, qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data, created_at
       FROM case_evidence
-      WHERE (${qcId}::uuid IS NULL OR qc_score_id = ${qcId}::uuid)
-        AND (${convId}::uuid IS NULL OR conversation_id = ${convId}::uuid)
+      WHERE (${qcId}::uuid IS NOT NULL AND qc_score_id = ${qcId}::uuid)
+         OR (${convId}::uuid IS NOT NULL AND conversation_id = ${convId}::uuid)
       ORDER BY created_at ASC`;
 
     const screenshots = [];
