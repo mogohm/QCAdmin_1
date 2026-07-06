@@ -31,23 +31,33 @@ export default function EvidenceViewer({
       .catch((e) => setErr(String(e)));
   }, [qcScoreId, conversationId]);
 
-  const shots = bundle?.screenshots || [];
-  // แยกหลักฐาน "ตรงคู่ข้อความที่ประเมิน" (exact/probable) ออกจากภาพอ้างอิงระดับห้องแชท (legacy)
+  // INTEGRITY GATING — exact tab ต้องผ่านครบ: identity ตรงเคส + post-capture verified + match exact
+  //   ห้ามใช้ locator confidence (match_confidence) อ้าง "ตรงกับข้อความที่ใช้ให้คะแนน" ลำพัง
+  const exactRaw = bundle?.exactEvidence || [];
+  const refRaw = bundle?.conversationReferences || [];
   const EXACT_ORDER = { pair_focus_png: 0, pair_context_png: 1, chat_identity_png: 2 };
+  const isTrulyExact = (s) =>
+    s.identity_check?.all_match === true &&
+    s.verification_status === "verified" &&
+    s.match_status === "exact" &&
+    (!qcScoreId || String(s.qc_score_id) === String(qcScoreId)) &&
+    (!caseRef || !s.case_ref || s.case_ref === caseRef);
   const exactShots = useMemo(
-    () =>
-      shots
-        .filter((s) => ["exact", "probable", "uncertain"].includes(s.match_status) && s.evidence_scope !== "conversation_reference")
-        .sort((a, b) => (EXACT_ORDER[a.type] ?? 9) - (EXACT_ORDER[b.type] ?? 9)),
-    [shots],
+    () => exactRaw.filter(isTrulyExact).sort((a, b) => (EXACT_ORDER[a.type] ?? 9) - (EXACT_ORDER[b.type] ?? 9)),
+    [exactRaw, qcScoreId, caseRef],
+  );
+  // หลักฐานของเคสนี้ที่ "ยังไม่ผ่าน/ไม่ตรง" — แสดงแยก ห้ามปนกับ exact
+  const unverifiedShots = useMemo(
+    () => exactRaw.filter((s) => !exactShots.includes(s) && !PART_TYPES.includes(s.type)),
+    [exactRaw, exactShots],
   );
   const legacyShots = useMemo(
-    () => shots.filter((s) => !exactShots.includes(s) && !PART_TYPES.includes(s.type)),
-    [shots, exactShots],
+    () => refRaw.filter((s) => !PART_TYPES.includes(s.type)),
+    [refRaw],
   );
   const partShots = useMemo(
-    () => shots.filter((s) => PART_TYPES.includes(s.type) && !exactShots.includes(s)),
-    [shots, exactShots],
+    () => [...exactRaw, ...refRaw].filter((s) => PART_TYPES.includes(s.type)),
+    [exactRaw, refRaw],
   );
   const summary = bundle?.summary || null;
   const timeline = bundle?.timeline || null;
@@ -56,6 +66,10 @@ export default function EvidenceViewer({
     [
       "shots",
       `🎯 หลักฐานของข้อความที่ประเมิน${exactShots.length ? ` (${exactShots.length})` : ""}`,
+    ],
+    [
+      "unverified",
+      `⚠️ ยังไม่ผ่านการตรวจสอบ${unverifiedShots.length ? ` (${unverifiedShots.length})` : ""}`,
     ],
     [
       "reference",
@@ -157,19 +171,45 @@ export default function EvidenceViewer({
               ))}
             </div>
 
-            {/* Tab 1: หลักฐานของข้อความที่ประเมิน (exact pair) */}
+            {/* Tab 1: หลักฐานของข้อความที่ประเมิน — เฉพาะ verified + identity ตรงเคสเท่านั้น */}
             {tab === "shots" &&
               (exactShots.length ? (
-                <Gallery items={exactShots} onZoom={setZoom} exact />
+                <Gallery items={exactShots} onZoom={setZoom} exact viewerQc={qcScoreId} viewerRef={caseRef} />
               ) : (
                 <div className="empty" style={{ color: "#8fb0dd" }}>
-                  ยังไม่มีภาพหลักฐานที่ยืนยันตรงคู่ข้อความของเคสนี้
+                  ยังไม่มีภาพหลักฐานที่ "ผ่านการยืนยัน" ว่าตรงคู่ข้อความของเคสนี้
                   <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                    {legacyShots.length
-                      ? `มีภาพอ้างอิงระดับห้องแชท ${legacyShots.length} ภาพ (ดูแท็บถัดไป) — ใช้คำสั่ง recapture เพื่อเก็บภาพตรงคู่ข้อความ`
-                      : "(scraper จะแคปภาพตรงคู่ข้อความเมื่อรันเก็บข้อมูลรอบถัดไป หรือใช้ node scraper.js --recapture-evidence=<qc_score_id>)"}
+                    {unverifiedShots.length
+                      ? `มีภาพของเคสนี้ ${unverifiedShots.length} ภาพที่ยังไม่ผ่านการตรวจสอบ (ดูแท็บ ⚠️)`
+                      : legacyShots.length
+                        ? `มีภาพอ้างอิงระดับห้องแชท ${legacyShots.length} ภาพ (ดูแท็บ 🖼️)`
+                        : "ใช้ node scraper.js --recapture-evidence=<qc_score_id> เพื่อเก็บภาพตรงคู่ข้อความ"}
                   </div>
                 </div>
+              ))}
+
+            {/* Tab: หลักฐานที่ไม่ผ่านการตรวจสอบ (ของเคสนี้ แต่ identity/verification ไม่ครบ) */}
+            {tab === "unverified" &&
+              (unverifiedShots.length ? (
+                <>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#f6c65b",
+                      background: "rgba(246,198,91,.08)",
+                      border: "1px solid rgba(246,198,91,.35)",
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      marginBottom: 10,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    ⚠️ ภาพต่อไปนี้ยังไม่ได้ยืนยันว่าตรงกับข้อความของเคสนี้ — ห้ามใช้ตัดสิน QC
+                  </div>
+                  <Gallery items={unverifiedShots} onZoom={setZoom} viewerQc={qcScoreId} viewerRef={caseRef} />
+                </>
+              ) : (
+                <div className="empty" style={{ color: "#8fb0dd" }}>ไม่มี</div>
               ))}
 
             {/* Tab 2: ภาพอ้างอิงระดับห้องแชท (legacy — ยังไม่ยืนยันว่าตรงช่วงข้อความ) */}
@@ -268,16 +308,19 @@ function bkkTime(iso) {
   return `${String(b.getUTCHours()).padStart(2, "0")}:${String(b.getUTCMinutes()).padStart(2, "0")} น.`;
 }
 function matchBadge(s) {
-  if (s.match_status === "exact")
-    return <span style={{ color: "#22c55e", fontSize: 10, fontWeight: 700 }}>✅ ตรงกับข้อความที่ใช้ให้คะแนน{s.match_confidence != null ? ` (${s.match_confidence}%)` : ""}</span>;
-  if (s.match_status === "probable")
-    return <span style={{ color: "#f6c65b", fontSize: 10, fontWeight: 700 }}>🟡 น่าจะตรงคู่ข้อความ ({s.match_confidence ?? "?"}%)</span>;
-  if (s.match_status === "uncertain")
-    return <span style={{ color: "#f97316", fontSize: 10, fontWeight: 700 }}>⚠️ ยืนยันตำแหน่งไม่ได้แน่ชัด</span>;
-  return <span style={{ color: "#8fb0dd", fontSize: 10 }}>⚠️ ภาพอ้างอิงระดับห้องแชท</span>;
+  // ✅ เฉพาะเมื่อผ่านครบ: post-capture verified + identity ตรงเคส + exact
+  //   (match_confidence = locator confidence — ห้ามใช้อ้าง exact ลำพัง)
+  const fullyVerified = s.verification_status === "verified" && s.identity_check?.all_match === true && s.match_status === "exact";
+  if (fullyVerified)
+    return <span style={{ color: "#22c55e", fontSize: 10, fontWeight: 700 }}>✅ ตรงกับข้อความที่ใช้ให้คะแนน (ยืนยันแล้ว)</span>;
+  if (s.match_status === "rejected" || (s.identity_check && s.identity_check.all_match === false && s.identity_check.qc_score_match === false))
+    return <span style={{ color: "#ef4444", fontSize: 10, fontWeight: 700 }}>❌ หลักฐานไม่ตรงกับเคส — ไม่นำมาใช้ตรวจ</span>;
+  if (s.evidence_scope === "conversation_reference" || s.match_status === "legacy_unlinked")
+    return <span style={{ color: "#8fb0dd", fontSize: 10 }}>⚠️ ภาพอ้างอิงระดับห้องแชท</span>;
+  return <span style={{ color: "#f6c65b", fontSize: 10, fontWeight: 700 }}>⚠️ ยังไม่ได้ยืนยันว่าภาพตรงกับข้อความของเคสนี้</span>;
 }
 
-function Gallery({ items, onZoom, exact = false }) {
+function Gallery({ items, onZoom, exact = false, viewerQc = null, viewerRef = null }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: exact ? "1fr" : "1fr 1fr", gap: 10 }}>
       {items.map((s) =>
@@ -287,6 +330,12 @@ function Gallery({ items, onZoom, exact = false }) {
               <span className="muted" style={{ fontSize: 10 }}>{s.title || s.type}</span>
               {matchBadge(s)}
             </div>
+            {/* debug: รหัสเคสไม่ตรง — โชว์ให้เห็นชัดว่าอะไรไม่ตรง */}
+            {viewerRef && s.case_ref && s.case_ref !== viewerRef && (
+              <div style={{ fontSize: 10, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.3)", borderRadius: 6, padding: "4px 8px", marginBottom: 4 }}>
+                เคสที่เปิด: {viewerRef} · หลักฐาน: {s.case_ref} · เหตุผล: รหัสเคสไม่ตรงกัน
+              </div>
+            )}
             <img
               src={s.url}
               alt={s.title || s.type}

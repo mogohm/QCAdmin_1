@@ -11,6 +11,7 @@
     "import:sop": "node scripts/import-sop.js",
     "test:db-id": "node scripts/test-db-id.js",
     "test:case-identity": "node scripts/test-case-identity.js",
+    "test:evidence-integrity": "node scripts/test-evidence-integrity.js",
     "audit:customer-identity": "node scripts/audit-customer-identity.js",
     "repair:customer-identity": "node scripts/repair-customer-identity.js",
     "test:qc": "node scripts/test-qc-engine.js",
@@ -29,7 +30,7 @@
     "audit:scraper": "node scripts/audit-scraper-output.js",
     "scraper:login": "node scripts/line-login.js",
     "scraper:watch": "node scraper.js --watch",
-    "uat:check": "npm run build && npm run test:db-id && npm run test:case-identity && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:evidence && npm run test:uat-feedback && npm run test:uat-feedback:strict"
+    "uat:check": "npm run build && npm run test:db-id && npm run test:case-identity && npm run test:evidence-integrity && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:evidence && npm run test:uat-feedback && npm run test:uat-feedback:strict"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",

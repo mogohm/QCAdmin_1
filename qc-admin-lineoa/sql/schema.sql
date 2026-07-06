@@ -469,6 +469,7 @@ ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS admin_source_keys JSONB;
 ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS evidence_scope TEXT;      -- exact_pair | pair_context | chat_identity | conversation_reference
 ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_status TEXT;        -- exact | probable | uncertain | legacy_unlinked
 ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_confidence NUMERIC;
+ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS verification_status TEXT;  -- verified | failed | rejected
 
 CREATE TABLE IF NOT EXISTS case_evidence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

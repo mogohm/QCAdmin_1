@@ -50,7 +50,7 @@ const jget = (p, cookie) =>
   );
   ok(
     "EvidenceViewer มี fallback ไม่มีภาพ",
-    /ยังไม่มีภาพหลักฐานของหน้าแชท/.test(ev),
+    /ยังไม่มีภาพหลักฐาน/.test(ev),
   );
   ok(
     "มี /api/evidence route",

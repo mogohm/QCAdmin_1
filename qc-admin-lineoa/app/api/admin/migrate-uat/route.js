@@ -57,6 +57,8 @@ export async function POST(req) {
     await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS evidence_scope TEXT`;
     await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_status TEXT`;
     await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS match_confidence NUMERIC`;
+    // verification_status: verified | failed | rejected | NULL(ยังไม่ยืนยัน) — exact ต้อง verified เท่านั้น
+    await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS verification_status TEXT`;
     // legacy: ภาพเดิมที่ link แค่ conversation → จัดเป็น "ภาพอ้างอิงระดับห้องแชท" ห้ามแสดงเป็นหลักฐาน exact
     await query`UPDATE case_evidence SET evidence_scope='conversation_reference', match_status='legacy_unlinked'
       WHERE evidence_scope IS NULL`;

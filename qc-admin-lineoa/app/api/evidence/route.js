@@ -68,17 +68,18 @@ export async function POST(req) {
       const scope = it.evidence_scope || b.evidence_scope || null;
       const matchStatus = it.match_status || b.match_status || null;
       const matchConf = it.match_confidence ?? b.match_confidence ?? null;
+      const verifStatus = it.verification_status || b.verification_status || null;
       await query`
         INSERT INTO case_evidence (qc_score_id, conversation_id, scraper_job_id, evidence_type, title, file_path, url, data,
           case_ref, customer_message_id, admin_message_id, customer_source_keys, admin_source_keys,
-          evidence_scope, match_status, match_confidence)
+          evidence_scope, match_status, match_confidence, verification_status)
         VALUES (${b.qc_score_id || null}, ${b.conversation_id || null}, ${b.scraper_job_id || null},
                 ${it.evidence_type}, ${it.title || null}, ${it.file_path || null}, ${url},
                 ${JSON.stringify(data)},
                 ${b.case_ref || null}, ${b.customer_message_id || null}, ${b.admin_message_id || null},
                 ${b.customer_source_keys ? JSON.stringify(b.customer_source_keys) : null},
                 ${b.admin_source_keys ? JSON.stringify(b.admin_source_keys) : null},
-                ${scope}, ${matchStatus}, ${matchConf})`;
+                ${scope}, ${matchStatus}, ${matchConf}, ${verifStatus})`;
       saved++;
     }
     return Response.json(

@@ -181,7 +181,7 @@ async function scrollPairIntoView(page, firstTag, lastTag) {
 // capture หลักฐาน "หลังรู้คู่ที่ตรวจแล้ว" — pair_focus / pair_context / chat_identity
 //   ผูกกับ qc_score_id + message ids + source keys; ความมั่นใจต่ำ → match_status=uncertain
 async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
-  if (!qcRes?.qc_score_id) return 0;
+  if (!qcRes?.qc_score_id) return { saved: 0, verification: null };
   const caseRef = qcRes.case_ref || `QC-${String(qcRes.qc_score_id).slice(0, 6)}`;
   const dir = path.join(EVIDENCE_DIR, dateStr, String(jobId), String(convId));
   ensureDir(dir);
@@ -192,7 +192,7 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
     metas.push({ direction: "customer", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-c${i}` }));
   (qcRes.admin_items || []).forEach((m, i) =>
     metas.push({ direction: "admin", text: m.text, time: m.time || bkkHHMM(m.created_at), occurrence: 0, tag: `qa-a${i}` }));
-  if (!metas.length) return 0;
+  if (!metas.length) return { saved: 0, verification: null };
 
   let foundCount = 0, confSum = 0;
   const signals = new Set();
@@ -205,11 +205,55 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   const matchStatus = allFound && confidence >= 85 ? "exact" : allFound && confidence >= 60 ? "probable" : "uncertain";
   if (!foundCount) {
     log(`[EVIDENCE] ${caseRef} — หา bubble ไม่พบเลย (ไม่ capture เป็น exact)`);
-    return 0;
+    return { saved: 0, verification: null };
   }
   const firstTag = metas[0].tag;
   const scrolled = await scrollPairIntoView(page, firstTag, metas[metas.length - 1].tag);
   if (!scrolled) log(`[EVIDENCE] ${caseRef} — scroll แล้ว tag หาย (virtual re-render)`);
+
+  // PHASE 5: post-capture verification — อ่านข้อความ "จาก DOM จริง ณ ตอนถ่าย" มาเทียบกับคู่ที่คาดหวัง
+  //   locator confidence ≠ evidence confidence: ต่อให้ locate 100% ถ้าข้อความบนจอไม่ตรง = ห้ามอ้าง exact
+  const capturedTexts = await page.evaluate((tags) => {
+    const out = {};
+    for (const t of tags) {
+      const el = document.querySelector(`[data-qa-ev="${t}"]`);
+      out[t] = el ? (el.querySelector(".chat-item-text")?.innerText || el.innerText || "").replace(/\s+/g, " ").trim() : null;
+    }
+    return out;
+  }, metas.map((m) => m.tag)).catch(() => ({}));
+  const capturedCustomer = metas.filter((m) => m.tag.startsWith("qa-c")).map((m) => capturedTexts[m.tag]).filter(Boolean);
+  const capturedAdmin = metas.filter((m) => m.tag.startsWith("qa-a")).map((m) => capturedTexts[m.tag]).filter(Boolean);
+
+  const EI = require("./lib/evidence-integrity");
+  const captureManifest = {
+    qc_score_id: qcRes.qc_score_id,
+    case_ref: caseRef,
+    conversation_id: convId,
+    chat_key: qcRes.chat_key || null,
+    expected_customer_message_ids: qcRes.customer_message_ids || (qcRes.customer_message_id ? [qcRes.customer_message_id] : []),
+    expected_admin_message_ids: qcRes.admin_message_ids || (qcRes.admin_message_id ? [qcRes.admin_message_id] : []),
+    expected_customer_text_hashes: (qcRes.customer_items || []).map((m) => EI.textHash(m.text)),
+    expected_admin_text_hashes: (qcRes.admin_items || []).map((m) => EI.textHash(m.text)),
+    captured_customer_texts: capturedCustomer,
+    captured_admin_texts: capturedAdmin,
+    captured_customer_text_hashes: capturedCustomer.map(EI.textHash),
+    captured_admin_text_hashes: capturedAdmin.map(EI.textHash),
+    captured_at: new Date().toISOString(),
+  };
+  const verification = EI.verifyCapturedEvidence({
+    expectedPair: {
+      qc_score_id: qcRes.qc_score_id,
+      case_ref: caseRef,
+      customer_message_ids: captureManifest.expected_customer_message_ids,
+      admin_message_ids: captureManifest.expected_admin_message_ids,
+      customer_texts: (qcRes.customer_items || []).map((m) => m.text),
+      admin_texts: (qcRes.admin_items || []).map((m) => m.text),
+    },
+    captureManifest,
+  });
+  const verificationStatus = verification.verified ? "verified" : "failed";
+  // FINAL STATUS: exact เฉพาะ verified เท่านั้น (locator conf สูงแต่ verify FAIL → uncertain)
+  const finalMatchStatus = verification.verified && matchStatus === "exact" ? "exact" : verification.verified ? matchStatus : "uncertain";
 
   // bounding box รวมของ bubble ที่เจอ → clip สำหรับ pair_focus
   const box = await page.evaluate((tags) => {
@@ -243,15 +287,18 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
       file_path: path.relative(__dirname, path.join(dir, fname)),
       image_base64: `data:image/jpeg;base64,${buf.toString("base64")}`,
       evidence_scope: evidence_type === "pair_focus_png" ? "exact_pair" : evidence_type === "pair_context_png" ? "pair_context" : "chat_identity",
-      match_status: matchStatus,
-      match_confidence: confidence,
+      match_status: finalMatchStatus,
+      match_confidence: confidence, // = locator confidence (แยกจาก verification)
+      verification_status: verificationStatus,
       data: {
         pair: {
           customer_text: qcRes.customer_text, customer_created_at: qcRes.customer_created_at,
           admin_text: qcRes.admin_text, admin_created_at: qcRes.admin_created_at,
           response_seconds: qcRes.response_seconds,
         },
-        matched_signals: [...signals], found: foundCount, total: metas.length,
+        capture_manifest: captureManifest, // ภาพ+metadata มาจาก capture ครั้งเดียวกันเสมอ
+        verification, // { verified, identity_score, text_score, timestamp_score, failures }
+        locator: { matched_signals: [...signals], found: foundCount, total: metas.length, locator_confidence: confidence },
       },
     });
   };
@@ -263,7 +310,7 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   // C) chat_identity — แถบหัวห้อง (ชื่อลูกค้า)
   await shoot("chat_identity_png", `ตัวตนห้องแชท (${caseRef})`, `${caseRef}-identity.jpg`, { x: 0, y: 0, width: box?.vw || 1280, height: 90 });
 
-  if (!items.length) return 0;
+  if (!items.length) return { saved: 0, verification, verificationStatus, matchStatus: finalMatchStatus, capturedCustomer, capturedAdmin };
   // scraper_job_id เป็น UUID — โหมด recapture ใช้ folder "recapture" แต่ห้ามส่งเข้าคอลัมน์ uuid
   const jobUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(jobId)) ? jobId : null;
   const res = await postEvidence({
@@ -277,8 +324,15 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
     admin_source_keys: qcRes.admin_source_keys || null,
     items,
   }).catch((e) => ({ error: e.message }));
-  log(`[EVIDENCE] ${caseRef} · match=${matchStatus} conf=${confidence}% found=${foundCount}/${metas.length} · saved=${res?.saved ?? 0}${res?.error ? " ⚠️ " + res.error : ""}`);
-  return res?.saved || 0;
+  log(`[EVIDENCE] ${caseRef} · verify=${verificationStatus}${verification.failures.length ? "(" + verification.failures.join(",") + ")" : ""} match=${finalMatchStatus} locator=${confidence}% text=${verification.text_score}% found=${foundCount}/${metas.length} · saved=${res?.saved ?? 0}${res?.error ? " ⚠️ " + res.error : ""}`);
+  return {
+    saved: res?.saved || 0,
+    verification,
+    verificationStatus,
+    matchStatus: finalMatchStatus,
+    capturedCustomer,
+    capturedAdmin,
+  };
 }
 
 // แคปภาพแชทจริง (header+panel+ล่าสุด) + HTML → เก็บไฟล์ local + อัปโหลดเข้า case_evidence
@@ -1135,12 +1189,24 @@ async function main() {
       if (st === prevH) { if (++stable >= 4) break; } else { stable = 0; prevH = st; }
       await page.waitForTimeout(700);
     }
-    const saved = await captureQcPairEvidence(page, {
+    // PHASE 11: พิมพ์เป้าหมายก่อน capture — ให้ตรวจได้ว่า linkage ถูกเคสจริง
+    console.log("\n===== TARGET CASE =====");
+    console.log(`  qc_score_id     : ${info.qc_score_id}`);
+    console.log(`  case_ref        : ${info.case_ref}`);
+    console.log(`  conversation_id : ${info.conversation_id}`);
+    console.log("  CUSTOMER PAIR:");
+    (info.customer_items || []).forEach((m) => console.log(`    [${m.id}] "${(m.text || "").slice(0, 60)}" @ ${m.created_at}`));
+    console.log("  ADMIN PAIR:");
+    (info.admin_items || []).forEach((m) => console.log(`    [${m.id}] "${(m.text || "").slice(0, 60)}" @ ${m.created_at}`));
+
+    const result = await captureQcPairEvidence(page, {
       qcRes: {
         qc_score_id: info.qc_score_id,
         case_ref: info.case_ref,
         customer_message_id: info.customer_message_id,
         admin_message_id: info.admin_message_id,
+        customer_message_ids: info.customer_message_ids,
+        admin_message_ids: info.admin_message_ids,
         customer_source_keys: info.customer_source_keys,
         admin_source_keys: info.admin_source_keys,
         customer_text: info.customer_text,
@@ -1154,10 +1220,21 @@ async function main() {
       convId: info.conversation_id,
       jobId: "recapture",
       dateStr: targetDay || toISO(new Date()),
-    }).catch((e) => { console.error("capture error:", e.message); return 0; });
-    log(`[RECAPTURE] ${info.case_ref} — บันทึกหลักฐาน ${saved} รายการ`);
+    }).catch((e) => { console.error("capture error:", e.message); return { saved: 0, verification: null }; });
+
+    // PHASE 11: พิมพ์สิ่งที่ถ่ายได้จริง + ผล verification
+    console.log("\n===== CAPTURED TEXT =====");
+    console.log("  CUSTOMER:", (result.capturedCustomer || []).map((t) => `"${t.slice(0, 60)}"`).join(" | ") || "(none)");
+    console.log("  ADMIN   :", (result.capturedAdmin || []).map((t) => `"${t.slice(0, 60)}"`).join(" | ") || "(none)");
+    console.log("\n===== VERIFICATION =====");
+    if (result.verification) {
+      console.log(`  ${result.verification.verified ? "✅ PASS" : "❌ FAIL"} · identity=${result.verification.identity_score} text=${result.verification.text_score} ts=${result.verification.timestamp_score}`);
+      if (result.verification.failures.length) console.log(`  failures: ${result.verification.failures.join(", ")}`);
+    } else console.log("  ❌ FAIL — capture ไม่สำเร็จ");
+    log(`[RECAPTURE] ${info.case_ref} — บันทึกหลักฐาน ${result.saved} รายการ (verify=${result.verificationStatus || "n/a"})`);
     await browser.close().catch(() => {});
-    process.exit(saved > 0 ? 0 : 1);
+    // exit 0 เฉพาะเมื่อ verified จริง — FAIL ไม่ถือว่า recapture สำเร็จ
+    process.exit(result.saved > 0 && result.verification?.verified ? 0 : 1);
   }
 
   // โหมดสั่งครั้งเดียว: --yesterday / --date / --from..--to → สร้าง job แล้วทำจนจบ
