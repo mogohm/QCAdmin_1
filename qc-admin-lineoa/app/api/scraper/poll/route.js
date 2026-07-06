@@ -31,8 +31,15 @@ export async function PATCH(req) {
       { error: "unauthorized" },
       { status: 401, headers: CORS },
     );
-  const { id, status, total_chats, logged_count, current_chat, error_text } =
-    await req.json();
+  const {
+    id,
+    status,
+    total_chats,
+    logged_count,
+    current_chat,
+    error_text,
+    counters,
+  } = await req.json();
 
   const started_at = status === "running" ? new Date().toISOString() : null;
   const finished_at =
@@ -50,6 +57,7 @@ export async function PATCH(req) {
       total_chats  = COALESCE(${total_chats ?? null}, total_chats),
       logged_count = COALESCE(${logged_count ?? null}, logged_count),
       current_chat = COALESCE(${current_chat ?? null}, current_chat),
+      counters     = COALESCE(${counters ? JSON.stringify(counters) : null}::jsonb, counters),
       error_text   = COALESCE(${error_text ?? null}, error_text),
       started_at   = COALESCE(${started_at}, started_at),
       finished_at  = COALESCE(${finished_at}, finished_at)

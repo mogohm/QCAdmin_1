@@ -58,6 +58,57 @@ function fmtDateTH(iso) {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
+// ป้ายไทยของ counters (spec J)
+const COUNTER_LABELS = [
+  ["candidate_chats", "ห้องที่ต้องตรวจ", "#3b82f6"],
+  ["processed_chats", "ห้องที่เปิดแล้ว", "#3b82f6"],
+  ["collected_chats", "ห้องที่มีข้อความตรงวันที่", "#22c55e"],
+  ["empty_chats", "ห้องที่ไม่มีข้อความตรงวันที่", "#9ca3af"],
+  ["failed_chats", "ห้องที่ผิดพลาด", "#ef4444"],
+  ["messages_found", "ข้อความที่พบ", "#f59e0b"],
+  ["messages_inserted", "ข้อความที่บันทึก", "#16a34a"],
+  ["duplicates_skipped", "ข้อมูลซ้ำที่ข้าม", "#9ca3af"],
+  ["customer_messages", "ข้อความลูกค้า", "#0891b2"],
+  ["admin_messages", "ข้อความแอดมิน", "#1d4ed8"],
+  ["system_messages", "ข้อความระบบ", "#9ca3af"],
+  ["qc_pairs_created", "คู่ข้อความ QC", "#a855f7"],
+  ["pending_reply_count", "เคสรอตอบ", "#ea580c"],
+];
+function CountersPanel({ counters }) {
+  if (!counters || typeof counters !== "object") return null;
+  const items = COUNTER_LABELS.filter(([k]) => counters[k] != null);
+  if (!items.length) return null;
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))",
+        gap: 8,
+        marginTop: 10,
+      }}
+    >
+      {items.map(([k, label, c]) => (
+        <div
+          key={k}
+          style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            padding: "6px 10px",
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 800, color: c }}>
+            {counters[k] ?? 0}
+          </div>
+          <div style={{ fontSize: 10.5, color: "#666", lineHeight: 1.2 }}>
+            {label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ScrapeDiagram() {
   const box = (label, num, color, x, y, w, h, desc) => (
     <g key={num}>
@@ -284,7 +335,7 @@ function ScrapeDiagram() {
 export default function ScraperPage() {
   const [key, setKey] = useState("");
   const [dateFrom, setDateFrom] = useState(yesterday());
-  const [dateTo, setDateTo] = useState(today());
+  const [dateTo, setDateTo] = useState(yesterday());
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -409,8 +460,9 @@ export default function ScraperPage() {
     setCfg(newCfg);
     setCountdown(intervalMs);
     setMsg("");
-    submitJob(today(), today(), true).then((ok) => {
-      if (ok) setMsg(`✅ สร้าง job ทันที — รันครั้งหน้าใน ${intervalMin} นาที`);
+    // เก็บ "เมื่อวาน" เสมอ — ระบบไม่เก็บข้อมูลของวันนี้ (แอดมินยังทำงานอยู่)
+    submitJob(yesterday(), yesterday(), true).then((ok) => {
+      if (ok) setMsg(`✅ สร้าง job เมื่อวานทันที — รันครั้งหน้าใน ${intervalMin} นาที`);
     });
   }
 
@@ -614,6 +666,7 @@ export default function ScraperPage() {
                 🔍 chat ปัจจุบัน: {activeJob.current_chat}
               </div>
             )}
+            <CountersPanel counters={activeJob.counters} />
             <div
               style={{
                 fontSize: 12,
@@ -847,6 +900,21 @@ export default function ScraperPage() {
           {/* ===== MANUAL JOB ===== */}
           <div className="card">
             <h2>▶ Scrape ทันที</h2>
+            <div
+              style={{
+                fontSize: 12,
+                color: "#a16207",
+                background: "#fffbeb",
+                border: "1px solid #fde68a",
+                borderRadius: 8,
+                padding: "8px 10px",
+                marginBottom: 10,
+                lineHeight: 1.5,
+              }}
+            >
+              ℹ️ ระบบไม่เก็บข้อมูลของวันนี้ เพราะแอดมินยังอยู่ระหว่างปฏิบัติงาน
+              ระบบจะเก็บข้อมูลย้อนหลังเท่านั้น (เลือกได้ถึง “เมื่อวาน” เป็นอย่างช้าสุด)
+            </div>
             <div style={{ marginBottom: 10 }}>
               <label
                 style={{
@@ -905,6 +973,7 @@ export default function ScraperPage() {
                 <input
                   type="date"
                   value={dateFrom}
+                  max={yesterday()}
                   onChange={(e) => setDateFrom(e.target.value)}
                   style={{
                     width: "100%",
@@ -940,6 +1009,7 @@ export default function ScraperPage() {
                 <input
                   type="date"
                   value={dateTo}
+                  max={yesterday()}
                   onChange={(e) => setDateTo(e.target.value)}
                   style={{
                     width: "100%",
@@ -1072,6 +1142,26 @@ export default function ScraperPage() {
               </tbody>
             </table>
           )}
+          {jobs[0]?.counters &&
+            Object.keys(jobs[0].counters || {}).length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#374151",
+                    marginBottom: 2,
+                  }}
+                >
+                  📊 สรุปตัวนับงานล่าสุด ({jobs[0].date_from}
+                  {jobs[0].date_to !== jobs[0].date_from
+                    ? ` → ${jobs[0].date_to}`
+                    : ""}
+                  )
+                </div>
+                <CountersPanel counters={jobs[0].counters} />
+              </div>
+            )}
         </div>
 
         {/* ===== INSTRUCTIONS ===== */}

@@ -59,9 +59,32 @@ export async function POST(req) {
     await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS source_case_id UUID`;
     await query`ALTER TABLE sop_scripts ADD COLUMN IF NOT EXISTS training_status TEXT DEFAULT 'active'`;
 
-    // ---- messages: source (manual/scraper/webhook) ----
-    //   ใช้แยกเคสที่กรอกเอง (manual) ออกจาก scraper บนหน้า Chat Review
+    // ---- messages: source (manual/scraper/webhook) + scraper meta ----
     await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS source TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS scraper_job_id UUID`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_hash TEXT`;
+    await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS pending_reply BOOLEAN DEFAULT false`;
+    await query`CREATE INDEX IF NOT EXISTS idx_messages_hash ON messages (conversation_id, message_hash)`;
+
+    // ---- scraper_jobs: counters (JSONB) ครบตาม spec ----
+    await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
+
+    // ---- conversations: scraper meta ----
+    await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS source TEXT`;
+    await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraped_at TIMESTAMPTZ`;
+    await query`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraper_job_id UUID`;
+
+    // ---- scraper_chat_results: ผลเก็บข้อมูลต่อแชท (audit + counters) ----
+    await query`CREATE TABLE IF NOT EXISTS scraper_chat_results (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      scraper_job_id UUID, conversation_id UUID, line_user_id TEXT,
+      target_date_from DATE, target_date_to DATE,
+      messages_found INTEGER DEFAULT 0, messages_inserted INTEGER DEFAULT 0,
+      customer_messages INTEGER DEFAULT 0, admin_messages INTEGER DEFAULT 0,
+      system_messages INTEGER DEFAULT 0, qc_pairs_created INTEGER DEFAULT 0,
+      pending_reply_count INTEGER DEFAULT 0, duplicates_skipped INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'ok', error_text TEXT, created_at TIMESTAMPTZ DEFAULT now())`;
+    await query`CREATE INDEX IF NOT EXISTS idx_scraper_chat_results_job ON scraper_chat_results (scraper_job_id)`;
 
     // สรุปรายการที่ migrate สำเร็จ (idempotent — เรียกซ้ำได้)
     return Response.json({
@@ -70,7 +93,9 @@ export async function POST(req) {
         "ai_review_queue",
         "case_evidence",
         "sop_scripts.training",
-        "messages.source",
+        "messages.source/scraper_job_id/message_hash/pending_reply",
+        "conversations.scraper_meta",
+        "scraper_chat_results",
       ],
     });
   } catch (e) {

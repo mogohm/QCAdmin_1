@@ -284,6 +284,32 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type   TEXT DEFAULT 'text'
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS source          TEXT;     -- 'scraper' | 'admin_console'
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS scraper_job_id  UUID;     -- job ที่ทำให้เกิดคะแนนนี้
 
+-- messages: เชื่อม job + สถานะ "ลูกค้ารอตอบ" (customer-only ที่ยังไม่มีแอดมินตอบ)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS scraper_job_id UUID;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pending_reply  BOOLEAN DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_messages_hash ON messages (conversation_id, message_hash);
+
+-- conversations: meta การเก็บข้อมูลของ scraper
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS source              TEXT;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraped_at     TIMESTAMPTZ;
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_scraper_job_id UUID;
+
+-- scraper_jobs: counters แบบ JSONB (ครบทุกตัวนับตาม spec — candidate/collected/messages/qc/pending ...)
+ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;
+
+-- scraper_chat_results: ผลเก็บข้อมูลต่อแชท (audit + counters ต่อห้อง)
+CREATE TABLE IF NOT EXISTS scraper_chat_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scraper_job_id UUID, conversation_id UUID, line_user_id TEXT,
+  target_date_from DATE, target_date_to DATE,
+  messages_found INTEGER DEFAULT 0, messages_inserted INTEGER DEFAULT 0,
+  customer_messages INTEGER DEFAULT 0, admin_messages INTEGER DEFAULT 0,
+  system_messages INTEGER DEFAULT 0, qc_pairs_created INTEGER DEFAULT 0,
+  pending_reply_count INTEGER DEFAULT 0, duplicates_skipped INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'ok', error_text TEXT, created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_scraper_chat_results_job ON scraper_chat_results (scraper_job_id);
+
 -- unique indexes ป้องกัน insert ข้อความ/คู่ QC ซ้ำ (partial — เฉพาะแถวที่มี hash)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_messages_dedup
   ON messages (line_user_id, direction, message_hash, created_at)

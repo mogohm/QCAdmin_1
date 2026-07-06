@@ -14,6 +14,7 @@ try {
 const fs = require("fs");
 const path = require("path");
 const core = require("./lib/scraper-core");
+const D = require("./lib/scraper-date"); // Asia/Bangkok date helpers
 
 const API_URL = (process.env.QC_API_URL || "").replace(/\/$/, "");
 const API_KEY = process.env.QC_API_KEY || process.env.ADMIN_API_KEY || "";
@@ -85,6 +86,8 @@ const postLogReply = (payload) =>
   });
 const postEvidence = (payload) =>
   api("/api/evidence", { method: "POST", body: JSON.stringify(payload) });
+const postChatBatch = (payload) =>
+  api("/api/scraper/chat-batch", { method: "POST", body: JSON.stringify(payload) });
 
 // แคปภาพแชทจริง (header+panel+ล่าสุด) + HTML → เก็บไฟล์ local + อัปโหลดเข้า case_evidence
 async function captureEvidence(page, { convId, jobId, dateStr, panelHtml }) {
@@ -231,7 +234,8 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
   const seen = new Set();
   const inRange = [];
   let stuck = 0,
-    lastCount = -1;
+    lastCount = -1,
+    oldBatches = 0;
 
   await page.evaluate(() => {
     const item = document.querySelector(".list-group-item-chat");
@@ -289,14 +293,25 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
       }),
     );
 
+    // candidate = แชทที่ latest activity >= fromDate (อาจมีข้อความวันเป้าหมายใน history)
+    //   หมายเหตุ: candidate != collected — ยืนยัน "collected" หลังเปิดแชท + กรองข้อความจริง
+    let newCandidateThisBatch = 0;
     for (const it of items) {
       const key = `${it.name}|${it.label}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      // on-or-after: รวมแชทที่ active วันนี้ด้วย (อาจมีข้อความของวันเป้าหมายใน history) แล้วกรอง message ทีหลัง
-      const r = core.labelOnOrAfter(it.label, fromDate);
-      if (r === true) inRange.push(it);
+      if (core.labelOnOrAfter(it.label, fromDate) === true) {
+        inRange.push(it);
+        newCandidateThisBatch++;
+      }
     }
+    // หยุดเมื่อรายการล่างสุดเก่ากว่า fromDate ติดกัน 2 batch (list เรียงใหม่→เก่า)
+    if (newCandidateThisBatch === 0) {
+      if (++oldBatches >= 2) {
+        log(`[SCAN] ถึงขอบล่าง (label < ${fromDate}) — หยุด scroll list`);
+        break;
+      }
+    } else oldBatches = 0;
 
     // scroll ลงต่อ
     const scrolled = await page.evaluate(() => {
@@ -325,11 +340,12 @@ async function scanChatList(page, fromDate, toDate, shouldCancel) {
     lastCount = seen.size;
     if (!scrolled) break;
   }
+  log(`[SCAN] visible=${seen.size} candidate=${inRange.length} (fromDate=${fromDate})`);
   return inRange;
 }
 
 // เปิด chat (คลิกจากชื่อ) แล้วดึง HTML ของ chat panel + ข้อความ + notes + profile
-async function scrapeChat(page, item) {
+async function scrapeChat(page, item, fromDate) {
   // คลิก chat item ที่ตรงชื่อ
   const clicked = await page
     .locator(".list-group-item-chat", { hasText: item.name })
@@ -430,6 +446,12 @@ async function scrapeChat(page, item) {
     parsed,
     meta.uid || item.name,
   );
+  // [HISTORY] ช่วงวันของข้อความที่โหลดได้ (เวลาไทย) — ยืนยันว่าโหลดถึง fromDate
+  const days = unique.map((m) => D.bangkokDayOf(m.created_at)).filter(Boolean).sort();
+  if (days.length) {
+    const reached = fromDate ? days[0] <= D.normalizeJobDate(fromDate) : true;
+    log(`[HISTORY] ${item.name}: ${days[0]}→${days[days.length - 1]} (${unique.length} msgs)${fromDate && !reached ? " ⚠️ ยังโหลดไม่ถึง fromDate" : ""}`);
+  }
 
   // raw HTML ของ bubble ที่ parse fail → debug/html เพื่อแก้ selector ให้ตรง ไม่เดา
   if (failures.length) {
@@ -455,9 +477,9 @@ async function scrapeChat(page, item) {
 
 // ---------- Job Runner ----------
 async function runJob(job, context) {
-  const fromDate = job.date_from;
-  const toDate = job.date_to;
-  log(`📋 Job ${job.id}: ${fromDate} → ${toDate}`);
+  const fromDate = D.normalizeJobDate(job.date_from);
+  const toDate = D.normalizeJobDate(job.date_to);
+  log(`[JOB] ${job.id} · ช่วงวันที่เลือก ${fromDate} → ${toDate} (Asia/Bangkok)`);
   await patchJob(job.id, { status: "running" });
 
   let cancelled = false;
@@ -470,17 +492,29 @@ async function runJob(job, context) {
   const page = await openLineOA(context);
   await saveScreenshot(page, `job-${job.id}-list`);
 
-  let inserted = 0,
-    skippedDup = 0,
-    failed = 0,
-    chatIndex = 0;
+  // counters รวม (ตาม spec J)
+  const C = {
+    candidate_chats: 0,
+    processed_chats: 0,
+    collected_chats: 0,
+    empty_chats: 0,
+    failed_chats: 0,
+    messages_found: 0,
+    messages_inserted: 0,
+    duplicates_skipped: 0,
+    customer_messages: 0,
+    admin_messages: 0,
+    system_messages: 0,
+    qc_pairs_created: 0,
+    pending_reply_count: 0,
+  };
+  let chatIndex = 0;
   try {
     let chats = await scanChatList(page, fromDate, toDate, shouldCancel);
+    C.candidate_chats = chats.length;
     if (Number.isFinite(LIMIT)) chats = chats.slice(0, LIMIT);
-    log(
-      `🔍 พบ ${chats.length} แชทในช่วงวันที่${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""}`,
-    );
-    await patchJob(job.id, { total_chats: chats.length });
+    log(`[SCAN] candidate=${C.candidate_chats}${Number.isFinite(LIMIT) ? ` (จำกัด ${LIMIT})` : ""} · target ${fromDate}→${toDate}`);
+    await patchJob(job.id, { total_chats: chats.length, counters: { ...C } });
 
     for (const item of chats) {
       if (await shouldCancel()) {
@@ -488,138 +522,81 @@ async function runJob(job, context) {
         break;
       }
       chatIndex++;
-      await patchJob(job.id, {
-        current_chat: item.name,
-        logged_count: inserted,
-      });
+      C.processed_chats++;
+      await patchJob(job.id, { current_chat: item.name, counters: { ...C } });
 
       let res;
       try {
-        res = await scrapeChat(page, item);
+        res = await scrapeChat(page, item, fromDate);
       } catch (e) {
-        failed++;
-        logScrape({
-          chat_index: chatIndex,
-          customer_name: item.name,
-          skipped_reason: "scrape_error:" + e.message,
-        });
+        C.failed_chats++;
+        log(`[ERROR] [CHAT ${chatIndex}/${chats.length}] ${item.name} — scrape: ${e.message}`);
+        logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "scrape_error:" + e.message });
         continue;
       }
       if (!res) {
-        failed++;
+        C.failed_chats++;
         continue;
       }
-
       const lineUserId = res.meta.uid || `name:${item.name}`;
-      // กรองเฉพาะข้อความของวันที่เป้าหมาย (แชทอาจมีทั้งวันนี้+เมื่อวานใน history)
-      const windowMsgs = res.messages.filter((m) =>
-        core.inDateWindow(m.created_at, fromDate, toDate),
-      );
-      if (!windowMsgs.length) {
-        logScrape({
-          chat_index: chatIndex,
-          customer_name: item.name,
-          skipped_reason: "no messages in date window",
-        });
+
+      // FILTER: เฉพาะข้อความในช่วงวันเป้าหมาย (เวลาไทย) — กัน "วันนี้" รั่ว
+      const targetMsgs = res.messages.filter((m) => D.messageInTargetRange(m.created_at, fromDate, toDate));
+      log(`[CHAT ${chatIndex}/${chats.length}] ${item.name} [${item.label}] · [FILTER] all=${res.messages.length} target=${targetMsgs.length}`);
+      if (!targetMsgs.length) {
+        C.empty_chats++;
+        logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "no target-date messages" });
         continue;
       }
-      const pairs = core.pairMessages(windowMsgs, { groupWindowSec: 180 });
 
-      // นับฝั่ง
-      const adminCount = windowMsgs.filter(
-        (m) => m.direction === "admin",
-      ).length;
-      const custCount = windowMsgs.filter(
-        (m) => m.direction === "customer",
-      ).length;
-
-      const sentKeys = new Set();
-      let convForChat = null;
-      let anyFlagged = false;
-      for (const pair of pairs) {
-        const key = core.qcPairKey({ line_user_id: lineUserId, ...pair });
-        if (sentKeys.has(key)) {
-          skippedDup++;
-          continue;
-        }
-        sentKeys.add(key);
-        const payload = core.buildLogReplyPayload(pair, {
-          line_user_id: res.meta.uid || null,
-          customer_name: item.name || res.meta.title,
-          raw: {
-            detected_date_label: item.label,
-            message_type: pair.message_type,
-          },
-        });
-        payload.scraper_job_id = job.id;
-        const r = await postLogReply(payload).catch((e) => ({
-          error: e.message,
-        }));
-        if (r?.ok && !r.duplicate) inserted += r.inserted_messages || 1;
-        else if (r?.duplicate) skippedDup++;
-        if (r?.conversation_id && !convForChat) convForChat = r.conversation_id;
-        // flagged = คะแนนต่ำ/fatal/minor/ตอบช้า → เก็บภาพหลักฐาน
-        const flagged =
-          r &&
-          (Number(r.final_score) < 70 ||
-            r.qc?.isFatal ||
-            (Array.isArray(r.qc?.minorIssues) && r.qc.minorIssues.length > 0) ||
-            (pair.response_seconds != null &&
-              Number(pair.response_seconds) > RESP_LIMIT_SEC));
-        if (flagged) anyFlagged = true;
+      // SAVE: เก็บ "ทุกข้อความ" ก่อน (customer-only ก็เก็บ) → chat-batch จับคู่ QC เป็นขั้นที่ 2
+      const payload = {
+        scraper_job_id: job.id,
+        customer: { line_user_id: res.meta.uid || null, customer_name: item.name || res.meta.title, picture_url: res.meta.picture || null },
+        chat: { detected_list_label: item.label, latest_activity_date: D.normalizeJobDate(D.bangkokDayOf(targetMsgs[targetMsgs.length - 1].created_at)) },
+        target: { from: fromDate, to: toDate },
+        messages: targetMsgs.map((m) => ({ direction: m.direction, message_type: m.message_type || "text", text: m.message_text, created_at: m.created_at, admin_name: m.admin_name || null })),
+      };
+      if (!res.meta.uid) {
+        C.empty_chats++;
+        log(`[SKIP] [CHAT ${chatIndex}] ${item.name} — ไม่พบ line_user_id`);
+        continue;
       }
+      const r = await postChatBatch(payload).catch((e) => ({ error: e.message }));
+      if (!r || r.error) {
+        C.failed_chats++;
+        log(`[ERROR] [CHAT ${chatIndex}] chat-batch: ${r?.error || "no response"}`);
+        continue;
+      }
+      C.collected_chats++;
+      C.messages_found += r.messages_found || 0;
+      C.messages_inserted += r.messages_inserted || 0;
+      C.duplicates_skipped += r.duplicates_skipped || 0;
+      C.customer_messages += r.customer_messages || 0;
+      C.admin_messages += r.admin_messages || 0;
+      C.system_messages += r.system_messages || 0;
+      C.qc_pairs_created += r.qc_pairs_created || 0;
+      C.pending_reply_count += r.pending_reply_count || 0;
+      log(`[SAVE] inserted=${r.messages_inserted} dup=${r.duplicates_skipped} cust=${r.customer_messages} admin=${r.admin_messages} · [QC] pairs=${r.qc_pairs_created} pending=${r.pending_reply_count}`);
 
-      // เก็บภาพหลักฐานแชทจริง (โหมด all = ทุกแชท, flagged_only = เฉพาะมีเคสปัญหา)
-      if (
-        EVIDENCE_MODE !== "off" &&
-        convForChat &&
-        (EVIDENCE_MODE === "all" || anyFlagged)
-      ) {
-        await captureEvidence(page, {
-          convId: convForChat,
-          jobId: job.id,
-          dateStr: toISO(fromDate),
-          panelHtml: res.panelHtml,
-        }).catch(() => {});
+      // เก็บภาพหลักฐาน (mode all = ทุกแชท, flagged_only = เฉพาะมีเคสปัญหา)
+      if (EVIDENCE_MODE !== "off" && r.conversation_id && (EVIDENCE_MODE === "all" || (r.flagged || 0) > 0)) {
+        await captureEvidence(page, { convId: r.conversation_id, jobId: job.id, dateStr: toISO(fromDate), panelHtml: res.panelHtml }).catch(() => {});
       }
 
       // notes
-      const notes = await extractNotes(page).catch(() => []);
-      let notesCount = 0;
       if (res.meta.uid) {
-        for (const n of notes) {
-          await postNote(res.meta.uid, n).catch(() => {});
-          notesCount++;
-        }
+        const notes = await extractNotes(page).catch(() => []);
+        for (const n of notes) await postNote(res.meta.uid, n).catch(() => {});
       }
-
-      logScrape({
-        chat_index: chatIndex,
-        customer_name: item.name || res.meta.title,
-        detected_date_label: item.label,
-        message_count: windowMsgs.length,
-        admin_message_count: adminCount,
-        customer_message_count: custCount,
-        notes_count: notesCount,
-        pairs: pairs.length,
-      });
-      await patchJob(job.id, { logged_count: inserted });
+      await patchJob(job.id, { counters: { ...C }, logged_count: C.messages_inserted });
     }
 
     if (cancelled) {
-      await patchJob(job.id, {
-        status: "cancelled",
-        error_text: "ยกเลิกโดยผู้ใช้",
-      });
+      await patchJob(job.id, { status: "cancelled", error_text: "ยกเลิกโดยผู้ใช้" });
     } else {
-      await patchJob(job.id, {
-        status: "done",
-        total_chats: chats.length,
-        logged_count: inserted,
-      });
-      log(
-        `✅ เสร็จ: inserted=${inserted} dup_skipped=${skippedDup} failed=${failed}`,
-      );
+      await patchJob(job.id, { status: "done", total_chats: chats.length, counters: { ...C }, logged_count: C.messages_inserted });
+      log(`[DONE] ✅ candidate=${C.candidate_chats} collected=${C.collected_chats} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending=${C.pending_reply_count}`);
     }
   } catch (e) {
     log(`❌ error: ${e.message}`);
@@ -818,7 +795,7 @@ async function main() {
   const toArg = getArg("to");
   const YESTERDAY = hasFlag("--yesterday");
   if (!WATCH && (YESTERDAY || dateArg || fromArg || toArg)) {
-    const yesterday = toISO(new Date(Date.now() - 86400000));
+    const yesterday = D.bangkokYesterday();
     const from = YESTERDAY ? yesterday : dateArg || fromArg || yesterday;
     const to = YESTERDAY ? yesterday : dateArg || toArg || from;
     log(`▶️  สร้าง job ${from} → ${to}`);
@@ -851,14 +828,14 @@ async function main() {
     try {
       if (SCHEDULE_MIN && Date.now() - lastSchedule > SCHEDULE_MIN * 60000) {
         lastSchedule = Date.now();
-        const y = toISO(new Date(Date.now() - 86400000));
+        const y = D.bangkokYesterday();
         const jobs = await listJobs().catch(() => []);
         const active =
           Array.isArray(jobs) &&
           jobs.find((j) => j.status === "pending" || j.status === "running");
         const doneToday =
           Array.isArray(jobs) &&
-          jobs.find((j) => j.status === "done" && toISO(j.date_from) === y);
+          jobs.find((j) => j.status === "done" && D.normalizeJobDate(j.date_from) === y);
         if (!active && !doneToday && lastAutoDate !== y) {
           await createJob(y, y);
           lastAutoDate = y;
