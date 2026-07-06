@@ -37,7 +37,8 @@ export async function POST(req) {
       FROM case_evidence e
       LEFT JOIN qc_scores q ON q.id = e.qc_score_id
       LEFT JOIN messages m ON m.id = q.customer_message_id
-      WHERE e.qc_score_id IS NOT NULL`;
+      WHERE e.qc_score_id IS NOT NULL
+        AND COALESCE(e.evidence_scope,'') <> 'invalid_reference'`; // ข้ามแถวที่กักกันแล้ว
 
     const bad = [];
     const counts = { total: rows.length, case_ref_mismatch: 0, qc_missing: 0, conversation_mismatch: 0, pair_ids_mismatch: 0, pair_text_mismatch: 0, exact_unverified: 0 };
