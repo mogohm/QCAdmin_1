@@ -1,6 +1,7 @@
 // PATCH /api/knowledge-training/:id — แก้ความรู้ (sop_scripts)
 import { query } from "@/lib/db";
 import { guard } from "@/lib/permissions";
+import { validateEntityId } from "@/lib/db-id";
 
 const arr = (v) =>
   v === undefined
@@ -18,6 +19,13 @@ export async function PATCH(req, { params }) {
   const gate = guard(req, "sop.update");
   if (gate) return gate;
   const { id } = await params;
+  // ความรู้เก็บใน sop_scripts.id (INTEGER) — validate ก่อน query
+  const vid = validateEntityId(id, "int");
+  if (!vid.ok)
+    return Response.json(
+      { error: "ไม่สามารถดำเนินการได้ เนื่องจากรหัสความรู้ไม่ถูกต้อง" },
+      { status: 400 },
+    );
   const b = await req.json().catch(() => ({}));
   const eq = arr(b.example_questions);
   const rq = arr(b.required_keywords);
@@ -35,10 +43,15 @@ export async function PATCH(req, { params }) {
         training_status = COALESCE(${b.training_status ?? null}, training_status),
         is_active = COALESCE(${b.is_active ?? null}, is_active),
         updated_at = now()
-      WHERE id = ${id} RETURNING *`;
-    if (!rows[0]) return Response.json({ error: "not found" }, { status: 404 });
+      WHERE id = ${vid.value} RETURNING *`;
+    if (!rows[0])
+      return Response.json({ error: "ไม่พบความรู้นี้ในระบบ" }, { status: 404 });
     return Response.json({ ok: true, knowledge: rows[0] });
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    console.error("[knowledge-training PATCH]", e.message);
+    return Response.json(
+      { error: "ไม่สามารถบันทึกความรู้ได้ กรุณาลองใหม่อีกครั้ง" },
+      { status: 500 },
+    );
   }
 }
