@@ -97,6 +97,26 @@ export async function POST(req) {
       FROM case_evidence`)[0] || {};
 
     let quarantined = 0;
+    let demoted = 0;
+    if (apply) {
+      // J: แถวที่อ้าง exact แต่ไม่เคยผ่าน post-capture verification (ก่อนมี manifest)
+      //   → ลดเป็น uncertain (ไม่ใช่ rejected — ภาพเป็นของเคสตัวเองแต่ยืนยันไม่ได้) + log
+      const stale = await query`SELECT id, case_ref FROM case_evidence
+        WHERE match_status='exact' AND COALESCE(verification_status,'') <> 'verified'`;
+      if (stale.length) {
+        await query`CREATE TABLE IF NOT EXISTS data_repair_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          table_name TEXT, row_id TEXT, field TEXT,
+          old_value TEXT, new_value TEXT, reason TEXT,
+          created_at TIMESTAMPTZ DEFAULT now())`;
+        for (const s of stale) {
+          await query`INSERT INTO data_repair_logs (table_name, row_id, field, old_value, new_value, reason)
+            VALUES ('case_evidence', ${String(s.id)}, 'match_status', 'exact', 'uncertain', 'exact claim without post-capture verification')`;
+          await query`UPDATE case_evidence SET match_status='uncertain' WHERE id = ${s.id}::uuid`;
+          demoted++;
+        }
+      }
+    }
     if (apply && bad.length) {
       await query`CREATE TABLE IF NOT EXISTS data_repair_logs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -116,7 +136,7 @@ export async function POST(req) {
       ok: true,
       apply,
       breakdown,
-      counts: { ...counts, verified_exact: verifiedExact, legacy_unverified: legacyCount, mismatched: bad.length, reused_url: reused.length, quarantined },
+      counts: { ...counts, verified_exact: verifiedExact, legacy_unverified: legacyCount, mismatched: bad.length, reused_url: reused.length, quarantined, demoted },
       mismatched_samples: bad.slice(0, 20),
       reused_urls: reused.map((r) => ({ n: r.n, url: String(r.url).slice(0, 60) })),
     });
