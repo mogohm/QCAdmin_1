@@ -84,3 +84,62 @@ case_ref_match / identity_all_match / verified / cust+admin text ใน manifest
 ## Tests
 `test-evidence-integrity.js` 15 เคส (7 สถานการณ์ spec รวม "locator 100% + text ผิด → reject",
 "เคส B ใน viewer เคส A → all_match=false") — อยู่ใน uat:check
+
+---
+
+# FINAL PRODUCTION VALIDATION — 2026-07-07 (รอบสุดท้าย)
+
+## เครื่องมือ (ใหม่)
+- `npm run audit:evidence-integrity` — ตรวจ A-J read-only (ผ่าน admin API ที่มี DB)
+- `npm run quarantine:evidence` — dry-run default, `--apply` เพื่อกักกันจริง (log ใน data_repair_logs)
+- audit route: เพิ่ม F (manifest missing), G/H (captured hash ไม่ครอบ expected ทั้งที่ verified), breakdown, demote_ids
+
+## Manifest เป็นของจริง (ไม่ fake)
+`captured_customer_texts/captured_admin_texts` อ่านจาก DOM element `[data-qa-ev]` ตอนถ่ายผ่าน
+`page.evaluate` — ไม่ได้ copy จาก expectedPair. พิสูจน์เชิงประจักษ์ 2 ครั้ง: (1) บั๊ก stale tag
+ทำ captured ≠ expected → verify FAIL (เป็นไปไม่ได้ถ้า copy) (2) anti-fake test:
+identity ตรงหมด + locator 100% แต่ DOM เป็นข้อความอื่น → verified=false (19/19 PASS)
+
+## Audit production (หลัง quarantine + demote)
+| ตัวชี้วัด | ค่า |
+|---|---|
+| total evidence | 1,244 |
+| exact = verified | ทุกแถว (exact_not_verified = **0**) |
+| rejected (quarantined) | 45 + demoted 125+5 |
+| legacy references | ~926 (gate เป็น reference ใน viewer) |
+| A-H mismatch | **0** |
+| I reused url | 1 (ภาพ placeholder 1×1 บนแถว legacy เก่า — flag-only, ถูก gate เป็น reference) |
+| J exact-without-verified | **0** |
+
+## บั๊กที่พบและแก้ในรอบนี้ (visual validation จับได้)
+**8A4648**: admin bubble ที่ตรวจอยู่นอกกรอบ scroll container (มี broadcast คั่น) แต่ text-hash
+ผ่านเพราะอ่านจาก DOM ได้แม้หลุดจอ → ภาพไม่มีข้อความที่ตรวจ
+แก้ 2 ชั้น: (1) visibility วัดเทียบ "container ∩ viewport" ไม่ใช่ window (element หลุด container
+เคย intersect window หลังแถบพิมพ์ → visible ปลอม) (2) bubble ที่หลุด → เลื่อนทีละใบ + ถ่าย
+"ส่วน 2/2" เฉพาะใบนั้น; ไม่เห็นในภาพใดเลย → `bubble_not_visible` → verified=false
+Recapture จริง: ส่วน 1 = block ลูกค้า (18:52), ส่วน 2 = admin bubble ธนาคารฯ (Read 20:27) —
+เห็นครบทั้งคู่ ✅ · แถวเก่า 5 แถวที่ภาพไม่ครบ → demoted (log ไว้)
+
+## 10-CASE VISUAL VALIDATION (เปิดภาพจริงด้วยตา เทียบ UI text)
+| # | case_ref | หมวด | cust | admin | case_ref | สถานะ |
+|---|---|---|---|---|---|---|
+| 1 | 0BE3AB | low (65) | PASS | PASS | PASS | verified |
+| 2 | BAF3D4 | low (64) | PASS | PASS | PASS | verified |
+| 3 | 8A4648 | unknown | PASS | PASS* | PASS | verified (2-part หลัง fix) |
+| 4 | B7E80A | unknown | PASS | PASS | PASS | verified |
+| 5 | 3D9B1E | normal | PASS | PASS | PASS | verified |
+| 6 | D3F77D | normal | PASS | PASS | PASS | verified |
+| 7 | 63613E | unknown | PASS | PASS | PASS | verified (multi-bubble 3/3) |
+| 8 | 99A54F | unknown | PASS | PASS | PASS | verified |
+| 9 | B63032 | unknown | PASS | PASS | PASS | verified |
+| 10 | C765D5 | unknown | PASS | PASS | PASS | verified |
+
+*8A4648 FAIL ครั้งแรก → แก้ + recapture → PASS. หมวด slow/minor ไม่มีในชุด verified คืนนี้
+(ทุกเคสตอบเร็ว/ไม่มี minor flag) — เติมด้วย unknown/normal ตามที่มีจริง ไม่แต่งหมวดปลอม
+
+**ผลรวม: customer 10/10 · admin 10/10 · case_ref 10/10 · wrong-case = 0 · false verified badge = 0**
+
+## Final runs
+- `test:evidence-integrity` 19/19 ✅ · `audit:evidence-integrity` CLEAN ✅ · `build` ✅
+- `uat:check` ✅ ทุก gate (ยกเว้น uat-feedback:strict — ต้องการ ADMIN_API_KEY ใน shell, env-only)
+- recaptured: 1 เคส (8A4648) · demoted เพิ่ม: 5 แถว · remaining failures: 0
