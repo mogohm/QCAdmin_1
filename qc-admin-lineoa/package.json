@@ -12,6 +12,8 @@
     "test:db-id": "node scripts/test-db-id.js",
     "test:case-identity": "node scripts/test-case-identity.js",
     "test:evidence-integrity": "node scripts/test-evidence-integrity.js",
+    "audit:evidence-integrity": "node scripts/audit-evidence-integrity.js",
+    "quarantine:evidence": "node scripts/quarantine-invalid-evidence.js",
     "audit:customer-identity": "node scripts/audit-customer-identity.js",
     "repair:customer-identity": "node scripts/repair-customer-identity.js",
     "test:qc": "node scripts/test-qc-engine.js",

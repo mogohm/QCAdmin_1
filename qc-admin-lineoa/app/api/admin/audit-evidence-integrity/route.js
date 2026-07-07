@@ -41,7 +41,7 @@ export async function POST(req) {
         AND COALESCE(e.evidence_scope,'') <> 'invalid_reference'`; // ข้ามแถวที่กักกันแล้ว
 
     const bad = [];
-    const counts = { total: rows.length, case_ref_mismatch: 0, qc_missing: 0, conversation_mismatch: 0, pair_ids_mismatch: 0, pair_text_mismatch: 0, exact_unverified: 0 };
+    const counts = { total: rows.length, case_ref_mismatch: 0, qc_missing: 0, conversation_mismatch: 0, pair_ids_mismatch: 0, pair_text_mismatch: 0, manifest_missing: 0, captured_customer_hash_mismatch: 0, captured_admin_hash_mismatch: 0, exact_unverified: 0 };
     for (const r of rows) {
       const reasons = [];
       if (!r.q_id) { reasons.push("qc_missing"); counts.qc_missing++; }
@@ -60,6 +60,18 @@ export async function POST(req) {
       if (r.q_id && pairCust && r.q_cust_text && !pairCust.includes(norm(r.q_cust_text).slice(0, 40)) && !norm(r.q_cust_text).includes(pairCust.slice(0, 40))) {
         reasons.push("pair_text_mismatch"); counts.pair_text_mismatch++;
       }
+      // F: pair_focus ที่อ้าง exact/verified ต้องมี capture_manifest
+      const isPairShot = r.evidence_type === "pair_focus_png";
+      if (isPairShot && r.match_status === "exact" && !r.manifest) { reasons.push("manifest_missing"); counts.manifest_missing++; }
+      // G/H: hash ของข้อความที่ "ถ่ายได้จริง" ต้องครอบข้อความที่คาดหวัง (ตรวจซ้ำจาก manifest ที่เก็บไว้)
+      if (man && man.captured_customer_text_hashes && man.expected_customer_text_hashes) {
+        const cov = (exp, cap) => (exp || []).every((h) => (cap || []).includes(h));
+        const gOk = cov(man.expected_customer_text_hashes, man.captured_customer_text_hashes);
+        const hOk = cov(man.expected_admin_text_hashes, man.captured_admin_text_hashes);
+        // อันตรายเฉพาะเมื่อแถวยังอ้าง verified/exact ทั้งที่ hash ไม่ตรง
+        if (!gOk && r.verification_status === "verified") { reasons.push("captured_customer_hash_mismatch"); counts.captured_customer_hash_mismatch++; }
+        if (!hOk && r.verification_status === "verified") { reasons.push("captured_admin_hash_mismatch"); counts.captured_admin_hash_mismatch++; }
+      }
       if (r.match_status === "exact" && r.verification_status !== "verified") counts.exact_unverified++;
       if (reasons.length) bad.push({ id: r.id, type: r.evidence_type, e_ref: r.e_ref, q_ref: r.q_ref, reasons });
     }
@@ -74,6 +86,15 @@ export async function POST(req) {
       (await query`SELECT count(*)::int n FROM case_evidence WHERE evidence_scope='conversation_reference' OR match_status='legacy_unlinked'`)[0]?.n ?? 0;
     const verifiedExact =
       (await query`SELECT count(*)::int n FROM case_evidence WHERE match_status='exact' AND verification_status='verified'`)[0]?.n ?? 0;
+    // breakdown รวมทั้งตาราง (ไม่จำกัดเฉพาะแถวที่มี qc linkage)
+    const breakdown = (await query`SELECT
+        count(*)::int AS total_all,
+        count(*) FILTER (WHERE match_status='exact')::int AS exact,
+        count(*) FILTER (WHERE verification_status='verified')::int AS verified,
+        count(*) FILTER (WHERE match_status='exact' AND COALESCE(verification_status,'') <> 'verified')::int AS exact_not_verified,
+        count(*) FILTER (WHERE verification_status='rejected' OR match_status='rejected')::int AS rejected,
+        count(*) FILTER (WHERE evidence_scope='conversation_reference' OR match_status='legacy_unlinked')::int AS legacy
+      FROM case_evidence`)[0] || {};
 
     let quarantined = 0;
     if (apply && bad.length) {
@@ -94,8 +115,9 @@ export async function POST(req) {
     return Response.json({
       ok: true,
       apply,
+      breakdown,
       counts: { ...counts, verified_exact: verifiedExact, legacy_unverified: legacyCount, mismatched: bad.length, reused_url: reused.length, quarantined },
-      mismatched_samples: bad.slice(0, 10),
+      mismatched_samples: bad.slice(0, 20),
       reused_urls: reused.map((r) => ({ n: r.n, url: String(r.url).slice(0, 60) })),
     });
   } catch (e) {

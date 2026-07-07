@@ -78,6 +78,32 @@ console.log("\n===== 6) url เดียวใช้ข้ามหลาย qc 
   ok("u2 (เคสเดียว) ไม่ถูก flag", !flagged.includes("u2"));
 }
 
+console.log("\n===== 6.5) ANTI-FAKE: identity ตรงหมด + locator 100% แต่ DOM มีข้อความอื่น → verified=false =====");
+{
+  // expected: ฝากเงินยังไม่เข้า / ตรวจสอบให้นะคะ — DOM จริงตอนถ่าย: ถอนเงินไม่ได้ / รอสักครู่นะคะ
+  const expectedPair = {
+    qc_score_id: QC_A, case_ref: caseA.case_ref,
+    customer_message_ids: ["m1"], admin_message_ids: ["m2"],
+    customer_texts: ["ฝากเงินยังไม่เข้า"], admin_texts: ["ตรวจสอบให้นะคะ"],
+  };
+  const manifest = {
+    qc_score_id: QC_A,               // ตรง
+    case_ref: caseA.case_ref,        // ตรง
+    expected_customer_message_ids: ["m1"], // ตรง
+    expected_admin_message_ids: ["m2"],    // ตรง
+    captured_customer_texts: ["ถอนเงินไม่ได้"],   // DOM จริง ≠ expected
+    captured_admin_texts: ["รอสักครู่นะคะ"],        // DOM จริง ≠ expected
+    captured_at: new Date().toISOString(),
+    locator_confidence: 100,
+  };
+  const v = EI.verifyCapturedEvidence({ expectedPair, captureManifest: manifest });
+  ok("id/case_ref/message ids ตรงหมด แต่ verified=false", v.verified === false);
+  ok("text_score=0 (ทั้งสองฝั่งไม่ตรง)", v.text_score === 0, `text=${v.text_score}`);
+  ok("failures ระบุ hash mismatch ทั้งคู่",
+    v.failures.includes("customer_text_hash_mismatch") && v.failures.includes("admin_text_hash_mismatch"));
+  ok("identity_score ยัง 100 (identity ไม่ใช่ปัญหา — text ต่างหาก)", v.identity_score === 100);
+}
+
 console.log("\n===== 7) หลักฐานที่ถูกต้องครบ → ผ่าน =====");
 {
   const expectedPair = { qc_score_id: QC_A, case_ref: caseA.case_ref, customer_message_ids: ["m1"], admin_message_ids: ["m2"], customer_texts: ["ถอนเงินไม่ได้ครับ"], admin_texts: ["แก้ให้แล้วครับ ลองใหม่"] };
