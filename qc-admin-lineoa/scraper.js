@@ -220,68 +220,91 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   // PHASE 5: post-capture verification — อ่านข้อความ + "การมองเห็นจริงในจอ" ณ ตอนถ่าย
   //   text อยู่ใน DOM ≠ อยู่ในภาพ! bubble เป้าหมายที่อยู่นอก viewport = ไม่นับว่าถ่ายได้
   //   (พบจริง: admin bubble ที่ตรวจอยู่ใต้ fold — ภาพโชว์ bubble อื่น แต่ text hash ผ่าน)
+  //   *สำคัญ*: chat list เป็น scroll container ซ้อนใน page — ต้องวัด visibility เทียบ
+  //   "กรอบ container ∩ viewport" ไม่ใช่ viewport อย่างเดียว (element ที่หลุด container
+  //   ยังมี rect อยู่ในช่วง window ได้ ทำให้เข้าใจผิดว่ามองเห็น ทั้งที่ถูก clip/ทับด้วยแถบพิมพ์)
   const readTags = () =>
     page.evaluate((tags) => {
       const vh = window.innerHeight;
+      // กรอบที่มองเห็นจริง = container ของแชท ตัดกับ viewport
+      const firstChat = document.querySelector(".chat");
+      let cTop = 0, cBottom = vh;
+      let el0 = firstChat && firstChat.parentElement;
+      while (el0 && el0 !== document.body) {
+        const s = getComputedStyle(el0);
+        if ((s.overflowY === "auto" || s.overflowY === "scroll" || s.overflowY === "overlay") && el0.scrollHeight > el0.clientHeight + 50) {
+          const cr = el0.getBoundingClientRect();
+          cTop = Math.max(0, cr.top); cBottom = Math.min(vh, cr.bottom);
+          break;
+        }
+        el0 = el0.parentElement;
+      }
       const out = {};
       for (const t of tags) {
         const el = document.querySelector(`[data-qa-ev="${t}"]`);
-        if (!el) { out[t] = { text: null, visible: false }; continue; }
+        if (!el) { out[t] = { text: null, visible: false, rect: null }; continue; }
         const r = el.getBoundingClientRect();
-        const visH = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+        const visH = Math.min(r.bottom, cBottom) - Math.max(r.top, cTop);
         out[t] = {
           text: (el.querySelector(".chat-item-text")?.innerText || el.innerText || "").replace(/\s+/g, " ").trim(),
           visible: r.height > 0 && visH >= Math.min(r.height * 0.6, 80),
+          rect: { top: Math.max(r.top, cTop), bottom: Math.min(r.bottom, cBottom), left: r.left, right: r.right },
         };
       }
+      out.__clip = { cTop, cBottom };
       return out;
     }, metas.map((m) => m.tag)).catch(() => ({}));
 
   let tagInfo = await readTags();
-  const invisible = metas.filter((m) => tagInfo[m.tag] && tagInfo[m.tag].text && !tagInfo[m.tag].visible);
-  // คู่สูงเกินจอ/มีข้อความอื่นคั่น → เก็บ "ส่วนที่ 2" โดย scroll bubble ที่หลุดจอเข้ามาแล้วถ่ายเพิ่ม
-  let part2Shot = null;
-  if (invisible.length) {
+  let clipBounds = tagInfo.__clip || { cTop: 0, cBottom: 720 };
+  // Bubble ที่หลุดกรอบ → เลื่อน "ทีละใบ" เข้ากลางจอ ถ่ายภาพส่วนเพิ่ม (สูงสุด 2 ส่วน)
+  const partShots = [];
+  const invisibleFirst = metas.filter((m) => tagInfo[m.tag] && tagInfo[m.tag].text && !tagInfo[m.tag].visible);
+  for (const invTag of invisibleFirst.slice(0, 2)) {
     await page.evaluate((tag) => {
       const el = document.querySelector(`[data-qa-ev="${tag}"]`);
       if (el) el.scrollIntoView({ block: "center" });
-    }, invisible[0].tag).catch(() => {});
-    await page.waitForTimeout(600);
+    }, invTag.tag).catch(() => {});
+    await page.waitForTimeout(650);
     const t2 = await readTags();
-    // ภาพส่วน 2: crop รอบ bubble ที่เพิ่งเลื่อนเข้ามา
-    const b2 = await page.evaluate((tags) => {
-      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, n = 0;
-      const vh = window.innerHeight, vw = window.innerWidth;
-      for (const t of tags) {
-        const el = document.querySelector(`[data-qa-ev="${t}"]`);
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        if (r.height <= 0 || r.bottom < 0 || r.top > vh) continue;
-        x1 = Math.min(x1, r.left); y1 = Math.min(y1, Math.max(0, r.top));
-        x2 = Math.max(x2, r.right); y2 = Math.max(y2, Math.min(vh, r.bottom)); n++;
-      }
-      if (!n) return null;
+    const info = t2[invTag.tag];
+    if (process.env.EVIDENCE_DEBUG) log(`[EVDBG] part for ${invTag.tag}: visible=${info?.visible} rect=${JSON.stringify(info?.rect)}`);
+    if (info && info.visible && info.rect) {
       const pad = 14;
-      return { x: Math.max(0, x1 - pad), y: Math.max(0, y1 - pad), width: Math.min(vw, x2 + pad) - Math.max(0, x1 - pad), height: Math.min(vh, y2 + pad) - Math.max(0, y1 - pad) };
-    }, invisible.map((m) => m.tag)).catch(() => null);
-    if (b2 && b2.width > 30 && b2.height > 20)
-      part2Shot = await page.screenshot({ type: "jpeg", quality: 60, clip: b2 }).catch(() => null);
-    // รวมผล: bubble นับว่า "ถ่ายได้" ถ้ามองเห็นในภาพใดภาพหนึ่ง
-    for (const m of metas) {
-      const a = tagInfo[m.tag] || {}, b = t2[m.tag] || {};
-      tagInfo[m.tag] = { text: a.text || b.text, visible: !!(a.visible || b.visible) };
+      const clip = {
+        x: Math.max(0, info.rect.left - pad),
+        y: Math.max(0, info.rect.top - pad),
+        width: Math.min(1280, info.rect.right + pad) - Math.max(0, info.rect.left - pad),
+        height: Math.min(info.rect.bottom + pad, (t2.__clip?.cBottom ?? 720)) - Math.max(0, info.rect.top - pad),
+      };
+      if (clip.width > 30 && clip.height > 20) {
+        const buf = await page.screenshot({ type: "jpeg", quality: 60, clip }).catch(() => null);
+        if (buf) partShots.push({ tag: invTag.tag, buf });
+      }
+      // อัปเดตผล: ใบนี้ถ่ายได้จริงแล้ว (เห็นในภาพส่วนเพิ่ม)
+      tagInfo[invTag.tag] = { ...tagInfo[invTag.tag], text: tagInfo[invTag.tag].text || info.text, visible: true };
     }
-    // เลื่อนกลับตำแหน่งเดิมสำหรับภาพหลัก
+  }
+  if (invisibleFirst.length) {
+    // เลื่อนกลับ bubble แรกสำหรับภาพหลัก แล้ววัด visibility รอบสุดท้ายของใบที่เหลือ
     await page.evaluate((tag) => {
       const el = document.querySelector(`[data-qa-ev="${tag}"]`);
       if (el) el.scrollIntoView({ block: "center" });
     }, metas[0].tag).catch(() => {});
     await page.waitForTimeout(500);
+    const t3 = await readTags();
+    clipBounds = t3.__clip || clipBounds;
+    for (const m of metas) {
+      const cur = tagInfo[m.tag] || {};
+      const now = t3[m.tag] || {};
+      tagInfo[m.tag] = { text: cur.text || now.text, visible: !!(cur.visible || now.visible), rect: now.rect || cur.rect };
+    }
   }
-  // นับเฉพาะ bubble ที่ "มองเห็นจริงในภาพ" — ข้อความใน DOM แต่หลุดจอ = ไม่ผ่าน
+  // นับเฉพาะ bubble ที่ "มองเห็นจริงในภาพใดภาพหนึ่ง" — ข้อความใน DOM แต่หลุดจอ = ไม่ผ่าน
   const capturedCustomer = metas.filter((m) => /-c\d+$/.test(m.tag) && tagInfo[m.tag]?.visible).map((m) => tagInfo[m.tag].text).filter(Boolean);
   const capturedAdmin = metas.filter((m) => /-a\d+$/.test(m.tag) && tagInfo[m.tag]?.visible).map((m) => tagInfo[m.tag].text).filter(Boolean);
   const invisibleAfter = metas.filter((m) => tagInfo[m.tag] && tagInfo[m.tag].text && !tagInfo[m.tag].visible).length;
+  const part2Shot = partShots.length ? partShots[0].buf : null; // ใช้ต่อใน items ด้านล่าง
 
   const EI = require("./lib/evidence-integrity");
   const captureManifest = {
@@ -321,26 +344,28 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   const finalMatchStatus = verification.verified && matchStatus === "exact" ? "exact" : verification.verified ? matchStatus : "uncertain";
 
   // bounding box รวมของ bubble ที่เจอ → clip สำหรับ pair_focus
-  const box = await page.evaluate((tags) => {
+  //   นับเฉพาะใบที่ "อยู่ในกรอบ container ตอนนี้จริง ๆ" และ clamp กรอบล่างที่ container
+  //   (กันภาพติดแถบพิมพ์/พื้นที่นอกแชท และกัน bubble ที่หลุด container ดึงกรอบให้ผิด)
+  const box = await page.evaluate(({ tags, cTop, cBottom }) => {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, n = 0;
     for (const t of tags) {
       const el = document.querySelector(`[data-qa-ev="${t}"]`);
       if (!el) continue;
       const r = el.getBoundingClientRect();
-      if (r.width < 2) continue;
-      x1 = Math.min(x1, r.left); y1 = Math.min(y1, r.top);
-      x2 = Math.max(x2, r.right); y2 = Math.max(y2, r.bottom); n++;
+      if (r.width < 2 || r.bottom <= cTop || r.top >= cBottom) continue; // ใบที่หลุดกรอบ → มีภาพส่วนเพิ่มของตัวเองแล้ว
+      x1 = Math.min(x1, r.left); y1 = Math.min(y1, Math.max(r.top, cTop));
+      x2 = Math.max(x2, r.right); y2 = Math.max(y2, Math.min(r.bottom, cBottom)); n++;
     }
     if (!n) return null;
     const vw = window.innerWidth, vh = window.innerHeight;
     const pad = 14;
     return {
-      x: Math.max(0, x1 - pad), y: Math.max(0, y1 - pad),
+      x: Math.max(0, x1 - pad), y: Math.max(cTop, y1 - pad),
       width: Math.min(vw, x2 + pad) - Math.max(0, x1 - pad),
-      height: Math.min(vh, y2 + pad) - Math.max(0, y1 - pad),
-      vw, vh, clippedTall: y2 - y1 > vh - 30,
+      height: Math.min(cBottom, y2 + pad) - Math.max(cTop, y1 - pad),
+      vw, vh, clippedTall: y2 - y1 > cBottom - cTop - 30,
     };
-  }, metas.filter((m) => tagInfo[m.tag]?.visible).map((m) => m.tag)); // crop เฉพาะ bubble ที่มองเห็นจริง
+  }, { tags: metas.filter((m) => tagInfo[m.tag]?.visible).map((m) => m.tag), cTop: clipBounds.cTop, cBottom: clipBounds.cBottom });
 
   const items = [];
   const shoot = async (evidence_type, title, fname, clip) => {
@@ -367,6 +392,7 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
       },
     });
   };
+  if (process.env.EVIDENCE_DEBUG) log(`[EVDBG] box=${JSON.stringify(box)} tagInfo=${JSON.stringify(tagInfo)}`);
   // A) pair_focus — เฉพาะคู่ที่ตรวจ (clip กรอบรวมของ bubble ที่มองเห็นจริง)
   if (box && box.width > 30 && box.height > 20)
     await shoot("pair_focus_png", `คู่ข้อความที่ใช้ให้คะแนน (${caseRef})${part2Shot ? " — ส่วน 1/2" : ""}`, `${caseRef}-pair-focus.jpg`, { x: box.x, y: box.y, width: box.width, height: box.height });
