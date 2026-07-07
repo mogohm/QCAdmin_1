@@ -98,6 +98,16 @@ export async function POST(req) {
 
     let quarantined = 0;
     let demoted = 0;
+    // targeted demotion: แถวที่ตรวจพบภายหลังว่า bubble ไม่อยู่ในภาพ (visibility gap)
+    if (Array.isArray(b.demote_ids) && b.demote_ids.length) {
+      for (const id of b.demote_ids.slice(0, 50)) {
+        await query`INSERT INTO data_repair_logs (table_name, row_id, field, old_value, new_value, reason)
+          VALUES ('case_evidence', ${String(id)}, 'match_status', 'exact', 'uncertain', ${b.demote_reason || "manual demotion"})`.catch(() => {});
+        const r = await query`UPDATE case_evidence SET match_status='uncertain', verification_status='failed'
+          WHERE id = ${id}::uuid AND match_status='exact' RETURNING id`.catch(() => []);
+        if (r[0]) demoted++;
+      }
+    }
     if (apply) {
       // J: แถวที่อ้าง exact แต่ไม่เคยผ่าน post-capture verification (ก่อนมี manifest)
       //   → ลดเป็น uncertain (ไม่ใช่ rejected — ภาพเป็นของเคสตัวเองแต่ยืนยันไม่ได้) + log

@@ -217,18 +217,71 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
   const scrolled = await scrollPairIntoView(page, firstTag, metas[metas.length - 1].tag);
   if (!scrolled) log(`[EVIDENCE] ${caseRef} — scroll แล้ว tag หาย (virtual re-render)`);
 
-  // PHASE 5: post-capture verification — อ่านข้อความ "จาก DOM จริง ณ ตอนถ่าย" มาเทียบกับคู่ที่คาดหวัง
-  //   locator confidence ≠ evidence confidence: ต่อให้ locate 100% ถ้าข้อความบนจอไม่ตรง = ห้ามอ้าง exact
-  const capturedTexts = await page.evaluate((tags) => {
-    const out = {};
-    for (const t of tags) {
-      const el = document.querySelector(`[data-qa-ev="${t}"]`);
-      out[t] = el ? (el.querySelector(".chat-item-text")?.innerText || el.innerText || "").replace(/\s+/g, " ").trim() : null;
+  // PHASE 5: post-capture verification — อ่านข้อความ + "การมองเห็นจริงในจอ" ณ ตอนถ่าย
+  //   text อยู่ใน DOM ≠ อยู่ในภาพ! bubble เป้าหมายที่อยู่นอก viewport = ไม่นับว่าถ่ายได้
+  //   (พบจริง: admin bubble ที่ตรวจอยู่ใต้ fold — ภาพโชว์ bubble อื่น แต่ text hash ผ่าน)
+  const readTags = () =>
+    page.evaluate((tags) => {
+      const vh = window.innerHeight;
+      const out = {};
+      for (const t of tags) {
+        const el = document.querySelector(`[data-qa-ev="${t}"]`);
+        if (!el) { out[t] = { text: null, visible: false }; continue; }
+        const r = el.getBoundingClientRect();
+        const visH = Math.min(r.bottom, vh) - Math.max(r.top, 0);
+        out[t] = {
+          text: (el.querySelector(".chat-item-text")?.innerText || el.innerText || "").replace(/\s+/g, " ").trim(),
+          visible: r.height > 0 && visH >= Math.min(r.height * 0.6, 80),
+        };
+      }
+      return out;
+    }, metas.map((m) => m.tag)).catch(() => ({}));
+
+  let tagInfo = await readTags();
+  const invisible = metas.filter((m) => tagInfo[m.tag] && tagInfo[m.tag].text && !tagInfo[m.tag].visible);
+  // คู่สูงเกินจอ/มีข้อความอื่นคั่น → เก็บ "ส่วนที่ 2" โดย scroll bubble ที่หลุดจอเข้ามาแล้วถ่ายเพิ่ม
+  let part2Shot = null;
+  if (invisible.length) {
+    await page.evaluate((tag) => {
+      const el = document.querySelector(`[data-qa-ev="${tag}"]`);
+      if (el) el.scrollIntoView({ block: "center" });
+    }, invisible[0].tag).catch(() => {});
+    await page.waitForTimeout(600);
+    const t2 = await readTags();
+    // ภาพส่วน 2: crop รอบ bubble ที่เพิ่งเลื่อนเข้ามา
+    const b2 = await page.evaluate((tags) => {
+      let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, n = 0;
+      const vh = window.innerHeight, vw = window.innerWidth;
+      for (const t of tags) {
+        const el = document.querySelector(`[data-qa-ev="${t}"]`);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.height <= 0 || r.bottom < 0 || r.top > vh) continue;
+        x1 = Math.min(x1, r.left); y1 = Math.min(y1, Math.max(0, r.top));
+        x2 = Math.max(x2, r.right); y2 = Math.max(y2, Math.min(vh, r.bottom)); n++;
+      }
+      if (!n) return null;
+      const pad = 14;
+      return { x: Math.max(0, x1 - pad), y: Math.max(0, y1 - pad), width: Math.min(vw, x2 + pad) - Math.max(0, x1 - pad), height: Math.min(vh, y2 + pad) - Math.max(0, y1 - pad) };
+    }, invisible.map((m) => m.tag)).catch(() => null);
+    if (b2 && b2.width > 30 && b2.height > 20)
+      part2Shot = await page.screenshot({ type: "jpeg", quality: 60, clip: b2 }).catch(() => null);
+    // รวมผล: bubble นับว่า "ถ่ายได้" ถ้ามองเห็นในภาพใดภาพหนึ่ง
+    for (const m of metas) {
+      const a = tagInfo[m.tag] || {}, b = t2[m.tag] || {};
+      tagInfo[m.tag] = { text: a.text || b.text, visible: !!(a.visible || b.visible) };
     }
-    return out;
-  }, metas.map((m) => m.tag)).catch(() => ({}));
-  const capturedCustomer = metas.filter((m) => /-c\d+$/.test(m.tag)).map((m) => capturedTexts[m.tag]).filter(Boolean);
-  const capturedAdmin = metas.filter((m) => /-a\d+$/.test(m.tag)).map((m) => capturedTexts[m.tag]).filter(Boolean);
+    // เลื่อนกลับตำแหน่งเดิมสำหรับภาพหลัก
+    await page.evaluate((tag) => {
+      const el = document.querySelector(`[data-qa-ev="${tag}"]`);
+      if (el) el.scrollIntoView({ block: "center" });
+    }, metas[0].tag).catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  // นับเฉพาะ bubble ที่ "มองเห็นจริงในภาพ" — ข้อความใน DOM แต่หลุดจอ = ไม่ผ่าน
+  const capturedCustomer = metas.filter((m) => /-c\d+$/.test(m.tag) && tagInfo[m.tag]?.visible).map((m) => tagInfo[m.tag].text).filter(Boolean);
+  const capturedAdmin = metas.filter((m) => /-a\d+$/.test(m.tag) && tagInfo[m.tag]?.visible).map((m) => tagInfo[m.tag].text).filter(Boolean);
+  const invisibleAfter = metas.filter((m) => tagInfo[m.tag] && tagInfo[m.tag].text && !tagInfo[m.tag].visible).length;
 
   const EI = require("./lib/evidence-integrity");
   const captureManifest = {
@@ -244,6 +297,9 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
     captured_admin_texts: capturedAdmin,
     captured_customer_text_hashes: capturedCustomer.map(EI.textHash),
     captured_admin_text_hashes: capturedAdmin.map(EI.textHash),
+    bubbles_total: metas.length,
+    bubbles_visible_in_shots: metas.length - invisibleAfter,
+    multi_part: !!part2Shot,
     captured_at: new Date().toISOString(),
   };
   const verification = EI.verifyCapturedEvidence({
@@ -257,6 +313,9 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
     },
     captureManifest,
   });
+  // bubble เป้าหมายหลุดจอทุกภาพ = ไม่ผ่าน (ภาพต้อง "เห็น" ข้อความที่ตรวจจริง)
+  if (invisibleAfter > 0) verification.failures.push(`bubble_not_visible(${invisibleAfter})`);
+  verification.verified = verification.verified && invisibleAfter === 0;
   const verificationStatus = verification.verified ? "verified" : "failed";
   // FINAL STATUS: exact เฉพาะ verified เท่านั้น (locator conf สูงแต่ verify FAIL → uncertain)
   const finalMatchStatus = verification.verified && matchStatus === "exact" ? "exact" : verification.verified ? matchStatus : "uncertain";
@@ -281,7 +340,7 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
       height: Math.min(vh, y2 + pad) - Math.max(0, y1 - pad),
       vw, vh, clippedTall: y2 - y1 > vh - 30,
     };
-  }, metas.map((m) => m.tag));
+  }, metas.filter((m) => tagInfo[m.tag]?.visible).map((m) => m.tag)); // crop เฉพาะ bubble ที่มองเห็นจริง
 
   const items = [];
   const shoot = async (evidence_type, title, fname, clip) => {
@@ -308,9 +367,25 @@ async function captureQcPairEvidence(page, { qcRes, convId, jobId, dateStr }) {
       },
     });
   };
-  // A) pair_focus — เฉพาะคู่ที่ตรวจ (clip กรอบรวม)
+  // A) pair_focus — เฉพาะคู่ที่ตรวจ (clip กรอบรวมของ bubble ที่มองเห็นจริง)
   if (box && box.width > 30 && box.height > 20)
-    await shoot("pair_focus_png", `คู่ข้อความที่ใช้ให้คะแนน (${caseRef})`, `${caseRef}-pair-focus.jpg`, { x: box.x, y: box.y, width: box.width, height: box.height });
+    await shoot("pair_focus_png", `คู่ข้อความที่ใช้ให้คะแนน (${caseRef})${part2Shot ? " — ส่วน 1/2" : ""}`, `${caseRef}-pair-focus.jpg`, { x: box.x, y: box.y, width: box.width, height: box.height });
+  // A2) คู่สูงเกินจอ → ส่วนที่ 2 (bubble ที่เหลือ) — ภาพชุดเดียวกันครอบทุก bubble ที่ตรวจ
+  if (part2Shot) {
+    const fname2 = `${caseRef}-pair-focus-2.jpg`;
+    fs.writeFileSync(path.join(dir, fname2), part2Shot);
+    items.push({
+      evidence_type: "pair_focus_png",
+      title: `คู่ข้อความที่ใช้ให้คะแนน (${caseRef}) — ส่วน 2/2`,
+      file_path: path.relative(__dirname, path.join(dir, fname2)),
+      image_base64: `data:image/jpeg;base64,${part2Shot.toString("base64")}`,
+      evidence_scope: "exact_pair",
+      match_status: finalMatchStatus,
+      match_confidence: confidence,
+      verification_status: verificationStatus,
+      data: { pair: { customer_text: qcRes.customer_text, customer_created_at: qcRes.customer_created_at, admin_text: qcRes.admin_text, admin_created_at: qcRes.admin_created_at, response_seconds: qcRes.response_seconds }, capture_manifest: captureManifest, verification, part: 2 },
+    });
+  }
   // B) pair_context — viewport รอบคู่ (บริบท 2-4 ข้อความ)
   await shoot("pair_context_png", `บริบทรอบคู่ข้อความ (${caseRef})`, `${caseRef}-context.jpg`);
   // C) chat_identity — แถบหัวห้อง (ชื่อลูกค้า)
