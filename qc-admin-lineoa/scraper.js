@@ -56,6 +56,131 @@ const CLI_DATE_MODE =
     ? "deep_history"
     : "strict";
 
+// ---------- WORKER IDENTITY / LOCK / HEARTBEAT ----------
+//   online บนหน้าเว็บมาจาก heartbeat จริงของ process นี้เท่านั้น (ห้ามอนุมานจาก job ใน DB)
+const os = require("os");
+const WORKER_LOCK_FILE = path.join(__dirname, ".storage", "scraper-worker.lock");
+const WORKER = {
+  id: `${os.hostname()}-${process.pid}`,
+  machine: os.hostname(),
+  mode: "idle",
+  status: "online", // online | busy | draining | session_expired | error
+  draining: false,
+  currentJobId: null,
+  currentChat: null,
+  currentStep: null,
+  startedAt: new Date().toISOString(),
+  lastJobReceivedAt: null,
+  sessionStatus: "unknown",
+  health: null,
+  refreshLock: null,
+};
+
+const pidAlive = (pid) => {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+};
+
+// lock กัน worker ซ้ำบนเครื่องเดียวกัน (npm run scraper:watch + scraper-live.bat พร้อมกัน = ห้าม)
+function acquireWorkerLock(mode) {
+  try {
+    if (fs.existsSync(WORKER_LOCK_FILE)) {
+      const lock = JSON.parse(fs.readFileSync(WORKER_LOCK_FILE, "utf8"));
+      const stale =
+        !lock.pid || !pidAlive(lock.pid) ||
+        (lock.last_heartbeat_at && Date.now() - new Date(lock.last_heartbeat_at).getTime() > 120000);
+      if (!stale) {
+        console.error("\n❌ มี Scraper Worker ทำงานอยู่แล้วบนเครื่องนี้");
+        console.error(`   machine=${lock.machine_name} pid=${lock.pid} mode=${lock.mode} เริ่ม ${lock.started_at}`);
+        console.error("   ปิดหน้าต่างเดิมก่อน หรือรอให้จบงาน แล้วค่อยเปิดใหม่\n");
+        process.exit(1);
+      }
+      log(`[LOCK] พบ lock ค้าง (pid ${lock.pid} ตายแล้ว) — เคลียร์แล้วเริ่มใหม่`);
+    }
+  } catch { /* lock อ่านไม่ได้ = stale */ }
+  ensureDir(path.dirname(WORKER_LOCK_FILE));
+  const writeLock = () =>
+    fs.writeFileSync(WORKER_LOCK_FILE, JSON.stringify({
+      machine_name: WORKER.machine, pid: process.pid, started_at: WORKER.startedAt,
+      mode, last_heartbeat_at: new Date().toISOString(),
+    }, null, 2));
+  writeLock();
+  WORKER.refreshLock = writeLock;
+  const release = () => { try { fs.unlinkSync(WORKER_LOCK_FILE); } catch {} };
+  process.on("exit", release);
+  process.on("SIGINT", () => { release(); process.exit(0); });
+  process.on("SIGTERM", () => { release(); process.exit(0); });
+}
+
+// heartbeat ทุก 12 วิ → server; server ตอบ desired_state (draining = หยุดรับงานใหม่)
+function startHeartbeat(mode) {
+  WORKER.mode = mode;
+  const beat = async () => {
+    try {
+      const r = await api("/api/scraper/worker-status", {
+        method: "POST",
+        body: JSON.stringify({
+          worker_id: WORKER.id,
+          machine_name: WORKER.machine,
+          pid: process.pid,
+          mode: WORKER.mode,
+          status: WORKER.draining ? "draining" : WORKER.status,
+          current_job_id: WORKER.currentJobId,
+          current_chat: WORKER.currentChat,
+          current_step: WORKER.currentStep,
+          line_session_status: WORKER.sessionStatus,
+          health: WORKER.health,
+          started_at: WORKER.startedAt,
+          last_job_received_at: WORKER.lastJobReceivedAt,
+          app_version: require("./package.json").version,
+        }),
+      });
+      if (r?.desired_state === "draining" && !WORKER.draining) {
+        WORKER.draining = true;
+        log("[DRAIN] ได้รับคำสั่ง 'หยุดรับงานใหม่' — ทำงานปัจจุบันให้จบ แล้วไม่รับ job ใหม่");
+      } else if (r?.desired_state === "running" && WORKER.draining) {
+        WORKER.draining = false;
+        log("[DRAIN] กลับมารับงานตามปกติ");
+      }
+      WORKER.refreshLock?.();
+    } catch { /* heartbeat พลาดครั้งเดียวไม่เป็นไร */ }
+  };
+  beat();
+  setInterval(beat, 12000).unref();
+}
+
+// health check ตอนเริ่ม: API / LINE session / browser / storage
+async function workerHealthCheck() {
+  const h = { api: false, line_session: false, browser: false, storage: false };
+  try { const r = await listJobs(); h.api = Array.isArray(r); } catch {}
+  h.line_session = fs.existsSync(AUTH_FILE);
+  try { require("playwright"); h.browser = true; } catch {}
+  try {
+    const t = path.join(__dirname, ".storage", ".write-test");
+    ensureDir(path.dirname(t)); fs.writeFileSync(t, "ok"); fs.unlinkSync(t);
+    h.storage = true;
+  } catch {}
+  WORKER.health = h;
+  WORKER.sessionStatus = h.line_session ? (WORKER.sessionStatus === "expired" ? "expired" : "valid") : "missing";
+  return h;
+}
+
+// แบนเนอร์เริ่มงาน — CMD ต้องไม่ว่างเปล่า
+function printWorkerBanner(mode, health) {
+  const mark = (b) => (b ? "✅" : "❌");
+  console.log(`
+==================================================
+  QC ADMIN LINE OA SCRAPER
+==================================================
+  Mode        : ${String(mode).toUpperCase()}
+  Machine     : ${WORKER.machine}
+  Worker ID   : ${WORKER.id}
+  LINE Session: ${health.line_session ? "VALID" : "MISSING — รัน npm run scraper:login"}
+  API         : ${API_URL} ${mark(health.api)}
+  Browser     : ${mark(health.browser)}   Storage: ${mark(health.storage)}
+==================================================`);
+  if (mode === "watch") console.log("  [WAIT] รอรับ Job จากหน้าเว็บ /scraper ...\n");
+}
+
 const toISO = (d) => new Date(d).toISOString().slice(0, 10);
 const log = (...a) =>
   console.log(`[${new Date().toISOString().slice(11, 19)}]`, ...a);
@@ -913,6 +1038,10 @@ async function runJob(job, context) {
   // โหมด: job.mode (จาก DB) มาก่อน แล้วค่อย fallback เป็น CLI/env
   const mode = /^deep_?history$/i.test(job.mode || "") ? "deep_history" : CLI_DATE_MODE;
   log(`[JOB] ${job.id} · mode=${mode} · target=${fromDate}${fromDate === toDate ? "" : "→" + toDate} · today_bangkok=${D.bangkokToday()} (Asia/Bangkok)`);
+  WORKER.currentJobId = job.id;
+  WORKER.status = "busy";
+  WORKER.currentStep = "scanning";
+  WORKER.lastJobReceivedAt = new Date().toISOString();
   await patchJob(job.id, { status: "running", counters: { current_step: "scanning" } });
 
   let cancelled = false;
@@ -965,6 +1094,8 @@ async function runJob(job, context) {
       }
       chatIndex++;
       C.processed_chats++;
+      WORKER.currentChat = item.name;
+      WORKER.currentStep = "collecting";
       await patchJob(job.id, { current_chat: item.name, counters: { ...C, current_step: "collecting" } });
 
       let res;
@@ -1048,6 +1179,7 @@ async function runJob(job, context) {
         const notes = await extractNotes(page).catch(() => []);
         for (const n of notes) await postNote(res.meta.uid, n).catch(() => {});
       }
+      WORKER.currentStep = "saving";
       await patchJob(job.id, { counters: { ...C, current_step: "saving" }, logged_count: C.messages_inserted });
     }
 
@@ -1065,6 +1197,10 @@ async function runJob(job, context) {
       error_text: String(e.message).slice(0, 500),
     });
   } finally {
+    WORKER.currentJobId = null;
+    WORKER.currentChat = null;
+    WORKER.currentStep = null;
+    WORKER.status = "online";
     await page.close().catch(() => {});
   }
 }
@@ -1242,6 +1378,17 @@ async function main() {
     process.exit(1);
   }
 
+  // ---- worker mode: lock กันซ้ำ + health check + banner + heartbeat จริง ----
+  const workerMode = getArg("recapture-evidence")
+    ? "recapture"
+    : WATCH
+      ? "watch"
+      : "manual";
+  acquireWorkerLock(workerMode);
+  const health = await workerHealthCheck();
+  printWorkerBanner(workerMode, health);
+  startHeartbeat(workerMode);
+
   const launchAndContext = async () => {
     const browser = await chromium.launch({ headless: HEADLESS });
     const context = await browser.newContext({ storageState: AUTH_FILE });
@@ -1399,11 +1546,23 @@ async function main() {
         }
       }
 
-      const job = await pollJob().catch(() => null);
-      if (job && job.id) {
-        const { browser, context } = await launchAndContext();
-        await runJob(job, context);
-        await browser.close().catch(() => {});
+      // draining = ทำงานปัจจุบันให้จบแล้ว "ไม่รับ job ใหม่" (สั่งจากหน้า /scraper)
+      if (WORKER.draining) {
+        if (Date.now() - (WORKER._lastWaitLog || 0) > 30000) {
+          log("[WAIT] โหมดหยุดรับงานใหม่ (draining) — ไม่รับ job จนกว่าจะสั่งกลับมา");
+          WORKER._lastWaitLog = Date.now();
+        }
+      } else {
+        const job = await pollJob().catch(() => null);
+        if (job && job.id) {
+          const { browser, context } = await launchAndContext();
+          await runJob(job, context);
+          await browser.close().catch(() => {});
+          log("  [WAIT] รอรับ Job จากหน้าเว็บ /scraper ...");
+        } else if (Date.now() - (WORKER._lastWaitLog || 0) > 30000) {
+          log("[WAIT] รอรับ Job จากหน้าเว็บ /scraper ...");
+          WORKER._lastWaitLog = Date.now();
+        }
       }
     } catch (e) {
       log(`⚠️ watch loop error: ${e.message}`);

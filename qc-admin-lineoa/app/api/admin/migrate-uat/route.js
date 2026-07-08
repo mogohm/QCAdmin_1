@@ -146,6 +146,18 @@ export async function POST(req) {
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict'`;
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`;
 
+    // ---- scraper_workers: heartbeat จริงจาก worker process (ห้ามอนุมาน online จาก job) ----
+    await query`CREATE TABLE IF NOT EXISTS scraper_workers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      worker_id TEXT UNIQUE NOT NULL,
+      machine_name TEXT, pid INTEGER, mode TEXT, status TEXT,
+      desired_state TEXT DEFAULT 'running',
+      current_job_id UUID, current_chat TEXT, current_step TEXT,
+      line_session_status TEXT, health JSONB,
+      started_at TIMESTAMPTZ, last_heartbeat_at TIMESTAMPTZ, last_job_received_at TIMESTAMPTZ,
+      app_version TEXT, git_commit TEXT)`;
+    await query`CREATE INDEX IF NOT EXISTS idx_scraper_workers_hb ON scraper_workers (last_heartbeat_at DESC)`;
+
     // ---- line_customers/conversations: external_chat_key (เก็บแชทที่ไม่มี LINE user id ได้) ----
     await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;
     await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_line_customers_extkey ON line_customers (external_chat_key) WHERE external_chat_key IS NOT NULL`;

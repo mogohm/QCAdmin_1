@@ -349,6 +349,23 @@ export default function ScraperPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [scrapeMode, setScrapeMode] = useState("strict"); // strict (แนะนำ) | deep_history
+  const [worker, setWorker] = useState(null); // สถานะ worker จาก heartbeat จริง
+  const workerTimerRef = useRef(null);
+
+  // สั่ง "หยุดรับงานใหม่" (draining) / กลับมารับงาน — ไม่ฆ่างานที่กำลังทำ
+  const setWorkerDrain = async (drain) => {
+    try {
+      const r = await fetch("/api/scraper/worker-status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desired_state: drain ? "draining" : "running" }),
+      });
+      const j = await r.json();
+      setMsg(r.ok ? (drain ? "⏸ สั่งหยุดรับงานใหม่แล้ว (งานปัจจุบันทำต่อจนจบ)" : "▶ กลับมารับงานตามปกติ") : "❌ " + (j.error || "error"));
+    } catch (e) {
+      setMsg("❌ " + e.message);
+    }
+  };
 
   // schedule
   const [cfg, setCfg] = useState(null);
@@ -411,6 +428,16 @@ export default function ScraperPage() {
     loadJobs();
     loadReportRef.current?.();
     pollRef.current = setInterval(loadJobs, 3000);
+    // worker status จาก heartbeat จริงของ process scraper เท่านั้น (ไม่อนุมานจาก job)
+    const loadWorker = () =>
+      fetch("/api/scraper/worker-status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setWorker(d))
+        .catch(() => {});
+    loadWorker();
+    const wt = setInterval(loadWorker, 5000);
+    const oldCleanupTimers = [wt];
+    workerTimerRef.current = oldCleanupTimers;
     tickRef.current = setInterval(() => {
       const c2 = readCfg();
       if (c2?.on && c2.nextRun)
@@ -419,6 +446,7 @@ export default function ScraperPage() {
     return () => {
       clearInterval(pollRef.current);
       clearInterval(tickRef.current);
+      (workerTimerRef.current || []).forEach(clearInterval);
     };
   }, []);
 
@@ -581,6 +609,103 @@ export default function ScraperPage() {
             <p className="muted">รัน job ดึงข้อมูลและดูผลลัพธ์ในหน้าเดียวกัน</p>
           </div>
         </div>
+
+        {/* ===== WORKER STATUS — จาก heartbeat จริงของ process scraper เท่านั้น ===== */}
+        {(() => {
+          const w = worker?.worker || null;
+          const online = worker?.online === true;
+          const sessionExpired = online && (w?.line_session_status === "expired" || w?.line_session_status === "missing");
+          const draining = online && (w?.desired_state === "draining" || w?.status === "draining");
+          const ago = (ts) => {
+            if (!ts) return "—";
+            const s = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 1000));
+            return s < 60 ? `${s} วินาทีที่แล้ว` : s < 3600 ? `${Math.floor(s / 60)} นาทีที่แล้ว` : `${Math.floor(s / 3600)} ชม.ที่แล้ว`;
+          };
+          const hours = w?.started_at ? ((Date.now() - new Date(w.started_at).getTime()) / 3600000).toFixed(1) : null;
+          const OFFICIAL_CMD = "cd /d h:\\QCAdminPJ\\qc-admin-lineoa && scraper-live.bat --watch";
+          const copyCmd = () => { navigator.clipboard?.writeText(OFFICIAL_CMD); setMsg("✓ คัดลอกคำสั่งแล้ว"); };
+          const H = w?.health || null;
+          return (
+            <div style={{ background: "#0f172a", border: `2px solid ${!online ? "#ef4444" : sessionExpired ? "#f59e0b" : "#22c55e"}`, borderRadius: 12, padding: 16, marginBottom: 16, color: "#e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>
+                  🖥 เครื่องเก็บข้อมูล LINE OA{" "}
+                  {!online ? (
+                    <span style={{ color: "#f87171" }}>🔴 เครื่องเก็บข้อมูลไม่ได้เปิด</span>
+                  ) : sessionExpired ? (
+                    <span style={{ color: "#fbbf24" }}>🟠 LINE Session หมดอายุ</span>
+                  ) : draining ? (
+                    <span style={{ color: "#fbbf24" }}>⏸ หยุดรับงานใหม่ (งานปัจจุบันทำต่อ)</span>
+                  ) : (
+                    <span style={{ color: "#4ade80" }}>🟢 ออนไลน์</span>
+                  )}
+                </div>
+                {online && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {draining ? (
+                      <button onClick={() => setWorkerDrain(false)} style={{ padding: "4px 12px", fontSize: 12, background: "#14532d", color: "#bbf7d0", border: "1px solid #16a34a", borderRadius: 6, cursor: "pointer" }}>▶ กลับมารับงาน</button>
+                    ) : (
+                      <button onClick={() => setWorkerDrain(true)} style={{ padding: "4px 12px", fontSize: 12, background: "#78350f", color: "#fde68a", border: "1px solid #d97706", borderRadius: 6, cursor: "pointer" }}>⏸ หยุดรับงานใหม่</button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!online ? (
+                <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.7 }}>
+                  {worker?.machine_name && (
+                    <div style={{ color: "#94a3b8", fontSize: 12 }}>
+                      เห็นล่าสุด: {worker.machine_name} · {ago(worker.last_seen)}
+                    </div>
+                  )}
+                  <div style={{ color: "#e2e8f0", marginTop: 4 }}>บนเครื่อง Operator ให้เปิด:</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+                    <code style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 6, padding: "8px 12px", color: "#4ade80", fontSize: 13, fontWeight: 700 }}>
+                      scraper-live.bat --watch
+                    </code>
+                    <button onClick={copyCmd} style={{ padding: "6px 12px", fontSize: 12, background: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb", borderRadius: 6, cursor: "pointer" }}>
+                      📋 คัดลอกคำสั่ง
+                    </button>
+                  </div>
+                </div>
+              ) : sessionExpired ? (
+                <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.9 }}>
+                  <div>1. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code></div>
+                  <div>2. Login LINE OA ในหน้าต่างที่เปิดขึ้น</div>
+                  <div>3. เปิด <code style={{ color: "#4ade80" }}>scraper-live.bat --watch</code> ใหม่</div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", fontSize: 12.5, marginTop: 10 }}>
+                    <span>ชื่อเครื่อง: <b style={{ color: "#fff", fontFamily: "monospace" }}>{w.machine_name}</b></span>
+                    <span>คำสั่งที่ใช้: <code style={{ color: "#4ade80" }}>scraper-live.bat --watch</code></span>
+                    <span>โหมด: <b style={{ color: "#e2e8f0" }}>{w.current_job_id ? "กำลังทำงาน" : "รอรับงาน"}</b></span>
+                    <span>LINE Session: <b style={{ color: "#4ade80" }}>✅ ใช้งานได้</b></span>
+                    {hours && <span>ทำงานมาแล้ว: <b style={{ color: "#e2e8f0" }}>{hours} ชม.</b></span>}
+                    <span>รับ Job ล่าสุด: <b style={{ color: "#e2e8f0" }}>{w.last_job_received_at ? new Date(w.last_job_received_at).toLocaleTimeString("th-TH") : "—"}</b></span>
+                    <span>อัปเดตล่าสุด: <b style={{ color: "#4ade80" }}>{ago(w.last_heartbeat_at)}</b></span>
+                  </div>
+                  {w.current_job_id && (
+                    <div style={{ marginTop: 8, fontSize: 12.5, background: "#1e3a5f", border: "1px solid #2563eb", borderRadius: 8, padding: "8px 12px", display: "flex", flexWrap: "wrap", gap: "4px 18px" }}>
+                      <span>Job: <code style={{ color: "#93c5fd" }}>{String(w.current_job_id).slice(0, 8)}</code></span>
+                      {w.current_chat && <span>ห้องล่าสุด: <b style={{ color: "#fff" }}>{w.current_chat}</b></span>}
+                      <span>ขั้นตอน: <b style={{ color: "#fbbf24" }}>{stepLabel(w.current_step)}</b></span>
+                    </div>
+                  )}
+                  {H && (
+                    <div style={{ marginTop: 8, fontSize: 11.5, color: "#94a3b8", display: "flex", gap: 14 }}>
+                      สุขภาพระบบ:
+                      <span>{H.api ? "✅" : "❌"} API</span>
+                      <span>{H.line_session ? "✅" : "❌"} LINE Session</span>
+                      <span>{H.browser ? "✅" : "❌"} Browser</span>
+                      <span>{H.storage ? "✅" : "❌"} Storage</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ===== ACTIVE JOB BANNER — high contrast + live counters จริง ===== */}
         {activeJob ? (
@@ -1216,39 +1341,65 @@ export default function ScraperPage() {
             )}
         </div>
 
-        {/* ===== INSTRUCTIONS ===== */}
+        {/* ===== INSTRUCTIONS — ทางการมีคำสั่งเดียว: scraper-live.bat --watch ===== */}
         <div
           className="card"
           style={{ marginBottom: 24, background: "#f8fafc", fontSize: 13 }}
         >
-          <h2>วิธีเปิด Scraper บนเครื่อง</h2>
-          <div style={{ fontFamily: "monospace", lineHeight: 2.2 }}>
-            <div style={{ color: "#888" }}>
-              # 1) login LINE OA ครั้งแรก (เปิด browser ให้ login แล้ว save
-              session)
+          <h2>วิธีเปิดเครื่องเก็บข้อมูล</h2>
+          <div style={{ lineHeight: 2 }}>
+            <div>1. เปิด CMD หรือ PowerShell</div>
+            <div>
+              2. เข้า project:{" "}
+              <code style={{ background: "#e2e8f0", padding: "2px 6px", borderRadius: 4 }}>
+                cd /d h:\QCAdminPJ\qc-admin-lineoa
+              </code>
             </div>
-            <div>npm run scraper:login</div>
-            <div style={{ marginTop: 6, color: "#888" }}>
-              # 2) poll งาน + scrape ต่อเนื่อง (รอรับ job จากเว็บ)
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              3. เปิด:{" "}
+              <code style={{ background: "#dcfce7", border: "1px solid #86efac", padding: "4px 10px", borderRadius: 6, fontWeight: 700, color: "#15803d" }}>
+                scraper-live.bat --watch
+              </code>
+              <button
+                onClick={() => { navigator.clipboard?.writeText("cd /d h:\\QCAdminPJ\\qc-admin-lineoa && scraper-live.bat --watch"); setMsg("✓ คัดลอกคำสั่งแล้ว"); }}
+                style={{ padding: "3px 10px", fontSize: 12, cursor: "pointer" }}
+              >
+                📋 คัดลอกคำสั่ง
+              </button>
             </div>
-            <div>npm run scraper:watch</div>
-            <div style={{ marginTop: 6, color: "#888" }}>
-              # หรือรันพร้อม schedule สร้าง job Yesterday อัตโนมัติทุก 30 นาที
+            <div style={{ color: "#888", fontSize: 12 }}>
+              แล้วเปิดหน้าต่างทิ้งไว้ — นี่คือคำสั่งเดียวสำหรับการใช้งานปกติ
             </div>
-            <div>node scraper.js --watch --schedule=30</div>
-            <div style={{ marginTop: 6, color: "#888" }}>
-              # ดึงวันเดียว / ช่วงวันที่
-            </div>
-            <div>node scraper.js --date=2026-06-16</div>
-            <div>node scraper.js --from=2026-06-10 --to=2026-06-16</div>
           </div>
-          <div style={{ marginTop: 10, color: "#888" }}>
-            ENV: <code>QC_API_URL</code> · <code>QC_API_KEY</code> ·{" "}
-            <code>LINE_OA_URL</code> · <code>SCRAPER_HEADLESS</code> ·{" "}
-            <code>SCRAPER_DEBUG</code> — session เก็บที่{" "}
-            <code>.storage/line-auth.json</code> (debug evidence ที่{" "}
-            <code>.storage/debug/</code>)
+          <div style={{ marginTop: 10, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, fontSize: 12.5 }}>
+            <b>LINE Session หมดอายุ?</b> รัน{" "}
+            <code style={{ background: "#fef3c7", padding: "1px 6px", borderRadius: 4 }}>npm run scraper:login</code>{" "}
+            → login LINE OA → เปิด <code>scraper-live.bat --watch</code> ใหม่
           </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: "#888" }}>
+            🗓 ตั้งเวลาอัตโนมัติรายวัน: ใช้ <code>scrape-yesterday.bat</code> ผ่าน Windows Task
+            Scheduler เท่านั้น (ไม่ต้องรันเอง)
+          </div>
+
+          {/* คำสั่งขั้นสูง — สำหรับผู้พัฒนาเท่านั้น (ซ่อนเป็นค่าเริ่มต้น) */}
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ cursor: "pointer", fontSize: 12.5, color: "#64748b", fontWeight: 600 }}>
+              🛠 คำสั่งสำหรับผู้พัฒนาเท่านั้น
+            </summary>
+            <div style={{ fontFamily: "monospace", lineHeight: 2, fontSize: 12, marginTop: 8, color: "#555" }}>
+              <div style={{ color: "#999" }}># ทดสอบวันเดียวแบบเห็นจอ (troubleshooting exact-date)</div>
+              <div>scraper-live.bat --date=YYYY-MM-DD --headed</div>
+              <div style={{ color: "#999", marginTop: 4 }}># ช่วงวันที่ / backfill ค้นย้อนหลัง</div>
+              <div>node scraper.js --from=2026-06-10 --to=2026-06-16</div>
+              <div>node scraper.js --date=YYYY-MM-DD --deep-history</div>
+              <div style={{ color: "#999", marginTop: 4 }}># watch แบบไม่มี log ไฟล์ (dev)</div>
+              <div>npm run scraper:watch</div>
+              <div style={{ marginTop: 6, color: "#999" }}>
+                ENV: QC_API_URL · QC_API_KEY · LINE_OA_URL · SCRAPER_HEADLESS · SCRAPER_DEBUG —
+                session: .storage/line-auth.json
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* ===== DIVIDER ===== */}

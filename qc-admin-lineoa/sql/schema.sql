@@ -305,6 +305,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_line_customers_extkey
   ON line_customers (external_chat_key) WHERE external_chat_key IS NOT NULL;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS external_chat_key TEXT;
 
+-- scraper_workers: heartbeat จริงจาก worker process (ห้ามอนุมาน online จาก job)
+CREATE TABLE IF NOT EXISTS scraper_workers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id TEXT UNIQUE NOT NULL,
+  machine_name TEXT, pid INTEGER, mode TEXT, status TEXT,
+  desired_state TEXT DEFAULT 'running',
+  current_job_id UUID, current_chat TEXT, current_step TEXT,
+  line_session_status TEXT, health JSONB,
+  started_at TIMESTAMPTZ, last_heartbeat_at TIMESTAMPTZ, last_job_received_at TIMESTAMPTZ,
+  app_version TEXT, git_commit TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_scraper_workers_hb ON scraper_workers (last_heartbeat_at DESC);
+
 -- scraper_jobs: counters แบบ JSONB + mode (strict = ปกติ / deep_history = backfill)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict';

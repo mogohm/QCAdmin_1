@@ -64,4 +64,37 @@ function stepLabel(step) {
   );
 }
 
-module.exports = { normalizeJobStatus, stepLabel };
+// ---- Worker status (heartbeat จริงจาก process เท่านั้น — ห้ามอนุมานจาก job ใน DB) ----
+const WORKER_ONLINE_WINDOW_MS = 45000; // heartbeat เก่ากว่า 45 วิ = offline
+
+// online = มี heartbeat จริงและยังสด — "มี job active" ไม่นับเป็น online เด็ดขาด
+function isWorkerOnline(lastHeartbeatAt, nowMs = Date.now()) {
+  if (!lastHeartbeatAt) return false;
+  const t = new Date(lastHeartbeatAt).getTime();
+  if (isNaN(t)) return false;
+  return nowMs - t <= WORKER_ONLINE_WINDOW_MS;
+}
+
+// สถานะ panel บนหน้า /scraper: online | busy | session_expired | draining | offline
+function workerPanelState(worker, nowMs = Date.now()) {
+  if (!worker || !isWorkerOnline(worker.last_heartbeat_at, nowMs)) return "offline";
+  if (worker.line_session_status === "expired" || worker.status === "session_expired")
+    return "session_expired";
+  if (worker.status === "draining") return "draining";
+  if (worker.status === "busy" || worker.current_job_id) return "busy";
+  return "online";
+}
+
+// lock ไฟล์ป้องกัน worker ซ้ำ: pid ตาย = stale ทันที (process ตายแล้ว heartbeat ไม่ได้)
+//   heartbeat-age ใช้เป็นชั้นกันเหนียวเพิ่ม (เช่น pid ถูก OS นำกลับมาใช้ใหม่)
+function lockIsStale(lock, { pidAlive = false, nowMs = Date.now() } = {}) {
+  if (!lock || !lock.pid) return true;
+  if (!pidAlive) return true; // process ตายแล้ว → lock ค้าง กู้คืนได้
+  const hb = lock.last_heartbeat_at ? new Date(lock.last_heartbeat_at).getTime() : 0;
+  return isNaN(hb) || nowMs - hb > 120000; // pid ยังอยู่แต่ค้าง (ไม่เขียน lock นาน) = stale
+}
+
+module.exports = {
+  normalizeJobStatus, stepLabel,
+  WORKER_ONLINE_WINDOW_MS, isWorkerOnline, workerPanelState, lockIsStale,
+};
