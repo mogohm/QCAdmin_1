@@ -5,3 +5,7 @@
 *.sql text eol=lf
 *.md text eol=lf
 *.html text eol=lf
+
+# batch/powershell ต้องเป็น CRLF (cmd.exe parse) — override * eol=lf ด้านบน
+*.bat text eol=crlf
+*.ps1 text eol=crlf
