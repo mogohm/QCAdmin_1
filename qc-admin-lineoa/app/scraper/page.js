@@ -618,7 +618,7 @@ export default function ScraperPage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                      {activeJob.date_from} — {activeJob.date_to} · โหมด{" "}
+                      {String(activeJob.date_from).slice(0, 10)} — {String(activeJob.date_to).slice(0, 10)} · โหมด{" "}
                       {st.mode === "deep_history" ? "ค้นย้อนหลัง" : "ตรงตามวันที่"}
                     </span>
                     <button
@@ -672,7 +672,7 @@ export default function ScraperPage() {
 
                 {/* details row — operational monitoring */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 11.5, color: "#94a3b8", marginTop: 10, paddingTop: 8, borderTop: "1px solid #334155" }}>
-                  <span>วันที่เป้าหมาย: <b style={{ color: "#e2e8f0" }}>{activeJob.date_from}{activeJob.date_to !== activeJob.date_from ? ` → ${activeJob.date_to}` : ""}</b></span>
+                  <span>วันที่เป้าหมาย: <b style={{ color: "#e2e8f0" }}>{String(activeJob.date_from).slice(0, 10)}{activeJob.date_to !== activeJob.date_from ? ` → ${String(activeJob.date_to).slice(0, 10)}` : ""}</b></span>
                   <span>โหมด: <b style={{ color: "#e2e8f0" }}>{st.mode === "deep_history" ? "ค้นย้อนหลัง" : "ตรงตามวันที่"}</b></span>
                   <span>เป้าหมาย: <b style={{ color: "#60a5fa" }}>{st.target}</b></span>
                   <span>เปิดแล้ว: <b style={{ color: "#93c5fd" }}>{st.processed}</b></span>
