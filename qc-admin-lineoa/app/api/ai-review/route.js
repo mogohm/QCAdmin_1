@@ -12,6 +12,7 @@
 // ============================================================
 import { query } from "@/lib/db";
 import { guard } from "@/lib/permissions";
+import { IMG_EVIDENCE_TYPES } from "@/lib/evidence-integrity";
 
 export async function GET(req) {
   // ต้องมีสิทธิ์ตรวจ dispute หรือ override คะแนน
@@ -20,14 +21,33 @@ export async function GET(req) {
   const status = new URL(req.url).searchParams.get("status") || "pending";
   try {
     // join SOP ที่ AI เดา (matched_sop_id) เพื่อให้หัวหน้าเทียบกับคำตอบจริง
+    // นับหลักฐานแยกชนิด — evidence_count รวม late_response/raw_json/summary ซึ่ง "ไม่ใช่ภาพ"
+    //   ป้าย "มีภาพ" ต้องดูจาก screenshot_count/verified เท่านั้น
     const rows = await query`
       SELECT r.*, s.topic AS matched_sop_topic, s.answer AS matched_sop_answer,
-        (SELECT count(*)::int FROM case_evidence e
-           WHERE (r.qc_score_id IS NOT NULL AND e.qc_score_id = r.qc_score_id)
-              OR (r.conversation_id IS NOT NULL AND e.conversation_id = r.conversation_id)
-        ) AS evidence_count
+        COALESCE(ev.evidence_count, 0) AS evidence_count,
+        COALESCE(ev.screenshot_count, 0) AS screenshot_count,
+        COALESCE(ev.verified_screenshot_count, 0) AS verified_screenshot_count,
+        (COALESCE(ev.screenshot_count, 0) - COALESCE(ev.verified_screenshot_count, 0)
+          + COALESCE(refimg.n, 0)) AS reference_screenshot_count,
+        (COALESCE(ev.verified_screenshot_count, 0) > 0) AS has_verified_screenshot,
+        ((COALESCE(ev.screenshot_count, 0) - COALESCE(ev.verified_screenshot_count, 0)
+          + COALESCE(refimg.n, 0)) > 0) AS has_reference_screenshot
       FROM ai_review_queue r
       LEFT JOIN sop_scripts s ON s.id = r.matched_sop_id
+      LEFT JOIN LATERAL (
+        SELECT count(*)::int AS evidence_count,
+               count(*) FILTER (WHERE e.evidence_type = ANY(${IMG_EVIDENCE_TYPES}))::int AS screenshot_count,
+               count(*) FILTER (WHERE e.evidence_type = ANY(${IMG_EVIDENCE_TYPES})
+                 AND e.verification_status = 'verified' AND e.match_status = 'exact')::int AS verified_screenshot_count
+        FROM case_evidence e WHERE r.qc_score_id IS NOT NULL AND e.qc_score_id = r.qc_score_id
+      ) ev ON true
+      LEFT JOIN LATERAL (
+        SELECT count(*)::int AS n FROM case_evidence e2
+        WHERE r.conversation_id IS NOT NULL AND e2.conversation_id = r.conversation_id
+          AND (e2.qc_score_id IS NULL OR r.qc_score_id IS NULL OR e2.qc_score_id <> r.qc_score_id)
+          AND e2.evidence_type = ANY(${IMG_EVIDENCE_TYPES})
+      ) refimg ON true
       WHERE (${status}::text = 'all' OR r.status = ${status})
       ORDER BY r.status = 'pending' DESC, r.created_at DESC
       LIMIT 200`;

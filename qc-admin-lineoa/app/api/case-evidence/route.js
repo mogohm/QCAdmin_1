@@ -172,10 +172,15 @@ export async function GET(req) {
     if (!timeline && summary && (summary.customer_created_at || summary.admin_created_at))
       timeline = { customer_ts: summary.customer_created_at, admin_ts: summary.admin_created_at, response_seconds: summary.response_seconds ?? null, sla_limit_seconds: null };
 
+    // supportingData = ข้อมูลประกอบ (late_response/raw_json/chat_text/summary_json/html)
+    //   ไม่ใช่ "ภาพ" — ห้ามนับรวมเป็นภาพหลักฐาน
+    const supportingData = [...rawData, ...htmlSnapshots.map((h) => ({ ...h, data: undefined }))];
+    const exactImages = exactEvidence.filter((s) => s.verification_status === "verified" && s.match_status === "exact");
     return Response.json({
       selectedCase,
       exactEvidence,
       conversationReferences,
+      supportingData,
       // deprecated alias (เท่ากับ exactEvidence เท่านั้น — ไม่ merge references)
       screenshots: exactEvidence,
       htmlSnapshots,
@@ -183,6 +188,9 @@ export async function GET(req) {
       summary,
       timeline,
       counts: {
+        exact_images: exactImages.length,
+        reference_images: conversationReferences.length + (exactEvidence.length - exactImages.length),
+        supporting_records: supportingData.length,
         exact: exactEvidence.length,
         references: conversationReferences.length,
         screenshots: exactEvidence.length,

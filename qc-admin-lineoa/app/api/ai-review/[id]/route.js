@@ -42,6 +42,7 @@ export async function GET(req, { params }) {
     // Tab 3: หลักฐาน — รายการแบบเบา (ภาพจริงเปิดผ่าน EvidenceViewer/case-evidence)
     const evidence = await query`
       SELECT id, evidence_type, title, file_path, url, created_at,
+             match_status, verification_status, evidence_scope,
              (data->>'dataUrl' IS NOT NULL OR url IS NOT NULL OR file_path IS NOT NULL) AS has_file
       FROM case_evidence
       WHERE (${item.qc_score_id}::uuid IS NOT NULL AND qc_score_id = ${item.qc_score_id}::uuid)

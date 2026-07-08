@@ -4,6 +4,7 @@ import AppShell from "../components/AppShell";
 import { statusLabel, intentLabel, categoryLabel } from "@/lib/ui-labels";
 import { deriveCaseRef } from "@/lib/customer-identity";
 import EvidenceViewer from "../components/EvidenceViewer";
+import { IMG_EVIDENCE_TYPES as IMG_TYPES } from "@/lib/evidence-integrity";
 
 // ---- ยืนยันชื่อลูกค้า (client guard) — ถ้าดูเหมือนข้อความแชท/ระบบ → ไม่ทราบชื่อลูกค้า ----
 const SERVICE_HINT =
@@ -192,7 +193,13 @@ export default function AiReview() {
               )}
               {!loading &&
                 items.map((r) => {
-                  const hasImg = (r.evidence_count ?? r.has_screenshot) ? true : false;
+                  // ป้ายภาพ: ห้ามใช้ evidence_count (รวมข้อมูลประกอบที่ไม่ใช่ภาพ)
+                  const badge =
+                    (r.verified_screenshot_count ?? 0) > 0
+                      ? { txt: "✅ มีภาพตรงเคส", c: "#22c55e" }
+                      : (r.reference_screenshot_count ?? 0) > 0
+                        ? { txt: "⚠️ มีภาพอ้างอิง", c: "#f6c65b" }
+                        : { txt: "ไม่มีภาพ", c: "#8fb0dd" };
                   return (
                     <tr key={r.id}>
                       <td style={{ fontSize: 11, whiteSpace: "nowrap", color: "#8fb0dd" }}>
@@ -221,8 +228,8 @@ export default function AiReview() {
                       <td className={r.sop_confidence < 60 ? "score bad" : "muted"}>
                         {r.sop_confidence != null ? r.sop_confidence + "%" : "—"}
                       </td>
-                      <td style={{ fontSize: 11, whiteSpace: "nowrap" }}>
-                        {hasImg ? "📷 มีภาพ" : <span className="muted">ไม่มีภาพ</span>}
+                      <td style={{ fontSize: 11, whiteSpace: "nowrap", color: badge.c }}>
+                        {badge.txt}
                       </td>
                       <td>
                         <span
@@ -301,11 +308,17 @@ export default function AiReview() {
               <span className="badge">{intentLabel(sel.detected_intent)}</span>
             </div>
             {/* ---- 4 แท็บ: บทสนทนา / การวิเคราะห์ AI / หลักฐาน / ประวัติ ---- */}
+            {/* หลักฐาน: นับเฉพาะ "ภาพ" บนป้ายแท็บ — ข้อมูลประกอบ (raw/summary/late) ไม่ใช่ภาพ */}
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               {[
                 ["chat", "💬 บทสนทนา"],
                 ["ai", "🤖 การวิเคราะห์ AI"],
-                ["evidence", `📷 หลักฐาน${detail?.evidence?.length ? ` (${detail.evidence.length})` : ""}`],
+                ["evidence", (() => {
+                  const ev = detail?.evidence || [];
+                  const imgs = ev.filter((e) => IMG_TYPES.includes(e.evidence_type));
+                  const exact = imgs.filter((e) => e.verification_status === "verified" && e.match_status === "exact").length;
+                  return `📷 หลักฐาน (ภาพตรงเคส ${exact} · ประกอบ ${ev.length - imgs.length})`;
+                })()],
                 ["history", "🕘 ประวัติการตรวจ"],
               ].map(([k, label]) => (
                 <button
@@ -417,40 +430,63 @@ export default function AiReview() {
             )}
 
             {/* Tab 3: หลักฐาน */}
-            {detail && tab === "evidence" && (
-              <div style={{ fontSize: 12 }}>
-                {!detail.evidence?.length ? (
-                  <div className="muted" style={{ padding: 8 }}>
-                    ยังไม่มีภาพหลักฐานของเคสนี้ — ดูข้อความ/เวลาได้จากแท็บบทสนทนา
-                    {sel.scraper_job_id && (
-                      <div style={{ marginTop: 4 }}>scraper job: <code>{sel.scraper_job_id}</code></div>
-                    )}
+            {detail && tab === "evidence" && (() => {
+              const ev = detail.evidence || [];
+              const imgs = ev.filter((e) => IMG_TYPES.includes(e.evidence_type));
+              const exactImgs = imgs.filter((e) => e.verification_status === "verified" && e.match_status === "exact");
+              const refImgs = imgs.length - exactImgs.length;
+              const supporting = ev.length - imgs.length;
+              return (
+                <div style={{ fontSize: 12 }}>
+                  {/* แยกให้ชัด: ภาพตรงเคส / ภาพอ้างอิง / ข้อมูลประกอบ — ห้ามเรียกข้อมูลประกอบว่า "ภาพ" */}
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap", padding: "6px 8px", marginBottom: 8, background: "#12203c", borderRadius: 8, fontSize: 12 }}>
+                    <span>หลักฐานทั้งหมด: <b style={{ color: "#eaf2ff" }}>{ev.length}</b></span>
+                    <span>ภาพตรงเคส: <b style={{ color: exactImgs.length ? "#22c55e" : "#8fb0dd" }}>{exactImgs.length}</b></span>
+                    <span>ภาพอ้างอิง: <b style={{ color: refImgs ? "#f6c65b" : "#8fb0dd" }}>{refImgs}</b></span>
+                    <span>ข้อมูลประกอบ: <b style={{ color: "#8fb0dd" }}>{supporting}</b></span>
                   </div>
-                ) : (
-                  <>
-                    <table className="table" style={{ fontSize: 12 }}>
-                      <thead><tr><th>ประเภท</th><th>ชื่อ</th><th>เวลา</th><th>ไฟล์</th></tr></thead>
-                      <tbody>
-                        {detail.evidence.map((e) => (
-                          <tr key={e.id}>
-                            <td><span className="badge">{e.evidence_type}</span></td>
-                            <td>{e.title || "—"}</td>
-                            <td style={{ fontSize: 11 }}>{fmtBkk(e.created_at)}</td>
-                            <td>{e.has_file ? "📎" : "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      onClick={() => setShowEvidence(true)}
-                      style={{ marginTop: 8, background: "#0b5cab" }}
-                    >
-                      🖼 เปิด Evidence Viewer (ภาพจริง)
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+                  {!ev.length ? (
+                    <div className="muted" style={{ padding: 8 }}>
+                      ยังไม่มีหลักฐานของเคสนี้ — ดูข้อความ/เวลาได้จากแท็บบทสนทนา
+                      {sel.scraper_job_id && (
+                        <div style={{ marginTop: 4 }}>scraper job: <code>{sel.scraper_job_id}</code></div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <table className="table" style={{ fontSize: 12 }}>
+                        <thead><tr><th>ประเภท</th><th>หมวด</th><th>ชื่อ</th><th>เวลา</th><th>ไฟล์</th></tr></thead>
+                        <tbody>
+                          {ev.map((e) => {
+                            const isImg = IMG_TYPES.includes(e.evidence_type);
+                            const cat = isImg
+                              ? e.verification_status === "verified" && e.match_status === "exact"
+                                ? { t: "ภาพตรงเคส", c: "#22c55e" }
+                                : { t: "ภาพอ้างอิง", c: "#f6c65b" }
+                              : { t: "ข้อมูลประกอบ", c: "#8fb0dd" };
+                            return (
+                              <tr key={e.id}>
+                                <td><span className="badge">{e.evidence_type}</span></td>
+                                <td style={{ color: cat.c, fontSize: 11, whiteSpace: "nowrap" }}>{cat.t}</td>
+                                <td>{e.title || "—"}</td>
+                                <td style={{ fontSize: 11 }}>{fmtBkk(e.created_at)}</td>
+                                <td>{e.has_file ? "📎" : "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <button
+                        onClick={() => setShowEvidence(true)}
+                        style={{ marginTop: 8, background: "#0b5cab" }}
+                      >
+                        🖼 เปิด Evidence Viewer (ภาพจริง)
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Tab 4: ประวัติการตรวจ */}
             {detail && tab === "history" && (

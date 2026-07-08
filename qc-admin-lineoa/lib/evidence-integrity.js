@@ -89,4 +89,48 @@ function verifyCapturedEvidence({ expectedPair, captureManifest }) {
   return { verified, identity_score, text_score, timestamp_score, failures };
 }
 
-module.exports = { textHash, buildIdentityCheck, verifyCapturedEvidence, sameSet, norm };
+// ---- ประเภทหลักฐานที่เป็น "ภาพ" เท่านั้น (evidence_count ≠ จำนวนภาพ!) ----
+//   late_response/raw_json/chat_text/summary_json/html = ข้อมูลประกอบ ไม่ใช่ภาพ
+const IMG_EVIDENCE_TYPES = [
+  "pair_focus_png",
+  "pair_context_png",
+  "chat_identity_png",
+  "chat_header_png",
+  "chat_panel_png",
+  "chat_part_png",
+  "chat_long_png",
+  "screenshot",
+];
+const isImageEvidence = (type) => IMG_EVIDENCE_TYPES.includes(type);
+
+// นับหลักฐานของเคส (rows = case_evidence ที่ qc_score_id ตรงเคส + refRows = ของ conversation อื่น)
+function countEvidence(rows = [], refImageCount = 0) {
+  const images = rows.filter((r) => isImageEvidence(r.evidence_type));
+  const verified = images.filter(
+    (r) => r.verification_status === "verified" && r.match_status === "exact",
+  );
+  return {
+    evidence_count: rows.length,
+    screenshot_count: images.length,
+    verified_screenshot_count: verified.length,
+    // อ้างอิง = ภาพของ conversation อื่น + ภาพของเคสนี้ที่ยังไม่ผ่านการยืนยัน
+    reference_screenshot_count: refImageCount + (images.length - verified.length),
+    supporting_records: rows.length - images.length,
+    has_verified_screenshot: verified.length > 0,
+    has_reference_screenshot: refImageCount + (images.length - verified.length) > 0,
+  };
+}
+
+// ป้ายภาพบน AI Review — ห้ามใช้ evidence_count ตัดสิน "มีภาพ"
+function screenshotBadge(c = {}) {
+  if ((c.verified_screenshot_count ?? 0) > 0)
+    return { key: "exact", label: "✅ มีภาพตรงเคส" };
+  if ((c.reference_screenshot_count ?? 0) > 0)
+    return { key: "reference", label: "⚠️ มีภาพอ้างอิง" };
+  return { key: "none", label: "ไม่มีภาพ" };
+}
+
+module.exports = {
+  textHash, buildIdentityCheck, verifyCapturedEvidence, sameSet, norm,
+  IMG_EVIDENCE_TYPES, isImageEvidence, countEvidence, screenshotBadge,
+};
