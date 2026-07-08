@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { normalizeJobStatus, stepLabel } from "@/lib/scraper-status";
 
 // วันที่ตามเวลาไทย (Asia/Bangkok, UTC+7) — คำนวณจาก epoch จึงถูกต้องทุกโซนเครื่อง
 //   *สำคัญ*: ห้ามใช้ new Date().toISOString() ตรง ๆ (นั่นคือ UTC) — ช่วง 00:00–06:59 ไทยจะเพี้ยนไป 1 วัน
@@ -581,126 +582,117 @@ export default function ScraperPage() {
           </div>
         </div>
 
-        {/* ===== ACTIVE JOB BANNER ===== */}
+        {/* ===== ACTIVE JOB BANNER — high contrast + live counters จริง ===== */}
         {activeJob ? (
-          <div
-            style={{
-              background:
-                activeJob.status === "running" ? "#eff6ff" : "#fffbeb",
-              border: `2px solid ${activeJob.status === "running" ? "#2196f3" : "#f59e0b"}`,
-              borderRadius: 12,
-              padding: 20,
-              marginBottom: 20,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
+          (() => {
+            const st = normalizeJobStatus(activeJob) || {};
+            const cardData = [
+              ["ห้องเป้าหมาย", st.target, "#60a5fa"],
+              ["เปิดแล้ว", st.processed, "#93c5fd"],
+              ["เหลือ", st.remaining, "#fbbf24"],
+              ["บันทึกข้อความ", st.messages, "#4ade80"],
+              ["ข้ามไป", st.skipped, "#94a3b8"],
+              ["ผิดพลาด", st.failed, st.failed > 0 ? "#f87171" : "#94a3b8"],
+            ];
+            return (
               <div
                 style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: statusColor(activeJob.status),
+                  background: "#0f172a",
+                  border: `2px solid ${activeJob.status === "running" ? "#2196f3" : "#f59e0b"}`,
+                  borderRadius: 12,
+                  padding: 20,
+                  marginBottom: 20,
+                  color: "#e2e8f0",
                 }}
               >
-                {statusLabel(activeJob.status)}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 12, color: "#666" }}>
-                  {activeJob.date_from} — {activeJob.date_to}
-                </span>
-                <button
-                  onClick={cancelJob}
-                  style={{
-                    padding: "4px 12px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: "#fef2f2",
-                    color: "#dc2626",
-                    border: "1px solid #fca5a5",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                  }}
-                >
-                  🚫 ยกเลิก
-                </button>
-              </div>
-            </div>
-            {activeJob.total_chats > 0 && (
-              <>
                 <div
                   style={{
                     display: "flex",
-                    gap: 24,
-                    fontSize: 13,
-                    marginBottom: 6,
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 12,
                   }}
                 >
-                  <span>
-                    📂 ห้อง chat ทั้งหมด <b>{activeJob.total_chats}</b> ห้อง
-                  </span>
-                  <span>
-                    📝 บันทึกได้ <b>{activeJob.logged_count || 0}</b> ข้อความ
-                  </span>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: activeJob.status === "running" ? "#60a5fa" : "#fbbf24" }}>
+                    {statusLabel(activeJob.status)}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 12, color: "#94a3b8" }}>
+                      {activeJob.date_from} — {activeJob.date_to} · โหมด{" "}
+                      {st.mode === "deep_history" ? "ค้นย้อนหลัง" : "ตรงตามวันที่"}
+                    </span>
+                    <button
+                      onClick={cancelJob}
+                      style={{ padding: "4px 12px", fontSize: 12, fontWeight: 600, background: "#7f1d1d", color: "#fecaca", border: "1px solid #b91c1c", borderRadius: 6, cursor: "pointer" }}
+                    >
+                      🚫 ยกเลิก
+                    </button>
+                  </div>
                 </div>
+
+                {/* summary cards — แสดงเสมอเมื่อมี job (ไม่ซ่อนหลัง total_chats>0) */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 8, marginBottom: 12 }}>
+                  {cardData.map(([label, v, c]) => (
+                    <div key={label} style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", border: "1px solid #334155" }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{v ?? 0}</div>
+                      <div style={{ fontSize: 11, color: "#cbd5e1" }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* progress จากจำนวนห้องเท่านั้น (clamp 0..100) */}
                 {activeJob.status === "running" && (
-                  <div
-                    style={{
-                      background: "#dbeafe",
-                      borderRadius: 6,
-                      height: 8,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        background: "#2196f3",
-                        height: 8,
-                        borderRadius: 6,
-                        width: "100%",
-                        animation: "progress-pulse 1.5s ease-in-out infinite",
-                      }}
-                    />
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                      <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{st.roomsLabel}</span>
+                      <span style={{ color: "#60a5fa", fontWeight: 800, fontFamily: "monospace" }}>{st.pct}%</span>
+                    </div>
+                    <div style={{ background: "#1e293b", borderRadius: 6, height: 10, overflow: "hidden", border: "1px solid #334155" }}>
+                      <div style={{ background: "linear-gradient(90deg,#2196f3,#60a5fa)", height: "100%", borderRadius: 6, width: `${st.pct}%`, transition: "width .6s" }} />
+                    </div>
                   </div>
                 )}
-              </>
-            )}
-            {activeJob.current_chat && (
-              <div style={{ fontSize: 12, color: "#555", marginTop: 6 }}>
-                🔍 chat ปัจจุบัน: {activeJob.current_chat}
+
+                {/* current chat — บล็อกเด่น อ่านง่าย */}
+                {st.currentChat && (
+                  <div style={{ background: "#1e3a5f", border: "1px solid #2563eb", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: "#93c5fd", marginBottom: 3 }}>กำลังเก็บห้องล่าสุด</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", wordBreak: "break-word", lineHeight: 1.4 }}>
+                      {st.currentChat}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#bfdbfe", marginTop: 5, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      <span>ลำดับห้อง: <b>{st.processed} / {st.target}</b></span>
+                      <span>สถานะย่อย: <b>{stepLabel(st.currentStep)}</b></span>
+                      {st.updatedAt && <span>อัปเดตล่าสุด: {new Date(st.updatedAt).toLocaleTimeString("th-TH")}</span>}
+                    </div>
+                  </div>
+                )}
+
+                <CountersPanel counters={activeJob.counters} />
+
+                {/* details row — operational monitoring */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", fontSize: 11.5, color: "#94a3b8", marginTop: 10, paddingTop: 8, borderTop: "1px solid #334155" }}>
+                  <span>วันที่เป้าหมาย: <b style={{ color: "#e2e8f0" }}>{activeJob.date_from}{activeJob.date_to !== activeJob.date_from ? ` → ${activeJob.date_to}` : ""}</b></span>
+                  <span>โหมด: <b style={{ color: "#e2e8f0" }}>{st.mode === "deep_history" ? "ค้นย้อนหลัง" : "ตรงตามวันที่"}</b></span>
+                  <span>เป้าหมาย: <b style={{ color: "#60a5fa" }}>{st.target}</b></span>
+                  <span>เปิดแล้ว: <b style={{ color: "#93c5fd" }}>{st.processed}</b></span>
+                  <span>เหลือ: <b style={{ color: "#fbbf24" }}>{st.remaining}</b></span>
+                  <span>ข้อความ: <b style={{ color: "#4ade80" }}>{st.messages}</b></span>
+                  <span>ข้าม: <b>{st.skipped}</b></span>
+                  <span>ผิดพลาด: <b style={{ color: st.failed > 0 ? "#f87171" : "#94a3b8" }}>{st.failed}</b></span>
+                  {activeJob.started_at && <span>เริ่ม: {new Date(activeJob.started_at).toLocaleTimeString("th-TH")}</span>}
+                  {st.updatedAt && <span>อัปเดต: {new Date(st.updatedAt).toLocaleTimeString("th-TH")}</span>}
+                </div>
+
+                <div style={{ fontSize: 12, marginTop: 8, color: activeJob.status === "running" ? "#4ade80" : "#fbbf24" }}>
+                  {activeJob.status === "running"
+                    ? "🟢 scraper ออนไลน์ — กำลังทำงาน"
+                    : "🟡 รอ scraper รับงาน (เปิด npm run scraper:watch บนเครื่อง)"}
+                  {activeJob.error_text && <span style={{ color: "#f87171" }}> · ⚠️ {activeJob.error_text}</span>}
+                </div>
               </div>
-            )}
-            <CountersPanel counters={activeJob.counters} />
-            <div
-              style={{
-                fontSize: 12,
-                marginTop: 6,
-                color: activeJob.status === "running" ? "#16a34a" : "#a16207",
-              }}
-            >
-              {activeJob.status === "running"
-                ? "🟢 scraper ออนไลน์ — กำลังทำงาน"
-                : "🟡 รอ scraper รับงาน (เปิด npm run scraper:watch บนเครื่อง)"}
-              {activeJob.started_at && (
-                <span style={{ color: "#888" }}>
-                  {" "}
-                  · เริ่ม{" "}
-                  {new Date(activeJob.started_at).toLocaleString("th-TH")}
-                </span>
-              )}
-              {activeJob.error_text && (
-                <span style={{ color: "#ef4444" }}>
-                  {" "}
-                  · ⚠️ {activeJob.error_text}
-                </span>
-              )}
-            </div>
-          </div>
+            );
+          })()
         ) : (
           <div
             style={{

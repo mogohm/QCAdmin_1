@@ -58,6 +58,7 @@ export async function PATCH(req) {
       logged_count = COALESCE(${logged_count ?? null}, logged_count),
       current_chat = COALESCE(${current_chat ?? null}, current_chat),
       counters     = COALESCE(${counters ? JSON.stringify(counters) : null}::jsonb, counters),
+      updated_at   = now(),
       error_text   = COALESCE(${error_text ?? null}, error_text),
       started_at   = COALESCE(${started_at}, started_at),
       finished_at  = COALESCE(${finished_at}, finished_at)

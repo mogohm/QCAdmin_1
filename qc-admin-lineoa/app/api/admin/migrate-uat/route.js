@@ -144,6 +144,7 @@ export async function POST(req) {
     // ---- scraper_jobs: counters (JSONB) + mode (strict|deep_history) ----
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict'`;
+    await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`;
 
     // ---- line_customers/conversations: external_chat_key (เก็บแชทที่ไม่มี LINE user id ได้) ----
     await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { normalizeJobStatus } from "@/lib/scraper-status";
 
 function fmtCountdown(ms) {
   if (ms <= 0) return "0:00";
@@ -30,17 +31,21 @@ export default function ScraperStatusFloat() {
       } catch {}
 
       if (activeJob?.status === "running") {
-        const pct =
-          activeJob.total_chats > 0
-            ? Math.round((activeJob.logged_count / activeJob.total_chats) * 100)
-            : null;
+        // progress จาก "ห้องที่เปิดแล้ว / ห้องเป้าหมาย" เท่านั้น (clamp 0..100)
+        //   ห้ามใช้ logged_count/total_chats (= ข้อความ ÷ ห้อง — เคยโชว์ 245%)
+        const st = normalizeJobStatus(activeJob) || {};
+        const chatShort = st.currentChat
+          ? st.currentChat.length > 28
+            ? st.currentChat.slice(0, 28) + "…"
+            : st.currentChat
+          : null;
         setState({
           mode: "running",
-          label: `🔄 Scraping${pct !== null ? ` ${pct}%` : "..."}`,
-          sub: activeJob.current_chat
-            ? `กำลังดึง: ${activeJob.current_chat}`
-            : null,
-          pct,
+          label: `🔄 Scraping ${st.pct}%`,
+          sub: chatShort ? `กำลังดึง: ${chatShort}` : null,
+          rooms: `${st.processed} / ${st.target} ห้อง`,
+          msgs: `${st.messages} ข้อความ`,
+          pct: st.pct,
         });
       } else if (activeJob?.status === "pending") {
         setState({
@@ -100,8 +105,14 @@ export default function ScraperStatusFloat() {
         {state.label}
       </div>
       {state.sub && (
-        <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
+        <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>
           {state.sub}
+        </div>
+      )}
+      {(state.rooms || state.msgs) && (
+        <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2, display: "flex", gap: 10 }}>
+          {state.rooms && <span>{state.rooms}</span>}
+          {state.msgs && <span>{state.msgs}</span>}
         </div>
       )}
       {state.pct !== null && (

@@ -913,7 +913,7 @@ async function runJob(job, context) {
   // โหมด: job.mode (จาก DB) มาก่อน แล้วค่อย fallback เป็น CLI/env
   const mode = /^deep_?history$/i.test(job.mode || "") ? "deep_history" : CLI_DATE_MODE;
   log(`[JOB] ${job.id} · mode=${mode} · target=${fromDate}${fromDate === toDate ? "" : "→" + toDate} · today_bangkok=${D.bangkokToday()} (Asia/Bangkok)`);
-  await patchJob(job.id, { status: "running" });
+  await patchJob(job.id, { status: "running", counters: { current_step: "scanning" } });
 
   let cancelled = false;
   const shouldCancel = async () => {
@@ -956,7 +956,7 @@ async function runJob(job, context) {
     log(`[SCAN] จะเปิด=${chats.length} target=${C.target_date_chats} newerSkipped=${C.newer_chats_skipped} older=${C.older_chats_seen}${Number.isFinite(LIMIT) ? ` · จำกัด ${LIMIT}` : ""} · target ${fromDate}${fromDate === toDate ? "" : "→" + toDate}`);
     if (!chats.length)
       log(`[SKIP] ไม่มีห้องที่ตรงวันที่ ${fromDate} — ข้ามห้องวันนี้/ใหม่กว่า ${C.newer_chats_skipped} ห้อง (ไม่เปิดแชท)`);
-    await patchJob(job.id, { total_chats: chats.length, counters: { ...C } });
+    await patchJob(job.id, { total_chats: chats.length, counters: { ...C, current_step: "opening" } });
 
     for (const item of chats) {
       if (await shouldCancel()) {
@@ -965,7 +965,7 @@ async function runJob(job, context) {
       }
       chatIndex++;
       C.processed_chats++;
-      await patchJob(job.id, { current_chat: item.name, counters: { ...C } });
+      await patchJob(job.id, { current_chat: item.name, counters: { ...C, current_step: "collecting" } });
 
       let res;
       try {
@@ -1048,13 +1048,13 @@ async function runJob(job, context) {
         const notes = await extractNotes(page).catch(() => []);
         for (const n of notes) await postNote(res.meta.uid, n).catch(() => {});
       }
-      await patchJob(job.id, { counters: { ...C }, logged_count: C.messages_inserted });
+      await patchJob(job.id, { counters: { ...C, current_step: "saving" }, logged_count: C.messages_inserted });
     }
 
     if (cancelled) {
       await patchJob(job.id, { status: "cancelled", error_text: "ยกเลิกโดยผู้ใช้" });
     } else {
-      await patchJob(job.id, { status: "done", total_chats: chats.length, counters: { ...C }, logged_count: C.messages_inserted });
+      await patchJob(job.id, { status: "done", total_chats: chats.length, counters: { ...C, current_step: "done" }, logged_count: C.messages_inserted });
       log(`[DONE] ✅ mode=${mode} opened=${C.processed_chats} target=${C.target_date_chats} newerSkipped=${C.newer_chats_skipped} older=${C.older_chats_seen} collected=${C.collected_chats} noUidStored=${C.no_uid_chats_stored} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending(cases=${C.pending_reply_cases}/msgs=${C.pending_reply_messages})`);
     }
   } catch (e) {
