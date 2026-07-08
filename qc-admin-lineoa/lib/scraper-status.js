@@ -49,19 +49,26 @@ function normalizeJobStatus(job) {
   };
 }
 
-// ป้ายขั้นตอนภาษาไทย
+// ป้ายขั้นตอนภาษาไทย (sub-status ของ scraper)
 function stepLabel(step) {
   return (
     {
-      scanning: "สแกนรายชื่อห้อง",
-      opening: "กำลังเปิดห้อง",
-      parsing: "อ่านข้อความ",
-      saving: "บันทึกข้อความ",
-      pairing: "จับคู่ QC",
-      collecting: "เก็บข้อมูลห้อง",
+      scanning: "กำลังสแกนรายการแชท",
+      opening: "กำลังเปิดห้องแชท",
+      collecting: "กำลังเก็บข้อความ",
+      parsing: "กำลังอ่านข้อความ",
+      saving: "กำลังบันทึกข้อมูล",
+      pairing: "กำลังสร้างคู่ข้อความ QC",
+      evidence: "กำลังเก็บหลักฐาน",
       done: "เสร็จสิ้น",
+      waiting: "รอรับงาน",
     }[step] || (step ? String(step) : "—")
   );
+}
+
+// สถานะเริ่มงาน: กำลังสแกนอยู่ + ยังไม่รู้จำนวนห้อง → ห้ามโชว์ 0/0 เหมือนไม่มีงาน
+function isScanningNoTarget(st) {
+  return !!st && st.currentStep === "scanning" && st.target === 0 && st.processed === 0;
 }
 
 // ---- Worker status (heartbeat จริงจาก process เท่านั้น — ห้ามอนุมานจาก job ใน DB) ----
@@ -95,6 +102,6 @@ function lockIsStale(lock, { pidAlive = false, nowMs = Date.now() } = {}) {
 }
 
 module.exports = {
-  normalizeJobStatus, stepLabel,
+  normalizeJobStatus, stepLabel, isScanningNoTarget,
   WORKER_ONLINE_WINDOW_MS, isWorkerOnline, workerPanelState, lockIsStale,
 };

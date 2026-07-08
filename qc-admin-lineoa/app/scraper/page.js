@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { normalizeJobStatus, stepLabel } from "@/lib/scraper-status";
+import { normalizeJobStatus, stepLabel, isScanningNoTarget } from "@/lib/scraper-status";
 
 // วันที่ตามเวลาไทย (Asia/Bangkok, UTC+7) — คำนวณจาก epoch จึงถูกต้องทุกโซนเครื่อง
 //   *สำคัญ*: ห้ามใช้ new Date().toISOString() ตรง ๆ (นั่นคือ UTC) — ช่วง 00:00–06:59 ไทยจะเพี้ยนไป 1 วัน
@@ -711,10 +711,12 @@ export default function ScraperPage() {
         {activeJob ? (
           (() => {
             const st = normalizeJobStatus(activeJob) || {};
+            // ช่วงสแกน: ยังไม่รู้จำนวนห้อง → ห้ามโชว์ 0/0 เหมือนไม่มีงาน
+            const scanning = isScanningNoTarget(st) && activeJob.status === "running";
             const cardData = [
-              ["ห้องเป้าหมาย", st.target, "#60a5fa"],
+              ["ห้องเป้าหมาย", scanning ? "กำลังค้นหา…" : st.target, "#60a5fa"],
               ["เปิดแล้ว", st.processed, "#93c5fd"],
-              ["เหลือ", st.remaining, "#fbbf24"],
+              ["เหลือ", scanning ? "รอผลสแกน" : st.remaining, "#fbbf24"],
               ["บันทึกข้อความ", st.messages, "#4ade80"],
               ["ข้ามไป", st.skipped, "#94a3b8"],
               ["ผิดพลาด", st.failed, st.failed > 0 ? "#f87171" : "#94a3b8"],
@@ -759,7 +761,7 @@ export default function ScraperPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 8, marginBottom: 12 }}>
                   {cardData.map(([label, v, c]) => (
                     <div key={label} style={{ background: "#1e293b", borderRadius: 8, padding: "8px 12px", border: "1px solid #334155" }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{v ?? 0}</div>
+                      <div style={{ fontSize: typeof v === "string" ? 14 : 22, fontWeight: 800, color: c, lineHeight: typeof v === "string" ? "30px" : undefined }}>{v ?? 0}</div>
                       <div style={{ fontSize: 11, color: "#cbd5e1" }}>{label}</div>
                     </div>
                   ))}
@@ -769,7 +771,7 @@ export default function ScraperPage() {
                 {activeJob.status === "running" && (
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                      <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{st.roomsLabel}</span>
+                      <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{scanning ? "กำลังสแกนรายการแชทเพื่อค้นหาห้องของวันที่เลือก..." : st.roomsLabel}</span>
                       <span style={{ color: "#60a5fa", fontWeight: 800, fontFamily: "monospace" }}>{st.pct}%</span>
                     </div>
                     <div style={{ background: "#1e293b", borderRadius: 6, height: 10, overflow: "hidden", border: "1px solid #334155" }}>

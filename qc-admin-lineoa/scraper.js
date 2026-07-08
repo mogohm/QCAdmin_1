@@ -177,7 +177,31 @@ function printWorkerBanner(mode, health) {
   LINE Session: ${health.line_session ? "VALID" : "MISSING — รัน npm run scraper:login"}
   API         : ${API_URL} ${mark(health.api)}
   Browser     : ${mark(health.browser)}   Storage: ${mark(health.storage)}
+==================================================
+  [ENCODING]
+  ภาษาไทย: ทดสอบการแสดงผลภาษาไทย
+  English: OK
+  Symbols: ✅ 🟢 ⚠️
 ==================================================`);
+  // ตรวจ code page บน Windows — ถ้าไม่ใช่ 65001 (UTF-8) ภาษาไทยบนจอจะเพี้ยน
+  if (process.platform === "win32") {
+    try {
+      const { execSync } = require("child_process");
+      const cp = String(execSync("chcp", { encoding: "utf8" }));
+      const m = cp.match(/(\d{3,5})/);
+      if (m && m[1] !== "65001") {
+        console.log(`
+  ****************************************************************
+  WARNING: Console UTF-8 encoding is not configured correctly.
+  Active code page = ${m[1]} (expected 65001).
+  Thai log text WILL be unreadable in this window.
+  FIX: close this window and start via  scraper-live.bat --watch
+  (it sets "chcp 65001" automatically), or run "chcp 65001" first.
+  ****************************************************************
+`);
+      }
+    } catch { /* chcp ไม่มี (ไม่ใช่ cmd) — ข้าม */ }
+  }
   if (mode === "watch") console.log("  [WAIT] รอรับ Job จากหน้าเว็บ /scraper ...\n");
 }
 
