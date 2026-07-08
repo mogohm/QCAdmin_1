@@ -317,10 +317,14 @@ CREATE TABLE IF NOT EXISTS scraper_workers (
   app_version TEXT, git_commit TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_scraper_workers_hb ON scraper_workers (last_heartbeat_at DESC);
+-- ปุ่ม "ตรวจสอบ LINE Session ตอนนี้": UI ตั้ง flag → worker ตรวจจริงผ่าน heartbeat แล้วเคลียร์
+ALTER TABLE scraper_workers ADD COLUMN IF NOT EXISTS session_check_requested BOOLEAN DEFAULT false;
 
 -- scraper_jobs: counters แบบ JSONB + mode (strict = ปกติ / deep_history = backfill)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict';
+-- error_code: รหัสเชิงเครื่อง (LINE_SESSION_EXPIRED ฯลฯ) — ใช้กับ status 'blocked_auth' (หยุดรอ Login, ไม่ใช่จบงาน)
+ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS error_code TEXT;
 
 -- scraper_chat_results: ผลเก็บข้อมูลต่อแชท (audit + counters ต่อห้อง)
 CREATE TABLE IF NOT EXISTS scraper_chat_results (

@@ -71,7 +71,11 @@ const WORKER = {
   currentStep: null,
   startedAt: new Date().toISOString(),
   lastJobReceivedAt: null,
-  sessionStatus: "unknown",
+  sessionStatus: "unknown", // valid/expired เฉพาะจากผล preflight จริงเท่านั้น
+  sessionCheckedAt: null,
+  sessionReason: null,
+  sessionUrl: null,
+  sessionCheckRequested: false,
   health: null,
   refreshLock: null,
 };
@@ -128,12 +132,15 @@ function startHeartbeat(mode) {
           current_chat: WORKER.currentChat,
           current_step: WORKER.currentStep,
           line_session_status: WORKER.sessionStatus,
-          health: WORKER.health,
+          line_session_checked_at: WORKER.sessionCheckedAt,
+          line_session_reason: WORKER.sessionReason,
+          health: { ...(WORKER.health || {}), line_session: { status: WORKER.sessionStatus, checked_at: WORKER.sessionCheckedAt, reason: WORKER.sessionReason, current_url: WORKER.sessionUrl } },
           started_at: WORKER.startedAt,
           last_job_received_at: WORKER.lastJobReceivedAt,
           app_version: require("./package.json").version,
         }),
       });
+      if (r?.session_check_requested) WORKER.sessionCheckRequested = true;
       if (r?.desired_state === "draining" && !WORKER.draining) {
         WORKER.draining = true;
         log("[DRAIN] ได้รับคำสั่ง 'หยุดรับงานใหม่' — ทำงานปัจจุบันให้จบ แล้วไม่รับ job ใหม่");
@@ -160,7 +167,8 @@ async function workerHealthCheck() {
     h.storage = true;
   } catch {}
   WORKER.health = h;
-  WORKER.sessionStatus = h.line_session ? (WORKER.sessionStatus === "expired" ? "expired" : "valid") : "missing";
+  // ห้ามตั้ง valid จากไฟล์! ไฟล์หาย = expired แน่นอน; ไฟล์อยู่ = unknown จนกว่า preflight จริงยืนยัน
+  if (!h.line_session) WORKER.sessionStatus = "expired";
   return h;
 }
 
@@ -174,7 +182,7 @@ function printWorkerBanner(mode, health) {
   Mode        : ${String(mode).toUpperCase()}
   Machine     : ${WORKER.machine}
   Worker ID   : ${WORKER.id}
-  LINE Session: ${health.line_session ? "VALID" : "MISSING — รัน npm run scraper:login"}
+  LINE Session: ${health.line_session ? "พบไฟล์ (จะตรวจจริงก่อนรับงาน)" : "MISSING — รัน npm run scraper:login"}
   API         : ${API_URL} ${mark(health.api)}
   Browser     : ${mark(health.browser)}   Storage: ${mark(health.storage)}
 ==================================================
@@ -709,8 +717,56 @@ function requireSession() {
 }
 
 // ---------- browser page helpers (reuse proven LINE OA selectors) ----------
+// auth error แบบระบุ code — *ห้าม process.exit ที่นี่* (watch mode ต้องอยู่รอด → auth-wait)
+function authError(msg) {
+  return Object.assign(new Error(msg || "LINE OA Session หมดอายุ"), { code: "LINE_SESSION_EXPIRED" });
+}
+const { classifyLineSession, claimDecision } = require("./lib/scraper-status");
+
+// PREFLIGHT จริง: เปิดหน้า LINE OA แล้วยืนยัน authenticated UI — "ไฟล์ auth มีอยู่" ≠ "session ใช้ได้"
+//   VALID เฉพาะเมื่อเห็น chat list จริงเท่านั้น (แก้ false-positive ที่ทำ job ตายหลัง claim)
+async function verifyLineSession(context) {
+  const checked_at = new Date().toISOString();
+  if (process.env.SCRAPER_FORCE_AUTH_FAIL === "1")
+    return { valid: false, status: "login_required", current_url: "(forced)", reason: "SCRAPER_FORCE_AUTH_FAIL=1 (ทดสอบ)", checked_at };
+  let page = null;
+  try {
+    page = await context.newPage();
+    await page.goto(LINE_OA_URL, { waitUntil: "domcontentloaded", timeout: 45000 });
+    const hasChatList = await page
+      .waitForSelector(".list-group-item-chat", { timeout: 25000 })
+      .then(() => true)
+      .catch(() => false);
+    const url = page.url();
+    const hasLoginForm = hasChatList
+      ? false
+      : await page
+          .evaluate(() => !!document.querySelector('input[type="password"], [class*="login"], [class*="qrcode"]'))
+          .catch(() => false);
+    const cls = classifyLineSession({ url, hasChatList, hasLoginForm });
+    if (!cls.valid) await saveScreenshot(page, "session-preflight-fail").catch(() => {});
+    return { ...cls, current_url: url, checked_at };
+  } catch (e) {
+    return { valid: false, status: "unknown", current_url: page ? page.url() : null, reason: "preflight error: " + e.message, checked_at };
+  } finally {
+    await page?.close().catch(() => {});
+  }
+}
+
+// บันทึกผล preflight ลง WORKER — heartbeat/หน้าเว็บรายงาน "ตามผลตรวจจริง" เท่านั้น
+function recordSessionResult(r) {
+  WORKER.sessionStatus = r.status === "valid" ? "valid" : r.status === "unknown" ? "unknown" : "expired";
+  WORKER.sessionCheckedAt = r.checked_at;
+  WORKER.sessionReason = r.reason || null;
+  WORKER.sessionUrl = r.current_url || null;
+}
+
 async function openLineOA(context) {
   const page = await context.newPage();
+  if (process.env.SCRAPER_FORCE_AUTH_FAIL === "1") {
+    await page.close().catch(() => {});
+    throw authError("LINE session expired (forced for test)");
+  }
   await page.goto(LINE_OA_URL, {
     waitUntil: "domcontentloaded",
     timeout: 45000,
@@ -722,9 +778,9 @@ async function openLineOA(context) {
   if (!listAppeared) {
     const url = page.url();
     if (/signin|login/i.test(url)) {
-      console.error("\n🔐 LINE session expired, run npm run scraper:login");
       await saveScreenshot(page, "session-expired");
-      process.exit(2);
+      await page.close().catch(() => {});
+      throw authError("LINE session expired (redirect ไปหน้า login)");
     }
     throw new Error("โหลด chat list ไม่สำเร็จ (ไม่ใช่ session หมดอายุ)");
   }
@@ -1214,6 +1270,17 @@ async function runJob(job, context) {
       log(`[DONE] ✅ mode=${mode} opened=${C.processed_chats} target=${C.target_date_chats} newerSkipped=${C.newer_chats_skipped} older=${C.older_chats_seen} collected=${C.collected_chats} noUidStored=${C.no_uid_chats_stored} empty=${C.empty_chats} failed=${C.failed_chats} · msgs inserted=${C.messages_inserted} dup=${C.duplicates_skipped} (cust=${C.customer_messages}/admin=${C.admin_messages}) · QC pairs=${C.qc_pairs_created} pending(cases=${C.pending_reply_cases}/msgs=${C.pending_reply_messages})`);
     }
   } catch (e) {
+    if (e && e.code === "LINE_SESSION_EXPIRED") {
+      // AUTH ตายกลางงาน: running → blocked_auth (เก็บ progress, ไม่ done, ไม่หาย)
+      recordSessionResult({ valid: false, status: "expired", reason: e.message, checked_at: new Date().toISOString() });
+      await patchJob(job.id, {
+        status: "blocked_auth",
+        error_code: "LINE_SESSION_EXPIRED",
+        error_text: "LINE OA Session หมดอายุ กรุณา Login ใหม่",
+      });
+      printAuthRequired(job.id);
+      throw e; // ให้ watch loop เข้าโหมด auth-wait (ไม่ exit)
+    }
     log(`❌ error: ${e.message}`);
     await saveScreenshot(page, `job-${job.id}-error`);
     await patchJob(job.id, {
@@ -1366,6 +1433,75 @@ async function runDryRunFixture(from, to) {
   );
 }
 
+// ---------- auth recovery (watch mode ต้องไม่ตาย) ----------
+// คำแนะนำกู้คืนภาษาไทยชัดเจน — พิมพ์ครั้งแรกทันที แล้วซ้ำทุก ~60s (ไม่ spam)
+function printAuthRequired(jobId) {
+  console.log(`
+==================================================
+  [AUTH ERROR] LINE OA Session หมดอายุ
+==================================================${jobId ? `
+  Job:        ${jobId}
+  สถานะ Job:  หยุดรอ Login (blocked_auth)` : ""}
+
+  วิธีแก้:
+  1. เปิดหน้าต่างใหม่ (อย่าปิดหน้าต่างนี้)
+  2. รัน  npm run scraper:login
+  3. Login LINE OA ให้เสร็จ
+  4. Worker จะตรวจ Session ใหม่ทุก 15 วินาที
+     แล้วทำ Job เดิมต่ออัตโนมัติ
+==================================================`);
+}
+
+// blocked_auth → pending (job เดิม ไม่สร้างใหม่)
+async function requeueBlockedAuthJobs() {
+  const jobs = await listJobs().catch(() => []);
+  const blocked = (Array.isArray(jobs) ? jobs : []).filter((j) => j.status === "blocked_auth");
+  for (const j of blocked) {
+    log(`[RECOVER] พบ Job ที่หยุดเพราะ Session หมดอายุ · ${j.id}`);
+    await patchJob(j.id, { status: "pending", error_text: null }).catch(() => {});
+    log(`[RESUME] ทำงาน Job เดิมต่อ job_id=${j.id} (${String(j.date_from).slice(0, 10)})`);
+  }
+  return blocked.length;
+}
+
+// ค้างรอ login: ตรวจทุก 15 วิ (mtime ของ auth file เปลี่ยน → preflight จริง; หรือครบ 90 วิ → preflight จริง)
+async function authWaitLoop(chromium) {
+  WORKER.status = "session_expired";
+  let lastPrint = 0;
+  let lastMtime = 0;
+  try { lastMtime = fs.statSync(AUTH_FILE).mtimeMs; } catch {}
+  let lastRealCheck = Date.now();
+  for (;;) {
+    if (Date.now() - lastPrint > 60000) { printAuthRequired(null); lastPrint = Date.now(); }
+    await sleep(15000);
+    let m = 0;
+    try { m = fs.statSync(AUTH_FILE).mtimeMs; } catch {}
+    const fileChanged = m && m !== lastMtime;
+    const due = Date.now() - lastRealCheck > 90000;
+    if (!fileChanged && !due) continue;
+    lastMtime = m;
+    lastRealCheck = Date.now();
+    if (!fs.existsSync(AUTH_FILE)) continue;
+    log("[AUTH] ตรวจ LINE Session ใหม่ (preflight จริง)...");
+    try {
+      const browser = await chromium.launch({ headless: true });
+      const context = await browser.newContext({ storageState: AUTH_FILE });
+      const r = await verifyLineSession(context);
+      await browser.close().catch(() => {});
+      recordSessionResult(r);
+      if (r.valid) {
+        log("[AUTH] LINE Session ใช้งานได้แล้ว ✅");
+        WORKER.status = "online";
+        await requeueBlockedAuthJobs();
+        return;
+      }
+      log(`[AUTH] ยังใช้ไม่ได้ (${r.status}: ${r.reason})`);
+    } catch (e) {
+      log(`[AUTH] ตรวจไม่สำเร็จ: ${e.message}`);
+    }
+  }
+}
+
 // ---------- main ----------
 async function main() {
   // DRY-RUN ก่อน requireSession (offline fixture รันได้แม้ไม่มี session)
@@ -1391,7 +1527,7 @@ async function main() {
     return;
   }
 
-  requireSession();
+  if (!WATCH) requireSession(); // watch mode: ไม่มีไฟล์ = auth-wait (ห้ามตาย)
   let chromium;
   try {
     ({ chromium } = require("playwright"));
@@ -1550,6 +1686,30 @@ async function main() {
   );
   let lastSchedule = 0;
   let lastAutoDate = null;
+
+  // ---- startup preflight (P0-5): ตรวจ session จริงก่อนเริ่มรอรับงาน + กู้ job ที่ค้าง blocked_auth ----
+  if (!fs.existsSync(AUTH_FILE)) {
+    recordSessionResult({ valid: false, status: "expired", reason: "ไม่พบไฟล์ .storage/line-auth.json", checked_at: new Date().toISOString() });
+    log("[AUTH] ไม่พบไฟล์ LINE session — เข้าโหมดรอ Login (worker ไม่ปิด)");
+    await authWaitLoop(chromium);
+  } else {
+    try {
+      const { browser, context } = await launchAndContext();
+      const r0 = await verifyLineSession(context);
+      await browser.close().catch(() => {});
+      recordSessionResult(r0);
+      if (r0.valid) {
+        log(`[AUTH] LINE Session ใช้งานได้แล้ว ✅ (ตรวจจริงเมื่อ ${r0.checked_at})`);
+        await requeueBlockedAuthJobs();
+      } else {
+        log(`[AUTH] LINE Session ใช้ไม่ได้ (${r0.status}: ${r0.reason}) — เข้าโหมดรอ Login`);
+        await authWaitLoop(chromium);
+      }
+    } catch (e) {
+      log(`⚠️ startup preflight error: ${e.message}`);
+    }
+  }
+
   while (true) {
     try {
       if (SCHEDULE_MIN && Date.now() - lastSchedule > SCHEDULE_MIN * 60000) {
@@ -1577,12 +1737,55 @@ async function main() {
           WORKER._lastWaitLog = Date.now();
         }
       } else {
+        // ปุ่ม "ตรวจสอบ LINE Session ตอนนี้" จากหน้า /scraper (ส่งผ่าน heartbeat response)
+        if (WORKER.sessionCheckRequested) {
+          WORKER.sessionCheckRequested = false;
+          log("[AUTH] ได้รับคำสั่งตรวจ LINE Session จากหน้าเว็บ...");
+          try {
+            if (!fs.existsSync(AUTH_FILE)) {
+              recordSessionResult({ valid: false, status: "expired", reason: "ไม่พบไฟล์ .storage/line-auth.json", checked_at: new Date().toISOString() });
+            } else {
+              const b = await chromium.launch({ headless: true });
+              const c = await b.newContext({ storageState: AUTH_FILE });
+              recordSessionResult(await verifyLineSession(c));
+              await b.close().catch(() => {});
+            }
+            log(`[AUTH] ผลตรวจ: ${WORKER.sessionStatus} (${WORKER.sessionReason || ""})`);
+          } catch (e) {
+            log(`[AUTH] ตรวจไม่สำเร็จ: ${e.message}`);
+          }
+        }
         const job = await pollJob().catch(() => null);
         if (job && job.id) {
-          const { browser, context } = await launchAndContext();
-          await runJob(job, context);
-          await browser.close().catch(() => {});
-          log("  [WAIT] รอรับ Job จากหน้าเว็บ /scraper ...");
+          // P0-3: PREFLIGHT จริงก่อน claim (pending→running) — session ไม่ valid = ไม่แตะ job เลย
+          if (!fs.existsSync(AUTH_FILE)) {
+            recordSessionResult({ valid: false, status: "expired", reason: "ไม่พบไฟล์ .storage/line-auth.json", checked_at: new Date().toISOString() });
+            log(`[AUTH] ไม่พบไฟล์ session — ไม่รับ job ${job.id} (คงเป็น pending) เข้าโหมดรอ Login`);
+            await authWaitLoop(chromium);
+          } else {
+            const { browser, context } = await launchAndContext();
+            const pre = await verifyLineSession(context);
+            recordSessionResult(pre);
+            if (claimDecision(pre.status) !== "claim") {
+              await browser.close().catch(() => {});
+              log(`[AUTH] Session ใช้ไม่ได้ (${pre.status}: ${pre.reason}) — ไม่ claim job ${job.id} (คงเป็น pending)`);
+              await authWaitLoop(chromium);
+            } else {
+              try {
+                await runJob(job, context);
+              } catch (e) {
+                await browser.close().catch(() => {});
+                if (e && e.code === "LINE_SESSION_EXPIRED") {
+                  // job ถูกตั้ง blocked_auth แล้วใน runJob — worker อยู่ต่อ รอ login แล้วทำ job เดิม
+                  await authWaitLoop(chromium);
+                  continue;
+                }
+                throw e;
+              }
+              await browser.close().catch(() => {});
+              log("  [WAIT] รอรับ Job จากหน้าเว็บ /scraper ...");
+            }
+          }
         } else if (Date.now() - (WORKER._lastWaitLog || 0) > 30000) {
           log("[WAIT] รอรับ Job จากหน้าเว็บ /scraper ...");
           WORKER._lastWaitLog = Date.now();

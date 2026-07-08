@@ -29,6 +29,7 @@ function statusLabel(s) {
       done: "✅ เสร็จแล้ว",
       error: "❌ ผิดพลาด",
       cancelled: "🚫 ยกเลิก",
+      blocked_auth: "🔒 หยุดรอ Login (Session หมดอายุ)",
     }[s] || s
   );
 }
@@ -352,6 +353,25 @@ export default function ScraperPage() {
   const [worker, setWorker] = useState(null); // สถานะ worker จาก heartbeat จริง
   const workerTimerRef = useRef(null);
 
+  // P1: สั่งให้ "worker" ตรวจ LINE Session จริง (Vercel ไม่มี browser session — เครื่อง Operator เป็นผู้ตรวจ)
+  const [sessionChecking, setSessionChecking] = useState(false);
+  const requestSessionCheck = async () => {
+    setSessionChecking(true);
+    try {
+      const r = await fetch("/api/scraper/worker-status", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_session_check: true }),
+      });
+      const j = await r.json();
+      setMsg(r.ok ? "🔎 ส่งคำสั่งตรวจ LINE Session แล้ว — worker จะตรวจจริงภายใน ~15 วินาที" : "❌ " + (j.error || "error"));
+    } catch (e) {
+      setMsg("❌ " + e.message);
+    } finally {
+      setTimeout(() => setSessionChecking(false), 20000); // เผื่อเวลา worker ตรวจ + heartbeat รอบถัดไป
+    }
+  };
+
   // สั่ง "หยุดรับงานใหม่" (draining) / กลับมารับงาน — ไม่ฆ่างานที่กำลังทำ
   const setWorkerDrain = async (drain) => {
     try {
@@ -614,7 +634,13 @@ export default function ScraperPage() {
         {(() => {
           const w = worker?.worker || null;
           const online = worker?.online === true;
-          const sessionExpired = online && (w?.line_session_status === "expired" || w?.line_session_status === "missing");
+          // P0-7: สถานะ session จาก "ผล preflight จริง" เท่านั้น (health.line_session object ใหม่)
+          //   ไฟล์ auth มีอยู่ ≠ ใช้งานได้ — ถ้ายังไม่มีผลตรวจจริง ต้องโชว์ ⚠️ ไม่ใช่ ✅
+          const ls = w?.health && typeof w.health.line_session === "object" && w.health.line_session ? w.health.line_session : null;
+          const lsStatus = ls?.status || (["expired", "missing"].includes(w?.line_session_status) ? "expired" : "unknown");
+          const lsCheckedAt = ls?.checked_at || null;
+          const sessionExpired = online && (lsStatus === "expired" || lsStatus === "login_required");
+          const sessionVerified = online && lsStatus === "valid";
           const draining = online && (w?.desired_state === "draining" || w?.status === "draining");
           const ago = (ts) => {
             if (!ts) return "—";
@@ -642,6 +668,9 @@ export default function ScraperPage() {
                 </div>
                 {online && (
                   <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={requestSessionCheck} disabled={sessionChecking} style={{ padding: "4px 12px", fontSize: 12, background: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb", borderRadius: 6, cursor: sessionChecking ? "wait" : "pointer", opacity: sessionChecking ? 0.6 : 1 }}>
+                      {sessionChecking ? "⏳ กำลังตรวจ..." : "🔎 ตรวจสอบ LINE Session ตอนนี้"}
+                    </button>
                     {draining ? (
                       <button onClick={() => setWorkerDrain(false)} style={{ padding: "4px 12px", fontSize: 12, background: "#14532d", color: "#bbf7d0", border: "1px solid #16a34a", borderRadius: 6, cursor: "pointer" }}>▶ กลับมารับงาน</button>
                     ) : (
@@ -670,9 +699,13 @@ export default function ScraperPage() {
                 </div>
               ) : sessionExpired ? (
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.9 }}>
-                  <div>1. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code></div>
-                  <div>2. Login LINE OA ในหน้าต่างที่เปิดขึ้น</div>
-                  <div>3. เปิด <code style={{ color: "#4ade80" }}>.\scraper-live.bat --watch</code> ใหม่</div>
+                  <div style={{ color: "#fbbf24", fontWeight: 700 }}>
+                    ❌ LINE Session หมดอายุ{lsCheckedAt ? ` · ตรวจพบ ${new Date(lsCheckedAt).toLocaleTimeString("th-TH")}` : ""}
+                    {ls?.reason ? <span style={{ fontWeight: 400, color: "#94a3b8" }}> ({ls.reason})</span> : null}
+                  </div>
+                  <div>1. เปิดหน้าต่างใหม่บนเครื่อง Operator (ไม่ต้องปิด worker)</div>
+                  <div>2. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code> แล้ว Login LINE OA</div>
+                  <div>3. Worker จะตรวจ Session ใหม่ทุก 15 วินาที แล้วทำ Job เดิมต่ออัตโนมัติ</div>
                 </div>
               ) : (
                 <>
@@ -680,7 +713,14 @@ export default function ScraperPage() {
                     <span>ชื่อเครื่อง: <b style={{ color: "#fff", fontFamily: "monospace" }}>{w.machine_name}</b></span>
                     <span>คำสั่งที่ใช้: <code style={{ color: "#4ade80" }}>.\scraper-live.bat --watch</code></span>
                     <span>โหมด: <b style={{ color: "#e2e8f0" }}>{w.current_job_id ? "กำลังทำงาน" : "รอรับงาน"}</b></span>
-                    <span>LINE Session: <b style={{ color: "#4ade80" }}>✅ ใช้งานได้</b></span>
+                    <span>
+                      LINE Session:{" "}
+                      {sessionVerified ? (
+                        <b style={{ color: "#4ade80" }}>✅ ใช้งานได้{lsCheckedAt ? ` · ตรวจจริงเมื่อ ${new Date(lsCheckedAt).toLocaleTimeString("th-TH")}` : ""}</b>
+                      ) : (
+                        <b style={{ color: "#fbbf24" }}>⚠️ ยังไม่ได้ตรวจสอบจริง</b>
+                      )}
+                    </span>
                     {hours && <span>ทำงานมาแล้ว: <b style={{ color: "#e2e8f0" }}>{hours} ชม.</b></span>}
                     <span>รับ Job ล่าสุด: <b style={{ color: "#e2e8f0" }}>{w.last_job_received_at ? new Date(w.last_job_received_at).toLocaleTimeString("th-TH") : "—"}</b></span>
                     <span>อัปเดตล่าสุด: <b style={{ color: "#4ade80" }}>{ago(w.last_heartbeat_at)}</b></span>
@@ -696,7 +736,7 @@ export default function ScraperPage() {
                     <div style={{ marginTop: 8, fontSize: 11.5, color: "#94a3b8", display: "flex", gap: 14 }}>
                       สุขภาพระบบ:
                       <span>{H.api ? "✅" : "❌"} API</span>
-                      <span>{H.line_session ? "✅" : "❌"} LINE Session</span>
+                      <span>{lsStatus === "valid" ? "✅" : lsStatus === "unknown" ? "⚠️" : "❌"} LINE Session</span>
                       <span>{H.browser ? "✅" : "❌"} Browser</span>
                       <span>{H.storage ? "✅" : "❌"} Storage</span>
                     </div>

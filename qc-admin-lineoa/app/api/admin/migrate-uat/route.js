@@ -145,6 +145,8 @@ export async function POST(req) {
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict'`;
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ`;
+    // error_code: รหัสเชิงเครื่อง (เช่น LINE_SESSION_EXPIRED) คู่กับ error_text ภาษาคน — ใช้กับ status blocked_auth
+    await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS error_code TEXT`;
 
     // ---- scraper_workers: heartbeat จริงจาก worker process (ห้ามอนุมาน online จาก job) ----
     await query`CREATE TABLE IF NOT EXISTS scraper_workers (
@@ -157,6 +159,8 @@ export async function POST(req) {
       started_at TIMESTAMPTZ, last_heartbeat_at TIMESTAMPTZ, last_job_received_at TIMESTAMPTZ,
       app_version TEXT, git_commit TEXT)`;
     await query`CREATE INDEX IF NOT EXISTS idx_scraper_workers_hb ON scraper_workers (last_heartbeat_at DESC)`;
+    // ปุ่ม "ตรวจสอบ LINE Session ตอนนี้": UI ตั้ง flag → worker เห็นใน heartbeat response → ตรวจจริงแล้ว flag ถูกเคลียร์
+    await query`ALTER TABLE scraper_workers ADD COLUMN IF NOT EXISTS session_check_requested BOOLEAN DEFAULT false`;
 
     // ---- line_customers/conversations: external_chat_key (เก็บแชทที่ไม่มี LINE user id ได้) ----
     await query`ALTER TABLE line_customers ADD COLUMN IF NOT EXISTS external_chat_key TEXT`;

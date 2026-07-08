@@ -101,7 +101,34 @@ function lockIsStale(lock, { pidAlive = false, nowMs = Date.now() } = {}) {
   return isNaN(hb) || nowMs - hb > 120000; // pid ยังอยู่แต่ค้าง (ไม่เขียน lock นาน) = stale
 }
 
+// ---- LINE session classification (ผล preflight จริง — ไม่ใช่แค่ไฟล์มีอยู่) ----
+//   VALID เฉพาะเมื่อเห็น authenticated UI จริง (chat list) เท่านั้น
+function classifyLineSession({ url = "", hasChatList = false, hasLoginForm = false } = {}) {
+  if (hasChatList) return { valid: true, status: "valid", reason: "พบ chat list (authenticated UI)" };
+  if (/signin|login|auth/i.test(url) || hasLoginForm)
+    return { valid: false, status: "login_required", reason: "ถูก redirect ไปหน้า login" };
+  return { valid: false, status: "unknown", reason: "ไม่พบ authenticated UI และไม่พบหน้า login (โหลดไม่สำเร็จ?)" };
+}
+
+// ---- Job claim gating: ห้าม claim (pending→running) เมื่อ session ไม่ valid ----
+//   คืน action: 'claim' | 'wait_auth'
+function claimDecision(sessionStatus) {
+  return sessionStatus === "valid" ? "claim" : "wait_auth";
+}
+
+// ---- transition เมื่อ auth ล้มเหลวระหว่าง job: running → blocked_auth (ห้าม done/ลบ/ค้าง running) ----
+function authFailTransition(jobStatus) {
+  if (jobStatus === "running" || jobStatus === "pending") return "blocked_auth";
+  return jobStatus;
+}
+
+// ---- recovery หลัง login: blocked_auth → pending (job เดิม ไม่สร้างใหม่) ----
+function authRestoredTransition(jobStatus) {
+  return jobStatus === "blocked_auth" ? "pending" : jobStatus;
+}
+
 module.exports = {
   normalizeJobStatus, stepLabel, isScanningNoTarget,
   WORKER_ONLINE_WINDOW_MS, isWorkerOnline, workerPanelState, lockIsStale,
+  classifyLineSession, claimDecision, authFailTransition, authRestoredTransition,
 };

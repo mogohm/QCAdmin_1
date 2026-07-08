@@ -49,9 +49,19 @@ export async function POST(req) {
         last_heartbeat_at = now(),
         last_job_received_at = COALESCE(EXCLUDED.last_job_received_at, scraper_workers.last_job_received_at),
         app_version = EXCLUDED.app_version
-      RETURNING desired_state`;
+      RETURNING worker_id, desired_state, session_check_requested`;
+    const checkRequested = rows[0]?.session_check_requested === true;
+    // ส่งคำสั่ง "ตรวจ session" ให้ worker ครั้งเดียว แล้วเคลียร์ flag ทันที (ไม่ยิงซ้ำทุก heartbeat)
+    if (checkRequested)
+      await query`
+        UPDATE scraper_workers SET session_check_requested = false
+        WHERE worker_id = ${rows[0].worker_id}`;
     return Response.json(
-      { ok: true, desired_state: rows[0]?.desired_state || "running" },
+      {
+        ok: true,
+        desired_state: rows[0]?.desired_state || "running",
+        session_check_requested: checkRequested,
+      },
       { headers: CORS },
     );
   } catch (e) {
@@ -100,12 +110,26 @@ export async function GET(req) {
 }
 
 // system_admin/scraper.run: หยุดรับงานใหม่ (draining) / กลับมารับงาน (running)
+//   + { request_session_check: true } = สั่งให้ worker ตรวจ LINE Session จริง (Vercel ไม่มี browser session — worker เป็นผู้ตรวจ)
 export async function PATCH(req) {
   const gate = guard(req, "scraper.run", "scraper.schedule");
   if (gate) return gate;
   const b = await req.json().catch(() => ({}));
-  const ds = b.desired_state === "draining" ? "draining" : "running";
   try {
+    if (b.request_session_check === true) {
+      const rows = await query`
+        UPDATE scraper_workers SET session_check_requested = true
+        WHERE worker_id = COALESCE(${b.worker_id || null}, (SELECT worker_id FROM scraper_workers ORDER BY last_heartbeat_at DESC NULLS LAST LIMIT 1))
+        RETURNING worker_id, last_heartbeat_at`;
+      if (!rows[0]) return Response.json({ error: "ไม่พบ worker" }, { status: 404 });
+      if (!isWorkerOnline(rows[0].last_heartbeat_at))
+        return Response.json(
+          { error: "Worker ออฟไลน์ — ต้องเปิด worker (.\\scraper-live.bat --watch) ก่อนจึงตรวจ Session ได้" },
+          { status: 409 },
+        );
+      return Response.json({ ok: true, requested: true, worker_id: rows[0].worker_id });
+    }
+    const ds = b.desired_state === "draining" ? "draining" : "running";
     const rows = await query`
       UPDATE scraper_workers SET desired_state = ${ds}
       WHERE worker_id = COALESCE(${b.worker_id || null}, (SELECT worker_id FROM scraper_workers ORDER BY last_heartbeat_at DESC NULLS LAST LIMIT 1))

@@ -38,14 +38,18 @@ export async function PATCH(req) {
     logged_count,
     current_chat,
     error_text,
+    error_code,
     counters,
   } = await req.json();
 
   const started_at = status === "running" ? new Date().toISOString() : null;
+  // blocked_auth ไม่ใช่จบงาน — ห้ามตั้ง finished_at (job จะถูก resume หลัง login)
   const finished_at =
     status === "done" || status === "error" || status === "cancelled"
       ? new Date().toISOString()
       : null;
+  // requeue (blocked_auth → pending) ต้องล้าง error เก่าออก ไม่ให้ค้างโชว์บน UI
+  const clearErrors = status === "pending";
 
   // COALESCE ป้องกัน NULL overwrite status — 'cancelled' ถูก overwrite ได้เฉพาะ 'error'
   const result = await query`
@@ -59,7 +63,10 @@ export async function PATCH(req) {
       current_chat = COALESCE(${current_chat ?? null}, current_chat),
       counters     = COALESCE(${counters ? JSON.stringify(counters) : null}::jsonb, counters),
       updated_at   = now(),
-      error_text   = COALESCE(${error_text ?? null}, error_text),
+      error_text   = CASE WHEN ${clearErrors} THEN NULL
+                          ELSE COALESCE(${error_text ?? null}, error_text) END,
+      error_code   = CASE WHEN ${clearErrors} THEN NULL
+                          ELSE COALESCE(${error_code ?? null}, error_code) END,
       started_at   = COALESCE(${started_at}, started_at),
       finished_at  = COALESCE(${finished_at}, finished_at)
     WHERE id = ${id}
