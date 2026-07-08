@@ -195,7 +195,7 @@ function printWorkerBanner(mode, health) {
   WARNING: Console UTF-8 encoding is not configured correctly.
   Active code page = ${m[1]} (expected 65001).
   Thai log text WILL be unreadable in this window.
-  FIX: close this window and start via  scraper-live.bat --watch
+  FIX: close this window and start via  .scraper-live.bat --watch
   (it sets "chcp 65001" automatically), or run "chcp 65001" first.
   ****************************************************************
 `);

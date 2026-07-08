@@ -622,7 +622,7 @@ export default function ScraperPage() {
             return s < 60 ? `${s} วินาทีที่แล้ว` : s < 3600 ? `${Math.floor(s / 60)} นาทีที่แล้ว` : `${Math.floor(s / 3600)} ชม.ที่แล้ว`;
           };
           const hours = w?.started_at ? ((Date.now() - new Date(w.started_at).getTime()) / 3600000).toFixed(1) : null;
-          const OFFICIAL_CMD = "cd /d h:\\QCAdminPJ\\qc-admin-lineoa && scraper-live.bat --watch";
+          const OFFICIAL_CMD = "cd /d h:\\QCAdminPJ\\qc-admin-lineoa && .\\scraper-live.bat --watch";
           const copyCmd = () => { navigator.clipboard?.writeText(OFFICIAL_CMD); setMsg("✓ คัดลอกคำสั่งแล้ว"); };
           const H = w?.health || null;
           return (
@@ -672,13 +672,13 @@ export default function ScraperPage() {
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.9 }}>
                   <div>1. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code></div>
                   <div>2. Login LINE OA ในหน้าต่างที่เปิดขึ้น</div>
-                  <div>3. เปิด <code style={{ color: "#4ade80" }}>scraper-live.bat --watch</code> ใหม่</div>
+                  <div>3. เปิด <code style={{ color: "#4ade80" }}>.\scraper-live.bat --watch</code> ใหม่</div>
                 </div>
               ) : (
                 <>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px", fontSize: 12.5, marginTop: 10 }}>
                     <span>ชื่อเครื่อง: <b style={{ color: "#fff", fontFamily: "monospace" }}>{w.machine_name}</b></span>
-                    <span>คำสั่งที่ใช้: <code style={{ color: "#4ade80" }}>scraper-live.bat --watch</code></span>
+                    <span>คำสั่งที่ใช้: <code style={{ color: "#4ade80" }}>.\scraper-live.bat --watch</code></span>
                     <span>โหมด: <b style={{ color: "#e2e8f0" }}>{w.current_job_id ? "กำลังทำงาน" : "รอรับงาน"}</b></span>
                     <span>LINE Session: <b style={{ color: "#4ade80" }}>✅ ใช้งานได้</b></span>
                     {hours && <span>ทำงานมาแล้ว: <b style={{ color: "#e2e8f0" }}>{hours} ชม.</b></span>}
@@ -1363,7 +1363,7 @@ export default function ScraperPage() {
                 scraper-live.bat --watch
               </code>
               <button
-                onClick={() => { navigator.clipboard?.writeText("cd /d h:\\QCAdminPJ\\qc-admin-lineoa && scraper-live.bat --watch"); setMsg("✓ คัดลอกคำสั่งแล้ว"); }}
+                onClick={() => { navigator.clipboard?.writeText("cd /d h:\\QCAdminPJ\\qc-admin-lineoa && .\\scraper-live.bat --watch"); setMsg("✓ คัดลอกคำสั่งแล้ว"); }}
                 style={{ padding: "3px 10px", fontSize: 12, cursor: "pointer" }}
               >
                 📋 คัดลอกคำสั่ง
@@ -1376,7 +1376,7 @@ export default function ScraperPage() {
           <div style={{ marginTop: 10, padding: "8px 12px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, fontSize: 12.5 }}>
             <b>LINE Session หมดอายุ?</b> รัน{" "}
             <code style={{ background: "#fef3c7", padding: "1px 6px", borderRadius: 4 }}>npm run scraper:login</code>{" "}
-            → login LINE OA → เปิด <code>scraper-live.bat --watch</code> ใหม่
+            → login LINE OA → เปิด <code>.\scraper-live.bat --watch</code> ใหม่
           </div>
           <div style={{ marginTop: 8, fontSize: 12, color: "#888" }}>
             🗓 ตั้งเวลาอัตโนมัติรายวัน: ใช้ <code>scrape-yesterday.bat</code> ผ่าน Windows Task
@@ -1390,7 +1390,7 @@ export default function ScraperPage() {
             </summary>
             <div style={{ fontFamily: "monospace", lineHeight: 2, fontSize: 12, marginTop: 8, color: "#555" }}>
               <div style={{ color: "#999" }}># ทดสอบวันเดียวแบบเห็นจอ (troubleshooting exact-date)</div>
-              <div>scraper-live.bat --date=YYYY-MM-DD --headed</div>
+              <div>.\scraper-live.bat --date=YYYY-MM-DD --headed</div>
               <div style={{ color: "#999", marginTop: 4 }}># ช่วงวันที่ / backfill ค้นย้อนหลัง</div>
               <div>node scraper.js --from=2026-06-10 --to=2026-06-16</div>
               <div>node scraper.js --date=YYYY-MM-DD --deep-history</div>
