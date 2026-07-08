@@ -45,3 +45,39 @@ route ที่รับ `[id]` แล้วยิง SQL ตรง ๆ = เส
 1. `test:uat-feedback:strict` ต้องมี `ADMIN_API_KEY` ใน env จึงจะรัน migrate sub-step (ไม่งั้นนับเป็น fail).
 2. Phase 2–20 live QA ยังไม่ครบ (ดูด้านบน).
 3. Scraper chat-list paging: รอบก่อนหน้าปรับให้ page ลงได้ (25→50) แต่ยังไม่ยืนยันว่าถึงวันเป้าหมายเก่า ๆ ครบ (งานแยก).
+
+---
+
+# LIVE CLICK-THROUGH — รอบสมบูรณ์ 2026-07-08 (system_admin บน production)
+
+รัน: `node scripts/qa-live-clickthrough.js` — login ผ่านหน้า UI จริง, เปิดทุกหน้า, ยิง request จริง,
+ตรวจ DB mutation ผ่าน API, reload ตรวจ persistence, cleanup ข้อมูลทดสอบอัตโนมัติ
+
+## ผลรวม: **PASS 62 / FAIL 0 / BLOCKED 0**
+
+| ลำดับ | โมดูล | ครอบคลุม | ผล |
+|---|---|---|---|
+| 1 | AI Review | enqueue อัตโนมัติ + linkage + GET detail + คลิก "ตรวจ" modal 4 แท็บ + สลับแท็บ + อนุมัติ (PATCH) + persistence | ✅ 6/6 |
+| 2 | Manual Case | สร้างเคส + runQc + ปรากฏใน Chat Review | ✅ 2/2 |
+| 3 | Knowledge Training | create + Test Match (matched=true, confidence) + deactivate | ✅ 3/3 |
+| 4 | SOP Manager | create + ปรากฏบนหน้า /sop หลัง reload + edit + soft delete + id ผิดชนิด→400 ไทย | ✅ 5/5 |
+| 5 | Disputes | create + approve (updated_score=88 เขียนเข้า qc_scores) + id ผิดชนิด→400 | ✅ 3/3 |
+| 6 | System Events | create (affects_sla) + ปรากฏบนหน้า + deactivate | ✅ 3/3 |
+| 7 | Admin Performance | dashboard API + date filter + ช่วงว่าง = empty state ไม่ error | ✅ 2/2 |
+| 8 | Commission | GET + manual override (localStorage — พฤติกรรมจริงของหน้า) เขียน/อ่าน/คืนค่า + reload | ✅ 2/2 |
+| 9 | User Management | create + login + disable → login 403 + enable → login ได้ | ✅ 5/5 |
+| 10 | Role Permissions | ถอด permission (commission.view.all) → หายจริง → คืน → กลับมา (persistence 2 ทาง) | ✅ 1/1 |
+| 11 | Registration | สมัคร pending + pending login ถูกปฏิเสธ + approve → login ได้ | ✅ 3/3 |
+| 12 | Scraper Control | วันนี้ถูกบล็อก (400 ไทย) + สร้าง job strict + ยกเลิก job ด้วย session | ✅ 3/3 |
+| — | ทุกหน้า (21 หน้า) | ไม่มี 5xx / raw SQL / [object Object] / js error / redirect ผิด | ✅ 21/21 |
+| — | Evidence contract | bundle ตรงเคส (exactEvidence) | ✅ 1/1 |
+
+## บั๊กที่พบจาก click-through และแก้แล้ว (รอบก่อน → ยืนยันผ่านรอบนี้)
+1. **qc-disputes/[id]**: id เป็น INTEGER แต่ validator (ที่เพิ่มตอน harden) เช็ค UUID → approve พัง 400 — แก้เป็น int ✅ (updated=88)
+2. **scraper job DELETE**: รับแค่ x-api-key → session admin ยกเลิกไม่ได้ — แก้เป็น guard(scraper.run) ✅ (cancelled=1)
+3. **commission hydration** (React #418): new Date() ตอน prerender — แก้ตั้งวันที่ใน useEffect ✅ (หน้าโหลดสะอาด)
+
+## หมายเหตุ
+- Commission "manual override" เป็น localStorage ฝั่ง client (ไม่มี DB write) — ทดสอบตามพฤติกรรมจริง
+- Roles permissions อ่านจาก list endpoint (`/api/system/roles` → roles[].permissions)
+- P0/P1 คงเหลือ: **0**

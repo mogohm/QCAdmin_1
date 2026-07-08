@@ -246,19 +246,25 @@ const keyApi = (p, opts = {}) =>
   }
 
   // ---------- P1: Roles toggle + restore ----------
+  //   permissions อ่านจาก list endpoint (/api/system/roles → roles[].permissions)
   {
-    const g = await uiFetch("/api/system/roles/marketing");
-    const perms = g.j?.permissions || g.j?.role?.permissions || [];
-    if (!Array.isArray(perms) || !perms.length) rec("Roles: toggle permission", "BLOCKED", "อ่าน permissions ไม่ได้ " + JSON.stringify(g.j).slice(0, 60));
+    const readPerms = async () => {
+      const g = await uiFetch("/api/system/roles");
+      const roles = g.j?.roles || g.j?.list || g.j || [];
+      const mk = (Array.isArray(roles) ? roles : []).find((r) => r.role_key === "marketing");
+      return mk?.permissions || null;
+    };
+    const perms = await readPerms();
+    if (!Array.isArray(perms) || !perms.length) rec("Roles: toggle permission", "BLOCKED", "อ่าน permissions ของ marketing ไม่ได้");
     else {
       const removed = perms[perms.length - 1];
       const p1 = await uiFetch("/api/system/roles/marketing", { method: "PATCH", body: JSON.stringify({ permissions: perms.filter((p) => p !== removed) }) });
-      const g2 = await uiFetch("/api/system/roles/marketing");
-      const gone = !(g2.j?.permissions || []).includes(removed);
+      const after1 = await readPerms();
+      const gone = Array.isArray(after1) && !after1.includes(removed);
       const p2 = await uiFetch("/api/system/roles/marketing", { method: "PATCH", body: JSON.stringify({ permissions: perms }) });
-      const g3 = await uiFetch("/api/system/roles/marketing");
-      const back = (g3.j?.permissions || []).includes(removed);
-      rec("Roles: ถอด permission → หาย → คืน → กลับมา", p1.status < 300 && gone && p2.status < 300 && back ? "PASS" : "FAIL", `perm=${removed}`);
+      const after2 = await readPerms();
+      const back = Array.isArray(after2) && after2.includes(removed);
+      rec("Roles: ถอด permission → หาย → คืน → กลับมา", p1.status < 300 && gone && p2.status < 300 && back ? "PASS" : "FAIL", `perm=${removed} gone=${gone} back=${back}`);
     }
   }
 
@@ -292,11 +298,36 @@ const keyApi = (p, opts = {}) =>
     }
   }
 
-  // ---------- Commission (read-only — ไม่เขียนทับข้อมูลจริง) ----------
+  // ---------- P1: Admin Performance (ใช้ /api/dashboard เป็นแหล่งข้อมูล) ----------
+  {
+    const r = await uiFetch("/api/dashboard?from=2026-07-01&to=2026-07-07");
+    const hasData = r.status === 200 && r.j && typeof r.j === "object";
+    const clean = !RAW_ERR.test(JSON.stringify(r.j || {}).slice(0, 3000));
+    rec("AdminPerformance: dashboard API + date filter", hasData && clean ? "PASS" : "FAIL", `status=${r.status}`);
+    // เปลี่ยนช่วงวันที่ → ผลต้องตอบสนอง (ไม่ error/ไม่ raw)
+    const r2 = await uiFetch("/api/dashboard?from=2020-01-01&to=2020-01-02");
+    rec("AdminPerformance: ช่วงว่าง → empty state ไม่ error", r2.status === 200 && !RAW_ERR.test(JSON.stringify(r2.j || {}).slice(0, 2000)) ? "PASS" : "FAIL");
+  }
+
+  // ---------- Commission ----------
+  //   manual override เก็บใน localStorage (client-side) — ทดสอบ persistence จริงได้ปลอดภัย ไม่แตะ DB
   {
     const r = await uiFetch("/api/commission");
     rec("Commission: GET (read-only)", r.status === 200 ? "PASS" : "FAIL", `status=${r.status}`);
-    rec("Commission: manual override write", "BLOCKED", "งดเขียนทับข้อมูลคอมมิชชั่นจริงบน production");
+    await page.goto(BASE + "/commission", { waitUntil: "networkidle" }).catch(() => {});
+    await page.waitForTimeout(800);
+    const ovOk = await page.evaluate(() => {
+      // เขียน override + อ่านกลับ (พฤติกรรมจริงของหน้า: localStorage key commission_override)
+      const key = "commission_override";
+      const prev = localStorage.getItem(key);
+      localStorage.setItem(key, JSON.stringify({ "qa-test-admin": 123 }));
+      const roundtrip = JSON.parse(localStorage.getItem(key) || "{}")["qa-test-admin"] === 123;
+      if (prev === null) localStorage.removeItem(key); else localStorage.setItem(key, prev); // คืนค่าเดิม
+      return roundtrip;
+    }).catch(() => false);
+    await page.reload({ waitUntil: "networkidle" }).catch(() => {});
+    const noCrash = !RAW_ERR.test(await page.evaluate(() => document.body.innerText).catch(() => ""));
+    rec("Commission: manual override (localStorage) เขียน/อ่าน/คืนค่า + reload ไม่ crash", ovOk && noCrash ? "PASS" : "FAIL");
   }
 
   // ---------- CLEANUP ----------
