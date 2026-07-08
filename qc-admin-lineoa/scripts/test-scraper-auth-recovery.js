@@ -76,6 +76,12 @@ console.log("\n== 4) watch mode ต้องไม่ตายเมื่อ se
   t("auth-wait ตรวจซ้ำทุก 15 วิ", /sleep\(15000\)/.test(src));
   t("requireSession ไม่ถูกเรียกใน watch mode (ไม่ exit ทั้ง process)", /if \(!WATCH\) requireSession\(\)/.test(src));
   t("runJob จับ LINE_SESSION_EXPIRED → blocked_auth", /code === "LINE_SESSION_EXPIRED"/.test(src) && /status: "blocked_auth"/.test(src));
+  // regression (เจอจาก fault-injection จริง): openLineOA ต้องอยู่ "ใน try" ของ runJob
+  // ไม่งั้น auth ตายหลัง claim จะหลุด catch → job ค้าง running แทนที่จะเป็น blocked_auth
+  {
+    const rj = src.slice(src.indexOf("async function runJob"), src.indexOf("async function extractNotes"));
+    t("openLineOA อยู่หลัง try { ใน runJob (ตายหลัง claim ต้องลง catch)", rj.indexOf("try {") !== -1 && rj.indexOf("try {") < rj.indexOf("openLineOA(context)"));
+  }
   t("preflight ก่อน claim (verifyLineSession ก่อน runJob ใน watch)", /const pre = await verifyLineSession\(context\)/.test(src));
   t("[AUTH ERROR] block ภาษาไทยพร้อมวิธีแก้", /\[AUTH ERROR\] LINE OA Session หมดอายุ/.test(src) && /npm run scraper:login/.test(src));
   // fault injection 2 โหมด: =1 fail ตั้งแต่ preflight (Scenario A) · =2 preflight ผ่านแต่ตายหลัง claim (Scenario C)

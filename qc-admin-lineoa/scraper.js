@@ -1132,9 +1132,6 @@ async function runJob(job, context) {
     return cancelled;
   };
 
-  const page = await openLineOA(context);
-  await saveScreenshot(page, `job-${job.id}-list`);
-
   // counters (นโยบายวันที่แบบ strict)
   const C = {
     mode,
@@ -1157,7 +1154,13 @@ async function runJob(job, context) {
     pending_reply_messages: 0,
   };
   let chatIndex = 0;
+  let page = null;
   try {
+    // openLineOA ต้องอยู่ใน try — session ตายตรงนี้ (หลัง claim) ต้องลง catch → blocked_auth
+    // (จุดนี้คือ path ที่ production เคยตาย: claim แล้ว exit ทิ้ง job ค้าง running 0/0)
+    page = await openLineOA(context);
+    await saveScreenshot(page, `job-${job.id}-list`);
+
     let chats = await scanChatList(page, fromDate, toDate, shouldCancel, mode);
     C.target_date_chats = chats.target_date_chats || 0;
     C.newer_chats_skipped = chats.newer_chats_skipped || 0;
@@ -1293,7 +1296,7 @@ async function runJob(job, context) {
     WORKER.currentChat = null;
     WORKER.currentStep = null;
     WORKER.status = "online";
-    await page.close().catch(() => {});
+    await page?.close().catch(() => {});
   }
 }
 
