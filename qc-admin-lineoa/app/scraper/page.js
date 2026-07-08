@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { normalizeJobStatus, stepLabel, isScanningNoTarget } from "@/lib/scraper-status";
+import { normalizeJobStatus, stepLabel, isScanningNoTarget, effectiveSessionStatus } from "@/lib/scraper-status";
 
 // วันที่ตามเวลาไทย (Asia/Bangkok, UTC+7) — คำนวณจาก epoch จึงถูกต้องทุกโซนเครื่อง
 //   *สำคัญ*: ห้ามใช้ new Date().toISOString() ตรง ๆ (นั่นคือ UTC) — ช่วง 00:00–06:59 ไทยจะเพี้ยนไป 1 วัน
@@ -637,10 +637,14 @@ export default function ScraperPage() {
           // P0-7: สถานะ session จาก "ผล preflight จริง" เท่านั้น (health.line_session object ใหม่)
           //   ไฟล์ auth มีอยู่ ≠ ใช้งานได้ — ถ้ายังไม่มีผลตรวจจริง ต้องโชว์ ⚠️ ไม่ใช่ ✅
           const ls = w?.health && typeof w.health.line_session === "object" && w.health.line_session ? w.health.line_session : null;
-          const lsStatus = ls?.status || (["expired", "missing"].includes(w?.line_session_status) ? "expired" : "unknown");
+          const lsRaw = ls?.status || (["expired", "missing"].includes(w?.line_session_status) ? "expired" : "unknown");
           const lsCheckedAt = ls?.checked_at || null;
+          // ป้าย ✅ ห้ามค้าง: ผลตรวจ valid เก่าเกิน 5 นาที → ลดเป็น unknown (ก่อนรับ job มี preflight ใหม่เสมอ)
+          const lsStatus = effectiveSessionStatus(lsRaw, lsCheckedAt);
           const sessionExpired = online && (lsStatus === "expired" || lsStatus === "login_required");
           const sessionVerified = online && lsStatus === "valid";
+          // job ที่หยุดรอ login — โชว์ให้ operator เห็นว่างานไหนจะ resume อัตโนมัติ
+          const blockedJob = (jobs || []).find((x) => x.status === "blocked_auth") || null;
           const draining = online && (w?.desired_state === "draining" || w?.status === "draining");
           const ago = (ts) => {
             if (!ts) return "—";
@@ -699,13 +703,22 @@ export default function ScraperPage() {
                 </div>
               ) : sessionExpired ? (
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.9 }}>
-                  <div style={{ color: "#fbbf24", fontWeight: 700 }}>
-                    ❌ LINE Session หมดอายุ{lsCheckedAt ? ` · ตรวจพบ ${new Date(lsCheckedAt).toLocaleTimeString("th-TH")}` : ""}
+                  <div style={{ color: "#fbbf24", fontWeight: 700, fontSize: 14 }}>
+                    🔐 LINE OA Session หมดอายุ{lsCheckedAt ? ` · ตรวจพบ ${new Date(lsCheckedAt).toLocaleTimeString("th-TH")}` : ""}
                     {ls?.reason ? <span style={{ fontWeight: 400, color: "#94a3b8" }}> ({ls.reason})</span> : null}
                   </div>
-                  <div>1. เปิดหน้าต่างใหม่บนเครื่อง Operator (ไม่ต้องปิด worker)</div>
-                  <div>2. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code> แล้ว Login LINE OA</div>
-                  <div>3. Worker จะตรวจ Session ใหม่ทุก 15 วินาที แล้วทำ Job เดิมต่ออัตโนมัติ</div>
+                  <div style={{ marginTop: 4 }}>วิธีแก้:</div>
+                  <div>1. เปิด CMD ใหม่บนเครื่อง Operator (ไม่ต้องปิด worker)</div>
+                  <div>2. รัน <code style={{ color: "#4ade80" }}>npm run scraper:login</code></div>
+                  <div>3. Login ให้เสร็จ แล้วกลับมาหน้านี้</div>
+                  <div>4. Worker จะตรวจ Session ใหม่ทุก 15 วินาที แล้วทำ Job เดิมต่ออัตโนมัติ</div>
+                  {blockedJob && (
+                    <div style={{ marginTop: 8, background: "#78350f", border: "1px solid #d97706", borderRadius: 8, padding: "8px 12px", display: "flex", flexWrap: "wrap", gap: "4px 18px", fontSize: 12.5 }}>
+                      <span>Job ที่รอ: <code style={{ color: "#fde68a" }}>{String(blockedJob.id).slice(0, 8)}</code></span>
+                      <span>วันที่: <b style={{ color: "#fff" }}>{String(blockedJob.date_from).slice(0, 10)}{String(blockedJob.date_to).slice(0, 10) !== String(blockedJob.date_from).slice(0, 10) ? ` → ${String(blockedJob.date_to).slice(0, 10)}` : ""}</b></span>
+                      <span>สถานะ: <b style={{ color: "#fde68a" }}>🔒 รอ Login</b></span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>

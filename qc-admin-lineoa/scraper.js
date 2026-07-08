@@ -1280,7 +1280,7 @@ async function runJob(job, context) {
       await patchJob(job.id, {
         status: "blocked_auth",
         error_code: "LINE_SESSION_EXPIRED",
-        error_text: "LINE OA Session หมดอายุ กรุณา Login ใหม่",
+        error_text: "LINE OA Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
       });
       printAuthRequired(job.id);
       throw e; // ให้ watch loop เข้าโหมด auth-wait (ไม่ exit)
@@ -1466,6 +1466,24 @@ async function requeueBlockedAuthJobs() {
     log(`[RESUME] ทำงาน Job เดิมต่อ job_id=${j.id} (${String(j.date_from).slice(0, 10)})`);
   }
   return blocked.length;
+}
+
+// orphan job: running ค้างจาก worker ตัวก่อนที่ตายไป (updated_at ไม่ขยับ) — ห้ามค้าง running ถาวร
+//   auth ล่าสุด → blocked_auth (รอ login) · อื่น ๆ → pending (job id เดิม, preflight ก่อน claim อยู่แล้ว)
+async function recoverOrphanRunningJobs() {
+  const { orphanJobRecovery } = require("./lib/scraper-status");
+  const jobs = await listJobs().catch(() => []);
+  let n = 0;
+  for (const j of Array.isArray(jobs) ? jobs : []) {
+    const to = orphanJobRecovery(j, { workerOnline: false }); // ตอน startup — worker ตัวก่อนตายแน่ (lock เราถือแล้ว)
+    if (!to) continue;
+    n++;
+    log(`[RECOVER] พบ Job ค้าง running (worker เดิมตาย) · ${j.id} → ${to}`);
+    await patchJob(j.id, to === "blocked_auth"
+      ? { status: "blocked_auth", error_code: "LINE_SESSION_EXPIRED", error_text: "LINE OA Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" }
+      : { status: "pending" }).catch(() => {});
+  }
+  return n;
 }
 
 // ค้างรอ login: ตรวจทุก 15 วิ (mtime ของ auth file เปลี่ยน → preflight จริง; หรือครบ 90 วิ → preflight จริง)
@@ -1690,6 +1708,9 @@ async function main() {
   );
   let lastSchedule = 0;
   let lastAutoDate = null;
+
+  // ---- orphan recovery: job running ค้างจาก worker ตัวก่อน (ตายไปแล้ว) → blocked_auth/pending ----
+  await recoverOrphanRunningJobs().catch((e) => log(`⚠️ orphan recovery error: ${e.message}`));
 
   // ---- startup preflight (P0-5): ตรวจ session จริงก่อนเริ่มรอรับงาน + กู้ job ที่ค้าง blocked_auth ----
   if (!fs.existsSync(AUTH_FILE)) {

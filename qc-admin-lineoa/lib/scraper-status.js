@@ -127,8 +127,29 @@ function authRestoredTransition(jobStatus) {
   return jobStatus === "blocked_auth" ? "pending" : jobStatus;
 }
 
+// ---- อายุผลตรวจ session: VALID เก่าเกิน 5 นาที = ห้ามเชื่อ (โชว์ ⚠️ ไม่ใช่ ✅) ----
+//   ก่อนรับ job จะ preflight ใหม่เสมออยู่แล้ว — ตัวนี้กันเฉพาะ "ป้ายเขียวค้าง" บน UI/heartbeat
+const LINE_SESSION_MAX_AGE_MS = 5 * 60000;
+function effectiveSessionStatus(status, checkedAt, nowMs = Date.now(), maxAgeMs = LINE_SESSION_MAX_AGE_MS) {
+  if (status !== "valid") return status || "unknown"; // expired/login_required ไม่หมดอายุเอง
+  const t = checkedAt ? new Date(checkedAt).getTime() : NaN;
+  if (isNaN(t) || nowMs - t > maxAgeMs) return "unknown"; // valid เก่า → ต้องตรวจใหม่ก่อนเชื่อ
+  return "valid";
+}
+
+// ---- orphan job: running แต่ worker heartbeat ตาย/updated_at ค้าง → ห้ามค้าง running ถาวร ----
+//   คืนสถานะที่ควรซ่อมเป็น: auth ล่าสุด → blocked_auth · อื่น ๆ → pending (job id เดิม) · null = ไม่ใช่ orphan
+const ORPHAN_STALE_MS = 3 * 60000;
+function orphanJobRecovery(job, { workerOnline = false, nowMs = Date.now(), staleMs = ORPHAN_STALE_MS } = {}) {
+  if (!job || job.status !== "running" || workerOnline) return null;
+  const upd = new Date(job.updated_at || job.started_at || job.created_at || 0).getTime();
+  if (!isNaN(upd) && nowMs - upd <= staleMs) return null; // ยังสด — worker อาจกำลังทำอยู่
+  return job.error_code === "LINE_SESSION_EXPIRED" ? "blocked_auth" : "pending";
+}
+
 module.exports = {
   normalizeJobStatus, stepLabel, isScanningNoTarget,
   WORKER_ONLINE_WINDOW_MS, isWorkerOnline, workerPanelState, lockIsStale,
   classifyLineSession, claimDecision, authFailTransition, authRestoredTransition,
+  LINE_SESSION_MAX_AGE_MS, effectiveSessionStatus, ORPHAN_STALE_MS, orphanJobRecovery,
 };

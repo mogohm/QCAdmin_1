@@ -39,7 +39,7 @@ async function api(endpoint, opts = {}) {
           id: j.id,
           status: "blocked_auth",
           error_code: "LINE_SESSION_EXPIRED",
-          error_text: "LINE OA Session หมดอายุ กรุณา Login ใหม่",
+          error_text: "LINE OA Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
         }),
       });
       console.log(`    → ซ่อมเป็น blocked_auth: ${r?.ok ? "✅" : "❌ " + JSON.stringify(r)}`);
