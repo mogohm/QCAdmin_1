@@ -78,6 +78,9 @@ console.log("\n== 4) watch mode ต้องไม่ตายเมื่อ se
   t("runJob จับ LINE_SESSION_EXPIRED → blocked_auth", /code === "LINE_SESSION_EXPIRED"/.test(src) && /status: "blocked_auth"/.test(src));
   t("preflight ก่อน claim (verifyLineSession ก่อน runJob ใน watch)", /const pre = await verifyLineSession\(context\)/.test(src));
   t("[AUTH ERROR] block ภาษาไทยพร้อมวิธีแก้", /\[AUTH ERROR\] LINE OA Session หมดอายุ/.test(src) && /npm run scraper:login/.test(src));
+  // fault injection 2 โหมด: =1 fail ตั้งแต่ preflight (Scenario A) · =2 preflight ผ่านแต่ตายหลัง claim (Scenario C)
+  t("FORCE_AUTH_FAIL=2 fail เฉพาะหลัง claim (openLineOA)", /\^\[12\]\$/.test(src));
+  t("FORCE_AUTH_FAIL=2 ไม่กระทบ preflight (verifyLineSession เช็คเฉพาะ =1)", /SCRAPER_FORCE_AUTH_FAIL === "1"/.test(src));
 }
 
 console.log("\n== 5) login กลับมา → job เดิม resume (ไม่สร้าง job ใหม่) ==");

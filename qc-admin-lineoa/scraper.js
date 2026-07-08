@@ -763,7 +763,8 @@ function recordSessionResult(r) {
 
 async function openLineOA(context) {
   const page = await context.newPage();
-  if (process.env.SCRAPER_FORCE_AUTH_FAIL === "1") {
+  // =1: fail ทุกจุด (preflight ล้ม → ไม่ claim) · =2: preflight ผ่านแต่ fail หลัง claim (ทดสอบ Scenario C: ตายกลางงาน)
+  if (/^[12]$/.test(process.env.SCRAPER_FORCE_AUTH_FAIL || "")) {
     await page.close().catch(() => {});
     throw authError("LINE session expired (forced for test)");
   }
