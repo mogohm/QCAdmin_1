@@ -35,13 +35,15 @@ function downloadCSV(filename, rows) {
 
 export default function Commission() {
   const [d, setD] = useState(null);
-  const [from, setFrom] = useState(
-    toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
-  );
-  const [to, setTo] = useState(toISO(new Date()));
+  // เริ่มว่างแล้วตั้งวันที่ใน useEffect — กัน hydration mismatch (React #418)
+  //   (ค่า new Date() ตอน prerender บน server ไม่ตรงกับ client)
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [override, setOverride] = useState({});
 
   useEffect(() => {
+    setFrom(toISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+    setTo(toISO(new Date()));
     try {
       setOverride(
         JSON.parse(localStorage.getItem("commission_override") || "{}"),
@@ -49,17 +51,18 @@ export default function Commission() {
     } catch {}
   }, []);
   const [loading, setLoading] = useState(false);
-  const load = () => {
+  const load = (f = from, t = to) => {
+    if (!f || !t) return;
     setLoading(true);
-    fetch(`/api/dashboard?from=${from}&to=${to}`)
+    fetch(`/api/dashboard?from=${f}&to=${t}`)
       .then((r) => r.json())
       .then(setD)
       .catch(() => {})
       .finally(() => setLoading(false));
   };
   useEffect(() => {
-    load();
-  }, []);
+    if (from && to && !d) load(from, to);
+  }, [from, to]);
   const setOv = (id, v) => {
     const n = { ...override, [id]: v };
     if (v === "") delete n[id];

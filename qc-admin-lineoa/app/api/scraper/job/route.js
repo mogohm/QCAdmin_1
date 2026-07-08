@@ -46,10 +46,10 @@ export async function GET() {
   return Response.json(rows);
 }
 
-// ยกเลิก job ที่กำลังทำงาน/รออยู่
+// ยกเลิก job ที่กำลังทำงาน/รออยู่ — สิทธิ์เดียวกับการสั่งรัน (session scraper.run หรือ x-api-key)
 export async function DELETE(req) {
-  if (!requireAdmin(req))
-    return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = guard(req, "scraper.run", "scraper.schedule");
+  if (g) return g;
   const result = await query`
     UPDATE scraper_jobs
     SET status = 'cancelled', finished_at = now()

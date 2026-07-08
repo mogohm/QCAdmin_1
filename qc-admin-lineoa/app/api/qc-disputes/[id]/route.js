@@ -9,8 +9,8 @@ export async function PATCH(req, { params }) {
   if (gate) return gate;
   const s = readSession(req);
   const { id } = await params;
-  // qc_disputes.id เป็น UUID — validate ก่อน query กัน raw SQL error
-  const vid = validateEntityId(id, "uuid");
+  // qc_disputes.id เป็น INTEGER (SERIAL) — validate ก่อน query กัน raw SQL error
+  const vid = validateEntityId(id, "int");
   if (!vid.ok)
     return Response.json(
       { error: "ไม่สามารถดำเนินการได้ เนื่องจากรหัสข้อโต้แย้งไม่ถูกต้อง" },
@@ -25,7 +25,7 @@ export async function PATCH(req, { params }) {
     );
 
   try {
-    const d = await query`SELECT * FROM qc_disputes WHERE id = ${vid.value}::uuid`;
+    const d = await query`SELECT * FROM qc_disputes WHERE id = ${vid.value}`;
     if (!d[0])
       return Response.json({ error: "ไม่พบข้อโต้แย้งนี้ในระบบ" }, { status: 404 });
 
@@ -42,7 +42,7 @@ export async function PATCH(req, { params }) {
         reviewed_by = ${b.reviewed_by || s?.name || "manager"},
         new_score = ${newScore ?? null},
         reviewed_at = now()
-      WHERE id = ${vid.value}::uuid RETURNING *`;
+      WHERE id = ${vid.value} RETURNING *`;
     return Response.json({
       ok: true,
       dispute: rows[0],
