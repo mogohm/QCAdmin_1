@@ -249,6 +249,11 @@ CREATE TABLE IF NOT EXISTS admin_commissions (
   commission NUMERIC(12,2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+-- audit trail ของการ override ค่าคอม
+ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS estimated_commission NUMERIC(12,2);
+ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS manual_override NUMERIC(12,2);
+ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_by TEXT;
+ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_at TIMESTAMPTZ;
 
 -- ผู้ใช้ระบบ (login + role)
 CREATE TABLE IF NOT EXISTS app_users (

@@ -135,6 +135,12 @@ export async function POST(req) {
     await query`ALTER TABLE messages ADD COLUMN IF NOT EXISTS pending_reply BOOLEAN DEFAULT false`;
     await query`CREATE INDEX IF NOT EXISTS idx_messages_hash ON messages (conversation_id, message_hash)`;
 
+    // ---- admin_commissions: audit trail ของการ override ค่าคอม (ใครปรับ/จากค่าไหน/เมื่อไหร่) ----
+    await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS estimated_commission NUMERIC(12,2)`;
+    await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS manual_override NUMERIC(12,2)`;
+    await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_by TEXT`;
+    await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_at TIMESTAMPTZ`;
+
     // ---- scraper_jobs: counters (JSONB) + mode (strict|deep_history) ----
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'strict'`;

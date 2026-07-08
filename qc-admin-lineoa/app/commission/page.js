@@ -109,6 +109,7 @@ export default function Commission() {
   const tierNum = (t) =>
     t === "Excellent" ? 1 : t === "Standard" ? 2 : t === "Warning" ? 3 : 4;
   const saveDB = async () => {
+    // audit trail: ส่งทั้งค่าประมาณการ + ค่า override (ถ้ามี) — server บันทึกผู้ปรับ/เวลาเอง
     const rows = per.map((a) => ({
       admin_id: a.admin_id,
       avg_score: a.avg_score,
@@ -116,6 +117,11 @@ export default function Commission() {
       tier_name: a.tier,
       upsell_amount: a.upsell_amount,
       commission: finalOf(a),
+      estimated_commission: a.estimated_commission,
+      manual_override:
+        override[a.admin_id] !== undefined && override[a.admin_id] !== ""
+          ? Number(override[a.admin_id])
+          : null,
     }));
     const r = await fetch("/api/commission", {
       method: "POST",
@@ -329,8 +335,9 @@ export default function Commission() {
         <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
           <b>ระดับ:</b> 90-100→×1.2 · 80-89→×1.0 · 70-79→×0.5 · &lt;70→×0 ·{" "}
           <b>ผิดร้ายแรง</b> = จำนวนเคสผิดร้ายแรง (หักตามนโยบาย) ·{" "}
-          <b>ปรับจากโต้แย้ง</b> = เคสที่ผู้จัดการแก้คะแนนแล้ว · <b>แก้ไขเอง</b>{" "}
-          บันทึกในเครื่อง
+          <b>ปรับจากโต้แย้ง</b> = เคสที่ผู้จัดการแก้คะแนนแล้ว · <b>แก้ไขเอง</b> ={" "}
+          ค่าที่พิมพ์เก็บในเครื่องก่อน — จะเป็นการปรับอย่างเป็นทางการ
+          (พร้อมบันทึกผู้ปรับ/เวลา) เมื่อกด &quot;💾 บันทึกลง DB&quot;
         </div>
       </>
     </AppShell>

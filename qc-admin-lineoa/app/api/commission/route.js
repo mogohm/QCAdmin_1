@@ -1,10 +1,11 @@
 import { query } from "@/lib/db";
-import { guard } from "@/lib/permissions";
+import { guard, getCurrentUser } from "@/lib/permissions";
 
 // POST — บันทึกผลคำนวณค่าคอมลง admin_commissions (period snapshot) — ต้องมี commission.adjust
 export async function POST(req) {
   const g = guard(req, "commission.adjust");
   if (g) return g;
+  const me = getCurrentUser(req); // ผู้ปรับจริงจาก session (กันปลอมชื่อจาก client)
   const b = await req.json().catch(() => ({}));
   const { period_start, period_end, rows } = b;
   if (!period_start || !period_end || !Array.isArray(rows))
@@ -31,9 +32,14 @@ export async function POST(req) {
         skipped++;
         continue;
       }
-      await query`INSERT INTO admin_commissions (admin_id, period_start, period_end, avg_score, tier, tier_name, base_salary, upsell_amount, commission)
+      // audit trail: เก็บค่าประมาณการ (ก่อน override) + ค่า override + ใครปรับ/เมื่อไหร่
+      const hasOverride = r.manual_override != null && r.manual_override !== "";
+      await query`INSERT INTO admin_commissions (admin_id, period_start, period_end, avg_score, tier, tier_name, base_salary, upsell_amount, commission,
+          estimated_commission, manual_override, adjusted_by, adjusted_at)
         VALUES (${r.admin_id}, ${period_start}::date, ${period_end}::date, ${toInt(r.avg_score)}, ${toInt(r.tier)}, ${r.tier_name ?? null},
-                ${r.base_salary ?? 0}, ${r.upsell_amount ?? 0}, ${r.commission ?? 0})`;
+                ${r.base_salary ?? 0}, ${r.upsell_amount ?? 0}, ${r.commission ?? 0},
+                ${r.estimated_commission ?? null}, ${hasOverride ? r.manual_override : null},
+                ${hasOverride ? me?.name || b.adjusted_by || "unknown" : null}, ${hasOverride ? new Date().toISOString() : null})`;
       saved++;
     }
     return Response.json({
