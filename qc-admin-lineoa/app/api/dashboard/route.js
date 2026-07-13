@@ -448,7 +448,9 @@ export async function GET(req) {
       if (nDays > 92) return { checked: false, reason: "ช่วงกว้างเกิน 92 วัน — ข้ามการตรวจความครบ" };
       const jobs = await query`SELECT date_from, date_to, status FROM scraper_jobs
         WHERE date_from <= ${covTo}::date AND date_to >= ${covFrom}::date`;
-      const doneCover = (d) => jobs.some((j) => j.status === "done" && String(j.date_from).slice(0, 10) <= d && String(j.date_to).slice(0, 10) >= d);
+      // neon คืน DATE เป็น JS Date object ฝั่ง server — String() ตรง ๆ ได้ "Tue Jul 07..." เทียบไม่ได้
+      const ds = (v) => (v instanceof Date ? v.toISOString() : String(v)).slice(0, 10);
+      const doneCover = (d) => jobs.some((j) => j.status === "done" && ds(j.date_from) <= d && ds(j.date_to) >= d);
       const missing = [];
       for (let i = 0; i < nDays; i++) {
         const d = new Date(new Date(covFrom).getTime() + i * dayMs).toISOString().slice(0, 10);
