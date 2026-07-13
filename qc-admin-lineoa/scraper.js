@@ -1183,13 +1183,33 @@ async function runJob(job, context) {
       await patchJob(job.id, { current_chat: item.name, counters: { ...C, current_step: "collecting" } });
 
       let res;
+      // WATCHDOG ต่อห้อง: ห้องประวัติหนัก/Playwright ค้าง ห้ามแขวนทั้ง job (เคยค้าง 35 นาทีที่ห้องเดียว)
+      //   ค้างเกินกำหนด → นับ failed แล้วไปห้องถัดไป · ค้างติดกัน 3 ห้อง = browser พัง → จบ job เป็น error
+      const CHAT_TIMEOUT_MS = Number(process.env.SCRAPER_CHAT_TIMEOUT_MS || 240000);
+      let watchdogTimer;
       try {
-        res = await scrapeChat(page, item, fromDate);
+        res = await Promise.race([
+          scrapeChat(page, item, fromDate),
+          new Promise((_, rej) => {
+            watchdogTimer = setTimeout(
+              () => rej(Object.assign(new Error(`ห้องค้างเกิน ${Math.round(CHAT_TIMEOUT_MS / 60000)} นาที (watchdog)`), { watchdog: true })),
+              CHAT_TIMEOUT_MS,
+            );
+          }),
+        ]);
+        WORKER._watchdogStreak = 0;
       } catch (e) {
         C.failed_chats++;
         log(`[ERROR] [CHAT ${chatIndex}/${chats.length}] ${item.name} — scrape: ${e.message}`);
         logScrape({ chat_index: chatIndex, customer_name: item.name, skipped_reason: "scrape_error:" + e.message });
+        if (e.watchdog) {
+          WORKER._watchdogStreak = (WORKER._watchdogStreak || 0) + 1;
+          if (WORKER._watchdogStreak >= 3)
+            throw new Error("ห้องค้างติดกัน 3 ห้อง (watchdog) — browser น่าจะค้างทั้งตัว หยุด job นี้เพื่อให้เริ่มใหม่");
+        }
         continue;
+      } finally {
+        clearTimeout(watchdogTimer);
       }
       if (!res) {
         C.failed_chats++;
