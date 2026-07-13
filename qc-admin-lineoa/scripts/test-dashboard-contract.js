@@ -13,22 +13,56 @@ const t = (name, cond, x = "") => {
   console.log(`  ${cond ? "✅" : "❌"} ${name}${x && !cond ? " — " + x : ""}`);
 };
 
-console.log("\n== 1) Canonical QC case date ==");
+console.log("\n== 1) Canonical QC case_at (timestamptz, admin→customer→created_at) ==");
 {
   const dash = R("app/api/dashboard/route.js");
   const runner = R("lib/qc-runner.js");
   const mig = R("app/api/admin/migrate-uat/route.js");
   const schema = R("sql/schema.sql");
-  t("qc-runner INSERT มี case_date (วัน Bangkok ของข้อความลูกค้า)", /case_date/.test(runner) && /customerCreatedAt \|\| createdAt/.test(runner));
-  t("case_ref ใหม่ใช้ case_date (นิยามเดียวกับ ai_review_queue)", /to_char\(COALESCE\(case_date/.test(runner));
-  t("migrate: ADD case_date + backfill จาก messages(customer) + index", /ADD COLUMN IF NOT EXISTS case_date DATE/.test(mig) && /m\.id = q2\.customer_message_id/.test(mig) && /idx_qc_scores_case_date/.test(mig));
-  t("schema.sql มี case_date + index", /case_date DATE/.test(schema) && /idx_qc_scores_case_date/.test(schema));
-  // dashboard ห้ามเหลือ filter แบบเก่า (UTC + เวลาแอดมิน) กับ qc_scores
-  t("dashboard ไม่เหลือ `created_at BETWEEN from AND to+1day` เลย", !/BETWEEN \$\{dateFrom\}::date AND \(\$\{dateTo\}::date \+ interval '1 day'\)/.test(dash));
-  const nCase = (dash.match(/COALESCE\(q?\.?case_date/g) || []).length + (dash.match(/COALESCE\(case_date/g) || []).length;
-  t(`dashboard ใช้ case_date ทุกจุด qc_scores (${nCase} จุด ≥ 15)`, nCase >= 15);
-  t("messages/customer_events ใช้หน้าต่าง Bangkok (−7h..+17h, ใช้ index ได้)", /interval '7 hours'/.test(dash) && /interval '17 hours'/.test(dash));
-  t("debug/counts นับ qc_by_day ตาม case_date", /COALESCE\(case_date/.test(R("app/api/debug/counts/route.js")));
+  const insights = R("app/api/qc/insights/route.js");
+  const counts = R("app/api/debug/counts/route.js");
+  const replies = R("app/api/replies/route.js");
+  // qc-runner: case_at = admin msg → customer msg → created_at
+  t("qc-runner INSERT ตั้ง case_at (admin msg → customer msg → created_at)",
+    /case_at/.test(runner) && /SELECT created_at FROM messages WHERE id = \$\{adminMessageId\}/.test(runner) && /SELECT created_at FROM messages WHERE id = \$\{customerMessageId\}/.test(runner));
+  // migrate: add case_at + backfill (admin→customer→created_at) + null=0 guard + index + report
+  t("migrate: ADD case_at + backfill admin→customer→created_at",
+    /ADD COLUMN IF NOT EXISTS case_at TIMESTAMPTZ/.test(mig) && /COALESCE\(am\.created_at, cm\.created_at, q2\.created_at\)/.test(mig) && /am\.id = q2\.admin_message_id/.test(mig));
+  t("migrate: null=0 guard + index + report", /case_at = created_at WHERE case_at IS NULL/.test(mig) && /idx_qc_scores_case_at/.test(mig) && /case_at_report/.test(mig));
+  t("schema.sql มี case_at + index", /case_at TIMESTAMPTZ/.test(schema) && /idx_qc_scores_case_at/.test(schema));
+  // dashboard: qc_scores ต้องกรองด้วย case_at (Bangkok window) — ไม่เหลือ case_date/created_at filter
+  t("dashboard ไม่เหลือ case_date เลย", !/case_date/.test(dash));
+  t("dashboard ไม่เหลือ qc created_at::date filter แบบเก่า", !/BETWEEN \$\{dateFrom\}::date AND \(\$\{dateTo\}::date \+ interval '1 day'\)/.test(dash));
+  const nCaseAt = (dash.match(/case_at >=|case_at AT TIME ZONE/g) || []).length;
+  t(`dashboard ใช้ case_at ทุกจุด qc_scores (${nCaseAt} จุด ≥ 15)`, nCaseAt >= 15);
+  // insights (QC Dashboard): case_at + Bangkok instant (+07)
+  t("insights ใช้ case_at + ขอบเขต +07", /q?\.?case_at BETWEEN/.test(insights) && /00:00:00\+07/.test(insights) && !/qc_scores WHERE created_at/.test(insights));
+  // debug/counts + replies (Chat Review)
+  t("debug/counts qc_by_day = case_at", /case_at AT TIME ZONE 'Asia\/Bangkok'\)::date::text/.test(counts));
+  t("replies (Chat Review) ขอบเขต Bangkok (−7h..+17h)", /m\.created_at >= \$1::date - interval '7 hours'/.test(replies));
+  // case_ref/evidence ไม่ถูกแตะ: case_date ยังอยู่ใน schema/runner (คนละเรื่องกับ analytics)
+  t("case_date ยังอยู่ (case_ref/evidence ไม่ถูกแตะ)", /case_date/.test(schema) && /case_date/.test(runner));
+}
+
+console.log("\n== 1b) REGRESSION: msg 07-07 / qc created 07-08 → นับวัน 07-07 (case_at) ==");
+{
+  // จำลอง SQL window ของ dashboard: case_at >= D::date - 7h AND case_at < D::date + 17h  (UTC)
+  const inDay = (caseAtISO, D) => {
+    const t0 = new Date(`${D}T00:00:00Z`).getTime();
+    const lo = t0 - 7 * 3600e3, hi = t0 + 17 * 3600e3; // Bangkok day = [D-1 17:00Z, D 17:00Z)
+    const c = new Date(caseAtISO).getTime();
+    return c >= lo && c < hi;
+  };
+  // เคส: ข้อความแอดมินตอบ 2026-07-07 (case_at) แต่ scrape/qc created_at = 2026-07-08
+  const caseAt = "2026-07-07T10:00:00+07:00"; // = 2026-07-07T03:00:00Z
+  t("dashboard วัน 2026-07-07 นับเคสนี้ (case_at)", inDay(caseAt, "2026-07-07") === true);
+  t("dashboard วัน 2026-07-08 ไม่นับเคสนี้ (ไม่ใช่วัน scrape)", inDay(caseAt, "2026-07-08") === false);
+  // ขอบเขตข้ามเที่ยงคืน Bangkok: 2026-07-07T23:30+07 = 16:30Z ยังเป็นวัน 07-07
+  t("23:30 Bangkok ยังเป็นวัน 07-07", inDay("2026-07-07T23:30:00+07:00", "2026-07-07") === true);
+  t("00:30 Bangkok ของ 07-08 ไม่ตกวัน 07-07", inDay("2026-07-08T00:30:00+07:00", "2026-07-07") === false);
+  // reconciliation endpoint + script มีจริง
+  t("มี /api/debug/date-reconcile", fs.existsSync(path.join(__dirname, "..", "app", "api", "debug", "date-reconcile", "route.js")));
+  t("มี scripts/audit-date-reconciliation.js", fs.existsSync(path.join(__dirname, "..", "scripts", "audit-date-reconciliation.js")));
 }
 
 console.log("\n== 2) Marketing dashboard API contract ==");

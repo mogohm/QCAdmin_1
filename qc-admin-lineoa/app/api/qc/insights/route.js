@@ -15,8 +15,9 @@ export async function GET(req) {
   const from =
     searchParams.get("from") ||
     new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
-  const fromTs = `${from} 00:00:00`,
-    toTs = `${to} 23:59:59`;
+  // ขอบเขตวัน Asia/Bangkok (ไม่ใช่ UTC): [from 00:00+07, to 23:59:59+07]
+  const fromTs = `${from} 00:00:00+07`,
+    toTs = `${to} 23:59:59.999+07`;
 
   // scope: role=admin บังคับดูเฉพาะตัวเอง; อื่นๆ ดูทั้งทีม (af = null)
   const af =
@@ -42,30 +43,30 @@ export async function GET(req) {
     ] = await Promise.all([
       query`SELECT count(*)::int total, round(avg(final_score))::int avg_score,
                    round(avg(response_seconds))::int avg_response_sec
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs}
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
               AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
       query`SELECT COALESCE(intent,'general') AS intent, count(*)::int AS n, round(avg(final_score))::int AS avg_score,
                    sum(CASE WHEN is_fatal THEN 1 ELSE 0 END)::int AS fatal
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs}
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
               AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid) GROUP BY 1 ORDER BY n DESC`,
-      query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal = true AND created_at BETWEEN ${fromTs} AND ${toTs}
+      query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal = true AND case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
               AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
       query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal = false AND final_score BETWEEN 50 AND 69
-              AND created_at BETWEEN ${fromTs} AND ${toTs} AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
+              AND case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
       query`SELECT count(*)::int total, sum(CASE WHEN matched_sop_id IS NOT NULL THEN 1 ELSE 0 END)::int matched
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs}
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
               AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
       query`SELECT a.member_name AS admin, a.id AS admin_id, count(*)::int AS replies, round(avg(q.final_score))::int AS avg_score,
                    sum(CASE WHEN q.is_fatal THEN 1 ELSE 0 END)::int AS fatal, round(avg(q.response_seconds))::int AS avg_response_sec
             FROM qc_scores q JOIN qc_admins a ON a.id = q.admin_id
-            WHERE q.created_at BETWEEN ${fromTs} AND ${toTs}
+            WHERE q.case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
             GROUP BY a.member_name, a.id HAVING count(*) > 0 ORDER BY avg_score DESC, replies DESC LIMIT 50`,
       query`SELECT COALESCE(intent,'general') AS intent, count(*)::int AS n FROM qc_scores
-            WHERE created_at BETWEEN ${fromTs} AND ${toTs} AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)
+            WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)
             GROUP BY 1 ORDER BY n DESC`,
       query`SELECT q.id, q.final_score, q.intent, q.is_fatal, q.coaching, a.member_name AS admin, q.created_at
             FROM qc_scores q LEFT JOIN qc_admins a ON a.id = q.admin_id
-            WHERE q.coaching IS NOT NULL AND q.created_at BETWEEN ${fromTs} AND ${toTs}
+            WHERE q.coaching IS NOT NULL AND q.case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
               AND (${af}::uuid IS NULL OR q.admin_id = ${af}::uuid)
             ORDER BY q.created_at DESC LIMIT 30`,
       query`SELECT
@@ -76,28 +77,28 @@ export async function GET(req) {
               round(avg((dimension_scores->>'creditDepositWithdraw')::numeric))::int AS credit_deposit_withdraw,
               round(avg((dimension_scores->>'kycProcess')::numeric))::int AS kyc_process,
               round(avg((dimension_scores->>'upsellPromotion')::numeric))::int AS upsell_promotion
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs} AND dimension_scores IS NOT NULL
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz AND dimension_scores IS NOT NULL
               AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
-      query`SELECT to_char(created_at,'YYYY-MM-DD') AS d, round(avg(final_score))::int AS avg_score, count(*)::int AS n
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs} AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)
+      query`SELECT to_char(case_at AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD') AS d, round(avg(final_score))::int AS avg_score, count(*)::int AS n
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)
             GROUP BY 1 ORDER BY 1`,
       query`SELECT
               sum(CASE WHEN final_score >= 90 THEN 1 ELSE 0 END)::int AS tier1,
               sum(CASE WHEN final_score BETWEEN 80 AND 89 THEN 1 ELSE 0 END)::int AS tier2,
               sum(CASE WHEN final_score BETWEEN 70 AND 79 THEN 1 ELSE 0 END)::int AS tier3,
               sum(CASE WHEN final_score < 70 THEN 1 ELSE 0 END)::int AS tier4
-            FROM qc_scores WHERE created_at BETWEEN ${fromTs} AND ${toTs} AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
+            FROM qc_scores WHERE case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz AND (${af}::uuid IS NULL OR admin_id = ${af}::uuid)`,
       query`SELECT event_type, count(*)::int AS n, COALESCE(round(sum(amount))::int,0) AS amount
-            FROM customer_events WHERE created_at BETWEEN ${fromTs} AND ${toTs} GROUP BY 1`,
+            FROM customer_events WHERE created_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz GROUP BY 1`,
       query`WITH mid AS (SELECT (${fromTs}::timestamptz + (${toTs}::timestamptz - ${fromTs}::timestamptz)/2) AS m)
             SELECT a.member_name AS admin,
-                   round(avg(CASE WHEN q.created_at < (SELECT m FROM mid) THEN q.final_score END))::int AS first_half,
-                   round(avg(CASE WHEN q.created_at >= (SELECT m FROM mid) THEN q.final_score END))::int AS second_half
+                   round(avg(CASE WHEN q.case_at < (SELECT m FROM mid) THEN q.final_score END))::int AS first_half,
+                   round(avg(CASE WHEN q.case_at >= (SELECT m FROM mid) THEN q.final_score END))::int AS second_half
             FROM qc_scores q JOIN qc_admins a ON a.id=q.admin_id
-            WHERE q.created_at BETWEEN ${fromTs} AND ${toTs}
+            WHERE q.case_at BETWEEN ${fromTs}::timestamptz AND ${toTs}::timestamptz
             GROUP BY a.member_name
-            HAVING count(*) FILTER (WHERE q.created_at < (SELECT m FROM mid)) >= 2
-               AND count(*) FILTER (WHERE q.created_at >= (SELECT m FROM mid)) >= 2`,
+            HAVING count(*) FILTER (WHERE q.case_at < (SELECT m FROM mid)) >= 2
+               AND count(*) FILTER (WHERE q.case_at >= (SELECT m FROM mid)) >= 2`,
     ]);
 
     const cov = sopCoverage[0] || { total: 0, matched: 0 };

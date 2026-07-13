@@ -35,7 +35,8 @@ export async function GET(req) {
     const baseWhere = `
       m.direction = 'admin'
       AND m.admin_id IS NOT NULL
-      AND m.created_at BETWEEN $1::date AND ($2::date + interval '1 day')
+      -- Chat Review = วันที่แชทจริง (เวลาแอดมินตอบ = ฐานเดียวกับ case_at) · ขอบเขต Asia/Bangkok
+      AND m.created_at >= $1::date - interval '7 hours' AND m.created_at < $2::date + interval '17 hours'
       AND COALESCE(lc.display_name, m.line_user_id) ILIKE $3
       AND COALESCE(a.member_name, '') ILIKE $4
     `;

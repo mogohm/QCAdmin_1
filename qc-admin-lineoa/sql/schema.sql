@@ -327,6 +327,10 @@ ALTER TABLE scraper_workers ADD COLUMN IF NOT EXISTS session_check_requested BOO
 --   dashboard/report/case_ref ใช้คอลัมน์นี้เท่านั้น — ห้าม created_at::date (UTC เพี้ยน 7 ชม.)
 ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_date DATE;
 CREATE INDEX IF NOT EXISTS idx_qc_scores_case_date ON qc_scores (case_date);
+-- CANONICAL case_at (timestamptz): เวลาจริงของเคส = admin msg → customer msg → created_at
+--   analytics ทั้งหมด (dashboard/insights/ranking/commission) กรองด้วย case_at (Bangkok boundary)
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_qc_scores_case_at ON qc_scores (case_at);
 
 -- scraper_jobs: counters แบบ JSONB + mode (strict = ปกติ / deep_history = backfill)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;

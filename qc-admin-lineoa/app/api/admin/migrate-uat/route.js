@@ -54,6 +54,28 @@ export async function POST(req) {
       FROM qc_scores q2 LEFT JOIN messages m ON m.id = q2.customer_message_id
       WHERE q.id = q2.id AND q.case_date IS NULL`;
     await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_case_date ON qc_scores (case_date)`;
+    // ---- CANONICAL case_at (timestamptz): เวลาจริงของเคส สำหรับ analytics ทั้งหมด ----
+    //   นิยาม: admin_message.created_at → customer_message.created_at → qc_scores.created_at
+    //   (ใช้ "เวลาแชทจริง" ไม่ใช่เวลา scrape — เคสที่ scrape ข้ามวันจึงไม่ตกวันผิด)
+    //   ต่างจาก case_date (customer-first, ใช้กับ case_ref/หลักฐาน — ห้ามแตะ) โดยเจตนา
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_at TIMESTAMPTZ`;
+    await query`UPDATE qc_scores q
+      SET case_at = COALESCE(am.created_at, cm.created_at, q2.created_at)
+      FROM qc_scores q2
+        LEFT JOIN messages am ON am.id = q2.admin_message_id
+        LEFT JOIN messages cm ON cm.id = q2.customer_message_id
+      WHERE q.id = q2.id AND q.case_at IS NULL`;
+    // guarantee null = 0 (เคสไม่มี message id เลย เช่น manual เก่า → ใช้ created_at)
+    await query`UPDATE qc_scores SET case_at = created_at WHERE case_at IS NULL`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_case_at ON qc_scores (case_at)`;
+    // รายงาน backfill (spec P1-2): total / filled / fallback(created_at) / null remaining
+    const caseAtReport = (await query`SELECT
+        count(*)::int AS total,
+        count(case_at)::int AS filled,
+        count(*) FILTER (WHERE case_at IS NULL)::int AS null_remaining,
+        count(*) FILTER (WHERE case_at = created_at
+          AND admin_message_id IS NULL AND customer_message_id IS NULL)::int AS fallback_created_at
+      FROM qc_scores`.catch(() => [{}]))[0] || {};
     // case_ref backfill: YYYYMMDD จาก case_date (นิยาม canonical) — ref เดิมที่ตั้งแล้วไม่ถูกแตะ
     await query`UPDATE qc_scores SET case_ref =
         'QC-' || to_char(COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date),'YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
@@ -218,7 +240,9 @@ export async function POST(req) {
         "ai_review_queue.reviewed_by:text",
         "ai_review_queue.case_detail_linkage",
         "evidence.exact_pair_contract",
+        "qc_scores.case_at",
       ],
+      case_at_report: caseAtReport,
     });
   } catch (e) {
     // คืน error message เพื่อ debug ตอน deploy

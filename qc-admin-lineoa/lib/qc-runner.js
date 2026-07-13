@@ -56,7 +56,7 @@ export async function runQc({
     INSERT INTO qc_scores (
       conversation_id, customer_message_id, admin_message_id, admin_id, line_user_id,
       response_seconds, speed_score, correctness_score, sentiment_score,
-      final_score, fail_reasons, matched_rules, created_at, case_date,
+      final_score, fail_reasons, matched_rules, created_at, case_date, case_at,
       intent, matched_sop_id, matched_sop_topic, expected_sop_answer, sop_confidence,
       dimension_scores, is_fatal, fatal_reasons, minor_issues, coaching,
       sla_exception, evidence, commission_tier,
@@ -67,6 +67,11 @@ export async function runQc({
       ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
       ${createdAt || new Date().toISOString()},
       (${customerCreatedAt || createdAt || new Date().toISOString()}::timestamptz AT TIME ZONE 'Asia/Bangkok')::date,
+      -- canonical case_at: เวลาแอดมินตอบ → เวลาลูกค้า → created_at (เวลาแชทจริง ไม่ใช่เวลา scrape)
+      COALESCE(
+        (SELECT created_at FROM messages WHERE id = ${adminMessageId}::uuid),
+        (SELECT created_at FROM messages WHERE id = ${customerMessageId}::uuid),
+        ${createdAt || customerCreatedAt || new Date().toISOString()}::timestamptz),
       ${qc.intent}, ${sop?.id || null}, ${sop?.topic || null}, ${sop?.answer || null}, ${qc.sopConfidence},
       ${JSON.stringify(qc.dimensions)}, ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)},
       ${JSON.stringify(qc.minorIssues)}, ${coaching ? JSON.stringify(coaching) : null},
