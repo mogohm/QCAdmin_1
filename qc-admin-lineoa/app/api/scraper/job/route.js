@@ -22,8 +22,10 @@ export async function POST(req) {
   // โหมดการเก็บ: strict (ค่าเริ่มต้น production) | deep_history (backfill)
   const jobMode = /^deep_?history$/i.test(mode || "") ? "deep_history" : "strict";
 
-  // ยกเลิก pending/running job เก่า
-  await query`UPDATE scraper_jobs SET status='cancelled' WHERE status IN ('pending','running')`;
+  // ยกเลิก job เก่าที่ยัง active — รวม blocked_auth ด้วย
+  //   (ถ้าปล่อยค้าง worker อาจ resume blocked_auth job เก่าหลัง login แล้วชนกับ job ใหม่นี้)
+  await query`UPDATE scraper_jobs SET status='cancelled', finished_at=now()
+    WHERE status IN ('pending','running','blocked_auth')`;
 
   // เก็บเป็น DATE (ไม่ใช่ timestamp)
   const rows = await query`
@@ -50,10 +52,11 @@ export async function GET() {
 export async function DELETE(req) {
   const g = guard(req, "scraper.run", "scraper.schedule");
   if (g) return g;
+  // ยกเลิก job ที่ยัง active ทั้งหมด — รวม blocked_auth (กัน ghost job resume หลัง login)
   const result = await query`
     UPDATE scraper_jobs
     SET status = 'cancelled', finished_at = now()
-    WHERE status IN ('pending', 'running')
+    WHERE status IN ('pending', 'running', 'blocked_auth')
     RETURNING id
   `;
   return Response.json({ ok: true, cancelled: result.length });

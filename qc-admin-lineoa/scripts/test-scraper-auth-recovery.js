@@ -157,6 +157,20 @@ console.log("\n== 8) job active แต่ heartbeat เก่า → worker offl
   t("job running ที่ค้าง → ซ่อมเป็น blocked_auth ได้", authFailTransition("running") === "blocked_auth");
 }
 
+console.log("\n== 9) ghost blocked_auth: create/cancel job ใหม่ ต้องเคลียร์ blocked_auth เก่า ==");
+{
+  // ถ้า blocked_auth ค้าง แล้ว user สร้าง job ใหม่ → worker resume job เก่าหลัง login ชนกับ job ใหม่
+  const route = fs.readFileSync(path.join(__dirname, "..", "app", "api", "scraper", "job", "route.js"), "utf8");
+  const post = route.slice(route.indexOf("export async function POST"), route.indexOf("export async function GET"));
+  const del = route.slice(route.indexOf("export async function DELETE"));
+  t("POST create job cancel blocked_auth ด้วย", /status IN \('pending','running','blocked_auth'\)/.test(post));
+  t("DELETE cancel job รวม blocked_auth ด้วย", /status IN \('pending', 'running', 'blocked_auth'\)/.test(del));
+  t("POST ยัง cancel pending/running (ไม่ถอย)", /pending/.test(post) && /running/.test(post));
+  // เชิงตรรกะ: job blocked_auth หลังถูก cancel = 'cancelled' → authRestoredTransition ต้องไม่ปลุกกลับ
+  t("cancelled ไม่ถูก resume (authRestoredTransition คงเป็น cancelled)", authRestoredTransition("cancelled") === "cancelled");
+  t("มีเฉพาะ blocked_auth ที่ resume ได้ (ไม่ใช่ cancelled)", authRestoredTransition("blocked_auth") === "pending" && authRestoredTransition("cancelled") !== "pending");
+}
+
 console.log("\n== bonus: heartbeat ส่งผล preflight จริง (P0-7) ==");
 {
   const src = fs.readFileSync(path.join(__dirname, "..", "scraper.js"), "utf8");
