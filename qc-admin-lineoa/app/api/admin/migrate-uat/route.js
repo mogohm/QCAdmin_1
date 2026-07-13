@@ -46,8 +46,17 @@ export async function POST(req) {
     await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS customer_source_keys JSONB`;
     await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS admin_source_keys JSONB`;
     await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_ref TEXT`;
+    // ---- CANONICAL CASE DATE: วัน Bangkok ของ "ข้อความลูกค้า" (fallback: เวลาแอดมิน) ----
+    //   นิยามเดียวทั้งระบบ: dashboard/report/case_ref ต้องใช้คอลัมน์นี้ ไม่ใช่ created_at::date (UTC)
+    await query`ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_date DATE`;
+    await query`UPDATE qc_scores q
+      SET case_date = (COALESCE(m.created_at, q.created_at) AT TIME ZONE 'Asia/Bangkok')::date
+      FROM qc_scores q2 LEFT JOIN messages m ON m.id = q2.customer_message_id
+      WHERE q.id = q2.id AND q.case_date IS NULL`;
+    await query`CREATE INDEX IF NOT EXISTS idx_qc_scores_case_date ON qc_scores (case_date)`;
+    // case_ref backfill: YYYYMMDD จาก case_date (นิยาม canonical) — ref เดิมที่ตั้งแล้วไม่ถูกแตะ
     await query`UPDATE qc_scores SET case_ref =
-        'QC-' || to_char(created_at AT TIME ZONE 'Asia/Bangkok','YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
+        'QC-' || to_char(COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date),'YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
       WHERE case_ref IS NULL`;
     await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS case_ref TEXT`;
     await query`ALTER TABLE case_evidence ADD COLUMN IF NOT EXISTS customer_message_id UUID`;
@@ -140,6 +149,12 @@ export async function POST(req) {
     await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS manual_override NUMERIC(12,2)`;
     await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_by TEXT`;
     await query`ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_at TIMESTAMPTZ`;
+    // TX SAFETY: กันแถวซ้ำต่อ (admin, period) ระดับ DB — dedup ของเดิมก่อน (เก็บแถว id ล่าสุด) แล้วค่อยสร้าง unique
+    await query`DELETE FROM admin_commissions a USING admin_commissions b
+      WHERE a.admin_id = b.admin_id AND a.period_start = b.period_start
+        AND a.period_end = b.period_end AND a.id < b.id`;
+    await query`CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_commissions_period
+      ON admin_commissions (admin_id, period_start, period_end)`;
 
     // ---- scraper_jobs: counters (JSONB) + mode (strict|deep_history) ----
     await query`ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb`;

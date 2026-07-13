@@ -17,6 +17,7 @@
     "test:scraper-worker": "node scripts/test-scraper-worker-status.js",
     "test:scraper-encoding": "node scripts/test-scraper-log-encoding.js",
     "test:scraper-auth": "node scripts/test-scraper-auth-recovery.js",
+    "test:dashboard-contract": "node scripts/test-dashboard-contract.js",
     "audit:evidence-integrity": "node scripts/audit-evidence-integrity.js",
     "quarantine:evidence": "node scripts/quarantine-invalid-evidence.js",
     "audit:customer-identity": "node scripts/audit-customer-identity.js",
@@ -37,7 +38,7 @@
     "audit:scraper": "node scripts/audit-scraper-output.js",
     "scraper:login": "node scripts/line-login.js",
     "scraper:watch": "node scraper.js --watch",
-    "uat:check": "npm run build && npm run test:db-id && npm run test:case-identity && npm run test:evidence-integrity && npm run test:scraper-status && npm run test:evidence-badge && npm run test:scraper-worker && npm run test:scraper-encoding && npm run test:scraper-auth && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:evidence && npm run test:uat-feedback && npm run test:uat-feedback:strict"
+    "uat:check": "npm run build && npm run test:db-id && npm run test:case-identity && npm run test:evidence-integrity && npm run test:scraper-status && npm run test:evidence-badge && npm run test:scraper-worker && npm run test:scraper-encoding && npm run test:scraper-auth && npm run test:dashboard-contract && npm run test:qc && npm run test:qc-accuracy && npm run audit:sop && npm run test:admin-import && npm run test:admin-reply && npm run test:scraper && npm run test:dashboard-api && npm run audit:permissions && npm run test:auth && npm run test:thai-ui && npm run test:evidence && npm run test:uat-feedback && npm run test:uat-feedback:strict"
   },
   "dependencies": {
     "@neondatabase/serverless": "latest",

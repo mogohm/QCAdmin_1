@@ -55,6 +55,11 @@ export default function AiReview() {
   const [status, setStatus] = useState("pending");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  // pagination จริง — เดิม cap 200 แถว เคสเก่ากว่านั้นหายจากคิวเงียบ ๆ
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const LIMIT = 50;
   const [sel, setSel] = useState(null); // เคสที่เปิดตรวจ
   const [sop, setSop] = useState({ topic: "", answer: "", intent: "" });
   const [detail, setDetail] = useState(null); // รายละเอียดเคสเต็ม (4 แท็บ)
@@ -72,22 +77,37 @@ export default function AiReview() {
       .catch(() => setDetail(null));
   };
 
-  const load = () => {
+  const load = (p = page) => {
     setLoading(true);
     setErr("");
-    fetch(`/api/ai-review?status=${status}`)
+    fetch(`/api/ai-review?status=${status}&page=${p}&limit=${LIMIT}`)
       .then((r) =>
         r.ok
           ? r.json()
           : r.json().then((j) => Promise.reject(j.error || r.status)),
       )
-      .then((d) => setItems(d.items || []))
+      .then((d) => {
+        setItems(d.items || []);
+        setTotal(d.total || 0);
+        setPages(d.pages || 1);
+        // หน้าเกินท้าย (เช่นเคสถูกตรวจจนหน้าสุดท้ายหด) → ถอยไปหน้าสุดท้ายจริง
+        if (d.pages && p > d.pages) {
+          setPage(d.pages);
+          return load(d.pages);
+        }
+      })
       .catch((e) => setErr(String(e)))
       .finally(() => setLoading(false));
   };
   useEffect(() => {
-    load();
+    setPage(1);
+    load(1);
   }, [status]);
+  const gotoPage = (p) => {
+    const next = Math.min(Math.max(1, p), pages);
+    setPage(next);
+    load(next);
+  };
 
   const review = async (r, action, extra = {}) => {
     const res = await fetch(`/api/ai-review/${r.id}`, {
@@ -255,6 +275,19 @@ export default function AiReview() {
               )}
             </tbody>
           </table>
+          {total > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 4px", fontSize: 12.5 }}>
+              <span style={{ opacity: 0.75 }}>
+                ทั้งหมด {total.toLocaleString()} เคส · หน้า {page}/{pages}
+              </span>
+              <button onClick={() => gotoPage(page - 1)} disabled={page <= 1 || loading} style={{ padding: "3px 10px", fontSize: 12 }}>
+                ← ก่อนหน้า
+              </button>
+              <button onClick={() => gotoPage(page + 1)} disabled={page >= pages || loading} style={{ padding: "3px 10px", fontSize: 12 }}>
+                ถัดไป →
+              </button>
+            </div>
+          )}
         </div>
       )}
 

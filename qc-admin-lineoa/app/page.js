@@ -515,12 +515,24 @@ export default function Dashboard() {
                   (m.deposit_count || 0) +
                   (m.kyc_total || 0) >
                 0;
+              // partial-data: แยก "ไม่มีกิจกรรมจริง" ออกจาก "scraper ยังเก็บช่วงนี้ไม่ครบ"
+              const cov = d?.scraperCoverage || null;
+              const warnBox =
+                cov?.checked === true && cov.complete === false ? (
+                  <div style={{ background: "rgba(245,158,11,.12)", border: "1px solid #d97706", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, color: "#fbbf24" }}>
+                    ⚠️ ข้อมูลอาจไม่ครบ — ยังไม่ได้เก็บ {cov.days_missing}/{cov.days} วันในช่วงนี้
+                  </div>
+                ) : null;
               if (!hasData && !loading)
                 return (
-                  <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>
+                  <>
+                    {warnBox}
+                    <div className="empty">ยังไม่มีข้อมูลในช่วงวันที่นี้</div>
+                  </>
                 );
               return (
                 <>
+                  {warnBox}
                   <div className="panel-title">เส้นทางการสมัครสมาชิก</div>
                   <FunnelChart
                     steps={[

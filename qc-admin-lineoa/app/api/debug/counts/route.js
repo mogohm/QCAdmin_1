@@ -42,10 +42,14 @@ export async function GET(req) {
       () => query`SELECT max(created_at) t FROM qc_scores`,
       null,
     ),
+    // นับตาม canonical case_date (วัน Bangkok ของข้อความลูกค้า) — นิยามเดียวกับ dashboard
     qc_by_day:
-      await query`SELECT created_at::date::text d, count(*)::int n FROM qc_scores GROUP BY 1 ORDER BY 1 DESC LIMIT 7`.catch(
-        () => [],
-      ),
+      await query`SELECT COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date)::text d, count(*)::int n
+        FROM qc_scores GROUP BY 1 ORDER BY 1 DESC LIMIT 7`.catch(() => []),
+    // เทียบข้อความต่อวัน (Bangkok) — ใช้ตอน reconcile กับ scraper_chat_results
+    messages_by_day:
+      await query`SELECT ((created_at AT TIME ZONE 'Asia/Bangkok')::date)::text d, count(*)::int n
+        FROM messages GROUP BY 1 ORDER BY 1 DESC LIMIT 7`.catch(() => []),
   };
 
   // host ของ DB (ปกปิด user/password) เพื่อยืนยันว่าเป็น DB ตัวเดียวกับ Vercel production

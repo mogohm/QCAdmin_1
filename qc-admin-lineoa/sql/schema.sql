@@ -254,6 +254,9 @@ ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS estimated_commission NUME
 ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS manual_override NUMERIC(12,2);
 ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_by TEXT;
 ALTER TABLE admin_commissions ADD COLUMN IF NOT EXISTS adjusted_at TIMESTAMPTZ;
+-- TX SAFETY: หนึ่งแถวต่อ (admin, period) — snapshot เขียนผ่าน transaction เดียวใน /api/commission
+CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_commissions_period
+  ON admin_commissions (admin_id, period_start, period_end);
 
 -- ผู้ใช้ระบบ (login + role)
 CREATE TABLE IF NOT EXISTS app_users (
@@ -319,6 +322,11 @@ CREATE TABLE IF NOT EXISTS scraper_workers (
 CREATE INDEX IF NOT EXISTS idx_scraper_workers_hb ON scraper_workers (last_heartbeat_at DESC);
 -- ปุ่ม "ตรวจสอบ LINE Session ตอนนี้": UI ตั้ง flag → worker ตรวจจริงผ่าน heartbeat แล้วเคลียร์
 ALTER TABLE scraper_workers ADD COLUMN IF NOT EXISTS session_check_requested BOOLEAN DEFAULT false;
+
+-- CANONICAL CASE DATE: วัน Bangkok ของ "ข้อความลูกค้า" (fallback: เวลาแอดมิน)
+--   dashboard/report/case_ref ใช้คอลัมน์นี้เท่านั้น — ห้าม created_at::date (UTC เพี้ยน 7 ชม.)
+ALTER TABLE qc_scores ADD COLUMN IF NOT EXISTS case_date DATE;
+CREATE INDEX IF NOT EXISTS idx_qc_scores_case_date ON qc_scores (case_date);
 
 -- scraper_jobs: counters แบบ JSONB + mode (strict = ปกติ / deep_history = backfill)
 ALTER TABLE scraper_jobs ADD COLUMN IF NOT EXISTS counters JSONB DEFAULT '{}'::jsonb;

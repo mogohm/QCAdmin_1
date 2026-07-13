@@ -56,7 +56,7 @@ export async function runQc({
     INSERT INTO qc_scores (
       conversation_id, customer_message_id, admin_message_id, admin_id, line_user_id,
       response_seconds, speed_score, correctness_score, sentiment_score,
-      final_score, fail_reasons, matched_rules, created_at,
+      final_score, fail_reasons, matched_rules, created_at, case_date,
       intent, matched_sop_id, matched_sop_topic, expected_sop_answer, sop_confidence,
       dimension_scores, is_fatal, fatal_reasons, minor_issues, coaching,
       sla_exception, evidence, commission_tier,
@@ -66,6 +66,7 @@ export async function runQc({
       ${responseSeconds}, ${qc.speedScore}, ${qc.correctnessScore}, ${qc.sentimentScore},
       ${qc.finalScore}, ${JSON.stringify(qc.failReasons)}, ${JSON.stringify(qc.matchedRules)},
       ${createdAt || new Date().toISOString()},
+      (${customerCreatedAt || createdAt || new Date().toISOString()}::timestamptz AT TIME ZONE 'Asia/Bangkok')::date,
       ${qc.intent}, ${sop?.id || null}, ${sop?.topic || null}, ${sop?.answer || null}, ${qc.sopConfidence},
       ${JSON.stringify(qc.dimensions)}, ${qc.isFatal}, ${JSON.stringify(qc.fatalReasons)},
       ${JSON.stringify(qc.minorIssues)}, ${coaching ? JSON.stringify(coaching) : null},
@@ -77,8 +78,10 @@ export async function runQc({
     ) RETURNING *`;
   qc.id = row[0].id;
   // case_ref: QC-YYYYMMDD-XXXXXX — ตั้งทันทีหลังรู้ id (เสถียร ใช้เป็นชื่อไฟล์หลักฐาน)
+  //   YYYYMMDD = case_date (วัน Bangkok ของ "ข้อความลูกค้า") — นิยามเดียวกับ ai_review_queue
+  //   (เดิมใช้เวลาแอดมินตอบ → เคสคร่อมเที่ยงคืนได้ ref คนละวันกับคิว AI Review)
   const cr = await query`UPDATE qc_scores SET case_ref =
-      'QC-' || to_char(created_at AT TIME ZONE 'Asia/Bangkok','YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
+      'QC-' || to_char(COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date),'YYYYMMDD') || '-' || upper(substr(md5(id::text),1,6))
     WHERE id = ${qc.id} AND case_ref IS NULL RETURNING case_ref`.catch(() => []);
   qc.caseRef = cr[0]?.case_ref || row[0].case_ref || null;
   qc.coaching = coaching;

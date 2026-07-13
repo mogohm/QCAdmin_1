@@ -38,20 +38,20 @@ export async function GET(req) {
       safe(
         () => query`SELECT
         (SELECT count(DISTINCT m.line_user_id) FROM messages m
-         WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS customers,
+         WHERE m.created_at >= ${dateFrom}::date - interval '7 hours' AND m.created_at < ${dateTo}::date + interval '17 hours')::int AS customers,
         (SELECT count(*) FROM customer_events
          WHERE event_type='register' AND status='pass'
-           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS registered_pass,
+           AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours')::int AS registered_pass,
         (SELECT count(*) FROM customer_events
          WHERE event_type='kyc' AND status='pass'
-           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::int AS kyc_pass,
+           AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours')::int AS kyc_pass,
         (SELECT coalesce(sum(amount),0) FROM customer_events
          WHERE event_type='deposit'
-           AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day'))::numeric AS deposit_total,
+           AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours')::numeric AS deposit_total,
         (SELECT coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int
-         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_response_sec,
+         FROM qc_scores q WHERE COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date) AS avg_response_sec,
         (SELECT coalesce(avg(q.final_score),0)::int
-         FROM qc_scores q WHERE q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS avg_score`,
+         FROM qc_scores q WHERE COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date) AS avg_score`,
         [{}],
       ),
 
@@ -70,18 +70,17 @@ export async function GET(req) {
           (SELECT count(*)::int FROM customer_events ce
            WHERE ce.metadata->>'admin_id' = a.id::text
              AND ce.event_type = 'register'
-             AND ce.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+             AND ce.created_at >= ${dateFrom}::date - interval '7 hours' AND ce.created_at < ${dateTo}::date + interval '17 hours'
           ) AS reg_count,
           (SELECT coalesce(sum(ce.amount),0)::numeric FROM customer_events ce
            WHERE ce.metadata->>'admin_id' = a.id::text
              AND ce.event_type = 'deposit'
-             AND ce.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+             AND ce.created_at >= ${dateFrom}::date - interval '7 hours' AND ce.created_at < ${dateTo}::date + interval '17 hours'
           ) AS deposit_sum
         FROM qc_admins a
         LEFT JOIN (
           SELECT q.* FROM qc_scores q
-          JOIN messages mq ON mq.id = q.admin_message_id
-          WHERE mq.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+          WHERE COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
         ) q ON q.admin_id = a.id
         WHERE a.is_active = true
         GROUP BY a.id, a.member_name
@@ -93,7 +92,7 @@ export async function GET(req) {
       safe(
         () => query`
         SELECT
-          m.created_at::date                                                             AS day,
+          COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date)        AS day,
           count(q.id)::int                                                               AS total_cases,
           coalesce(avg(q.final_score),0)::int                                            AS avg_score,
           coalesce(avg(q.response_seconds) FILTER (WHERE q.response_seconds > 0),0)::int AS avg_response_sec,
@@ -101,9 +100,8 @@ export async function GET(req) {
           (count(q.id) FILTER (WHERE q.final_score < 70 AND q.final_score IS NOT NULL))::int AS bad,
           count(DISTINCT q.admin_id)::int                                                AS active_admins
         FROM qc_scores q
-        JOIN messages m ON m.id = q.admin_message_id
-        WHERE m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
-        GROUP BY m.created_at::date
+        WHERE COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
+        GROUP BY 1
         ORDER BY day DESC
         LIMIT 28`,
         [],
@@ -145,7 +143,7 @@ export async function GET(req) {
           FROM messages
           WHERE direction = 'admin'
             AND admin_id IS NOT NULL
-            AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+            AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours'
           GROUP BY line_user_id
           ORDER BY last_at DESC
           LIMIT 100
@@ -168,7 +166,7 @@ export async function GET(req) {
         LEFT JOIN messages cust     ON cust.id = q.customer_message_id
         WHERE m.direction = 'admin'
           AND m.admin_id IS NOT NULL
-          AND m.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+          AND m.created_at >= ${dateFrom}::date - interval '7 hours' AND m.created_at < ${dateTo}::date + interval '17 hours'
         ORDER BY tc.last_at DESC, m.created_at DESC`,
         [],
       ),
@@ -204,7 +202,7 @@ export async function GET(req) {
           SELECT d.category_code, d.raw_score, d.weighted_score, d.pass, d.fail_reason
           FROM qc_score_details d JOIN qc_scores q ON q.id = d.qc_score_id
           WHERE d.raw_score IS NOT NULL AND d.category_code NOT IN ('minorError','fatalError')
-            AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+            AND COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
         ),
         tf AS (
           SELECT category_code, fail_reason, count(*)::int fn,
@@ -223,30 +221,30 @@ export async function GET(req) {
       ),
       safe(
         () => query`SELECT COALESCE(intent,'general') intent, count(*)::int n
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY 1 ORDER BY n DESC`,
+                       FROM qc_scores WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date GROUP BY 1 ORDER BY n DESC`,
         [],
       ),
       safe(
         () => query`SELECT q.id, q.final_score, q.intent, q.fatal_reasons, q.created_at, a.member_name admin, q.line_user_id
                        FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
-                       WHERE q.is_fatal=true AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       WHERE q.is_fatal=true AND COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
                        ORDER BY q.created_at DESC LIMIT 20`,
         [],
       ),
       safe(
         () => query`SELECT count(*)::int n FROM qc_scores WHERE is_fatal=false AND final_score BETWEEN 50 AND 69
-                       AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+                       AND COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date`,
         [{ n: 0 }],
       ),
       safe(
         () => query`SELECT count(*)::int total, sum(CASE WHEN matched_sop_id IS NOT NULL THEN 1 ELSE 0 END)::int matched
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+                       FROM qc_scores WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date`,
         [{ total: 0, matched: 0 }],
       ),
       safe(
         () => query`SELECT q.id, q.final_score, q.intent, q.coaching, a.member_name admin, q.line_user_id, q.created_at
                        FROM qc_scores q LEFT JOIN qc_admins a ON a.id=q.admin_id
-                       WHERE q.coaching IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       WHERE q.coaching IS NOT NULL AND COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
                        ORDER BY q.created_at DESC LIMIT 25`,
         [],
       ),
@@ -261,7 +259,7 @@ export async function GET(req) {
                          sum(CASE WHEN final_score BETWEEN 80 AND 89 THEN 1 ELSE 0 END)::int tier2,
                          sum(CASE WHEN final_score BETWEEN 70 AND 79 THEN 1 ELSE 0 END)::int tier3,
                          sum(CASE WHEN final_score<70 THEN 1 ELSE 0 END)::int tier4
-                       FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+                       FROM qc_scores WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date`,
         [{}],
       ),
       safe(
@@ -271,16 +269,16 @@ export async function GET(req) {
                          round(avg((q.dimension_scores->>'communicationTone')::numeric))::int communication_tone,
                          round(avg((q.dimension_scores->>'responseTime')::numeric))::int response_time
                        FROM qc_scores q JOIN qc_admins a ON a.id=q.admin_id
-                       WHERE q.dimension_scores IS NOT NULL AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       WHERE q.dimension_scores IS NOT NULL AND COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
                        GROUP BY a.member_name, a.id HAVING count(*)>0 ORDER BY problem_solving DESC NULLS LAST LIMIT 30`,
         [],
       ),
       safe(
         () => query`SELECT
-                         (SELECT count(*)::int FROM qc_scores WHERE sla_exception=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_exception_count,
+                         (SELECT count(*)::int FROM qc_scores WHERE sla_exception=true AND COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date) AS sla_exception_count,
                          (SELECT count(*)::int FROM system_events WHERE is_active=true AND (ends_at IS NULL OR ends_at>=now())) AS active_events,
                          (SELECT round(100.0 * sum(CASE WHEN (dimension_scores->>'responseTime')::numeric >= 80 OR sla_exception THEN 1 ELSE 0 END) / NULLIF(count(*),0))::int
-                          FROM qc_scores WHERE dimension_scores IS NOT NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS sla_pass_pct`,
+                          FROM qc_scores WHERE dimension_scores IS NOT NULL AND COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date) AS sla_pass_pct`,
         [{}],
       ),
     ]);
@@ -296,13 +294,13 @@ export async function GET(req) {
         () => query`SELECT category_code, fail_reason, count(*)::int n FROM qc_score_details d
                        JOIN qc_scores q ON q.id=d.qc_score_id
                        WHERE d.pass=false AND d.fail_reason IS NOT NULL AND d.category_code NOT IN ('minorError','fatalError')
-                         AND q.created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                         AND COALESCE(q.case_date, (q.created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
                        GROUP BY 1,2 ORDER BY n DESC LIMIT 10`,
         [],
       ),
       safe(
         () => query`SELECT COALESCE(intent,'general') intent, count(*)::int n FROM qc_scores
-                       WHERE matched_sop_id IS NULL AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')
+                       WHERE matched_sop_id IS NULL AND COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date
                        GROUP BY 1 ORDER BY n DESC LIMIT 8`,
         [],
       ),
@@ -310,9 +308,9 @@ export async function GET(req) {
 
     const counts = await safe(
       () => query`SELECT
-        (SELECT count(*)::int FROM qc_scores WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS qc_cases,
-        (SELECT count(*)::int FROM messages WHERE direction='admin' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS admin_msgs,
-        (SELECT count(*)::int FROM messages WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')) AS total_msgs`,
+        (SELECT count(*)::int FROM qc_scores WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date) AS qc_cases,
+        (SELECT count(*)::int FROM messages WHERE direction='admin' AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours') AS admin_msgs,
+        (SELECT count(*)::int FROM messages WHERE created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours') AS total_msgs`,
       [{}],
     );
     const cnt = counts[0] || {};
@@ -320,7 +318,7 @@ export async function GET(req) {
     // commission ต่อ admin (tier multiplier ตาม Excel) — rate = 1% ของยอด upsell (deposit)
     const dispByAdmin = await safe(
       () => query`SELECT admin_id, count(*)::int n FROM qc_disputes
-       WHERE status='approved' AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
+       WHERE status='approved' AND created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours' GROUP BY admin_id`,
       [],
     );
     const dispMapAdmin = Object.fromEntries(
@@ -328,7 +326,7 @@ export async function GET(req) {
     );
     const fatalByAdmin = await safe(
       () => query`SELECT admin_id, count(*)::int n FROM qc_scores
-       WHERE is_fatal=true AND created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day') GROUP BY admin_id`,
+       WHERE is_fatal=true AND COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateFrom}::date AND ${dateTo}::date GROUP BY admin_id`,
       [],
     );
     const fatalMapAdmin = Object.fromEntries(
@@ -350,7 +348,7 @@ export async function GET(req) {
         coalesce(sum(amount) FILTER (WHERE event_type='deposit' AND promotion_code IS NOT NULL),0)::numeric AS promo_deposit,
         count(DISTINCT line_user_id) FILTER (WHERE promotion_code IS NOT NULL)::int AS promo_participants
         FROM customer_events
-        WHERE created_at BETWEEN ${dateFrom}::date AND (${dateTo}::date + interval '1 day')`,
+        WHERE created_at >= ${dateFrom}::date - interval '7 hours' AND created_at < ${dateTo}::date + interval '17 hours'`,
       [{}],
     );
     const m0 = mkt[0] || {};
@@ -372,9 +370,9 @@ export async function GET(req) {
     const improved = await safe(
       () => query`
       WITH cur AS (SELECT admin_id, avg(final_score) s FROM qc_scores
-         WHERE created_at > (${dateTo}::date - interval '6 days') AND created_at < (${dateTo}::date + interval '1 day') GROUP BY admin_id),
+         WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateTo}::date - 6 AND ${dateTo}::date GROUP BY admin_id),
        prev AS (SELECT admin_id, avg(final_score) s FROM qc_scores
-         WHERE created_at > (${dateTo}::date - interval '13 days') AND created_at <= (${dateTo}::date - interval '6 days') GROUP BY admin_id)
+         WHERE COALESCE(case_date, (created_at AT TIME ZONE 'Asia/Bangkok')::date) BETWEEN ${dateTo}::date - 13 AND ${dateTo}::date - 7 GROUP BY admin_id)
       SELECT a.member_name, round(cur.s)::int cur, round(prev.s)::int prev, round(cur.s - prev.s)::int delta
       FROM cur JOIN prev ON prev.admin_id = cur.admin_id JOIN qc_admins a ON a.id = cur.admin_id
       WHERE prev.s > 0 ORDER BY (cur.s - prev.s) DESC LIMIT 6`,
@@ -438,8 +436,48 @@ export async function GET(req) {
       estimatedCommission: estCommissionTotal,
     };
 
+    // ---- ความครบของข้อมูล (partial-data warning): วันไหนใน range ที่ scraper ยังไม่ done ----
+    //   นับเฉพาะวันที่ "ควรมีข้อมูลแล้ว" (ถึงเมื่อวานตามเวลา Bangkok) และ range ไม่กว้างเกิน 92 วัน
+    const scraperCoverage = await safe(async () => {
+      const bkkYesterday = new Date(Date.now() + 7 * 3600000 - 86400000).toISOString().slice(0, 10);
+      const covFrom = dateFrom < "2020-01-01" ? bkkYesterday : dateFrom; // default 2000-01-01 = ไม่ได้เลือกช่วง
+      const covTo = dateTo > bkkYesterday ? bkkYesterday : dateTo;
+      if (covFrom > covTo) return { checked: false, reason: "ช่วงที่เลือกยังไม่ถึงกำหนดเก็บข้อมูล (เก็บได้ถึงเมื่อวาน)" };
+      const dayMs = 86400000;
+      const nDays = Math.round((new Date(covTo) - new Date(covFrom)) / dayMs) + 1;
+      if (nDays > 92) return { checked: false, reason: "ช่วงกว้างเกิน 92 วัน — ข้ามการตรวจความครบ" };
+      const jobs = await query`SELECT date_from, date_to, status FROM scraper_jobs
+        WHERE date_from <= ${covTo}::date AND date_to >= ${covFrom}::date`;
+      const doneCover = (d) => jobs.some((j) => j.status === "done" && String(j.date_from).slice(0, 10) <= d && String(j.date_to).slice(0, 10) >= d);
+      const missing = [];
+      for (let i = 0; i < nDays; i++) {
+        const d = new Date(new Date(covFrom).getTime() + i * dayMs).toISOString().slice(0, 10);
+        if (!doneCover(d)) missing.push(d);
+      }
+      const active = jobs.some((j) => ["pending", "running", "blocked_auth"].includes(j.status));
+      return {
+        checked: true, from: covFrom, to: covTo, days: nDays,
+        days_done: nDays - missing.length, days_missing: missing.length,
+        missing_dates: missing.slice(0, 14), active_job: active,
+        complete: missing.length === 0,
+      };
+    }, { checked: false, reason: "ตรวจไม่สำเร็จ" });
+
+    // contract: kpi ต้อง zero-fill เสมอ (เดิม query พัง → {} ทุก field เป็น undefined ต่างจาก marketingSummary)
+    const k0 = kpiRows[0] || {};
+    const kpi = {
+      customers: k0.customers || 0,
+      registered_pass: k0.registered_pass || 0,
+      registration_pass: k0.registered_pass || 0, // alias ให้ชื่อเดียวกับ marketingSummary.registration_pass
+      kyc_pass: k0.kyc_pass || 0,
+      deposit_total: Number(k0.deposit_total || 0),
+      avg_response_sec: k0.avg_response_sec || 0,
+      avg_score: k0.avg_score || 0,
+    };
+
     return Response.json({
-      kpi: kpiRows[0] || {},
+      kpi,
+      scraperCoverage,
       kpiExt,
       ranking: rankingAll,
       weeklySummary,

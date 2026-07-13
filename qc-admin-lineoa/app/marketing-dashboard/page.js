@@ -30,6 +30,9 @@ export default function MarketingDashboard() {
   const m = d?.marketingSummary || {};
   const hasData =
     (m.registration || 0) + (m.deposit_count || 0) + (m.kyc_total || 0) > 0;
+  // partial-data warning: "เลข 0" ≠ "ไม่มีกิจกรรม" ถ้า scraper ยังเก็บช่วงนี้ไม่ครบ
+  const cov = d?.scraperCoverage || null;
+  const partial = cov?.checked === true && cov.complete === false;
   const actions = (
     <>
       <input
@@ -56,6 +59,18 @@ export default function MarketingDashboard() {
       {loading && (
         <div className="loadbar">
           <span className="spin">⏳</span> กำลังโหลด...
+        </div>
+      )}
+      {partial && (
+        <div
+          style={{
+            background: "rgba(245,158,11,.12)", border: "1px solid #d97706", borderRadius: 10,
+            padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#fbbf24", lineHeight: 1.7,
+          }}
+        >
+          ⚠️ <b>ข้อมูลช่วงนี้อาจยังไม่ครบ</b> — scraper ยังไม่เก็บข้อมูลสำเร็จ {cov.days_missing} จาก {cov.days} วัน
+          {cov.missing_dates?.length ? <> (ขาด: {cov.missing_dates.join(", ")}{cov.days_missing > cov.missing_dates.length ? " …" : ""})</> : null}
+          {cov.active_job ? " · มีงานเก็บข้อมูลกำลังทำอยู่" : " · สั่งเก็บข้อมูลได้ที่หน้า /scraper"}
         </div>
       )}
       <div
