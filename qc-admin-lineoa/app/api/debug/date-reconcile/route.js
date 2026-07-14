@@ -41,6 +41,23 @@ export async function GET(req) {
     `
     )[0];
 
+    // ai_review เป็นตารางแยก (คีย์ด้วย timestamp ของตัวเอง) — อธิบายว่าทำไม count/วันต่างจาก qc
+    //   วันของ ai_review = COALESCE(admin_created_at, customer_created_at, created_at)
+    //   เทียบกับ case_at ของ qc_score ที่ผูกกัน (qc_score_id): วันเดียวกัน / คนละวัน / ไม่มี qc
+    const air = (
+      await query`
+      WITH air AS (
+        SELECT r.qc_score_id
+        FROM ai_review_queue r
+        WHERE COALESCE(r.admin_created_at, r.customer_created_at, r.created_at) BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz
+      )
+      SELECT
+        count(*) FILTER (WHERE q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz)::int AS same_day,
+        count(*) FILTER (WHERE q.case_at IS NOT NULL AND NOT (q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz))::int AS diff_day,
+        count(*) FILTER (WHERE q.id IS NULL)::int AS no_qc_link
+      FROM air LEFT JOIN qc_scores q ON q.id = air.qc_score_id`
+    )[0];
+
     // dashboard_total_cases = kpiExt.totalQcCases = qc นับด้วย case_at (แหล่งเดียวกับ qc_by_case_at)
     // commission_case_count = cases ที่ป้อนสูตรค่าคอม = ranking (active admin, case_at) = ranking_case_sum
     return Response.json({
@@ -64,6 +81,10 @@ export async function GET(req) {
         admin_messages_without_id: r.admin_messages - r.admin_messages_with_id,
         non_cust_admin_messages: r.messages_total - r.customer_messages - r.admin_messages,
         qc_case_at_null_total: r.qc_case_at_null_total,
+        // ai_review vs qc (คนละตาราง คนละฐานวัน): เท่ากับ qc same-day + ต่างวัน + ไม่มี qc
+        ai_review_qc_same_day: air.same_day,
+        ai_review_qc_diff_day: air.diff_day,
+        ai_review_no_qc_link: air.no_qc_link,
       },
     });
   } catch (e) {

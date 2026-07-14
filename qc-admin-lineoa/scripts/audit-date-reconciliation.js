@@ -55,10 +55,11 @@ const api = (e) => fetch(`${B}${e}`, { headers: { "x-api-key": K } }).then((r) =
     mark("chat_review_rows", d.chat_review_rows,
       d.chat_review_rows + x.admin_messages_without_id === d.admin_messages ? "EXPLAINED" : "BUG",
       `+no_id(${x.admin_messages_without_id}) = admin_messages`);
-    // ai_review = subset ของ qc (เฉพาะเคสที่ AI ไม่มั่นใจ) — น้อยกว่าหรือเท่ากับ qc
+    // ai_review = ตารางแยก คีย์ด้วย timestamp ของตัวเอง — ไม่ใช่ subset ต่อวันของ qc
+    //   BUG เฉพาะเมื่อมี ai_review row ที่ qc_score_id ชี้ไปเคสที่ไม่มีอยู่ (dangling)
     mark("ai_review_queue_count", d.ai_review_queue_count,
-      d.ai_review_queue_count <= d.qc_scores_by_case_at ? "EXPLAINED" : "BUG",
-      "subset ของ qc (เฉพาะ low-confidence)");
+      x.ai_review_no_qc_link === 0 ? "EXPLAINED" : "BUG",
+      `same_day(${x.ai_review_qc_same_day})+diff_day(${x.ai_review_qc_diff_day})+no_qc(${x.ai_review_no_qc_link}) — ตารางแยก ฐานวันต่าง`);
     // evidence exact verified — subset ของ qc
     mark("evidence_exact_verified", d.evidence_exact_verified,
       d.evidence_exact_verified <= d.qc_scores_by_case_at ? "EXPLAINED" : "BUG",
