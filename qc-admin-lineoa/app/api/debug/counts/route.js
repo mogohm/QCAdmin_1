@@ -55,6 +55,12 @@ export async function GET(req) {
       () => query`SELECT count(*)::int n FROM ai_review_queue r
         WHERE r.qc_score_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM qc_scores q WHERE q.id = r.qc_score_id)`,
     ),
+    // FK ON DELETE CASCADE มีจริงไหม (กัน orphan เกิดซ้ำ) — ยืนยันสถานะ FK ได้ตรง ๆ
+    ai_review_fk_cascade: await one(
+      () => query`SELECT count(*)::int n FROM pg_constraint c
+        JOIN pg_class t ON t.oid = c.conrelid
+        WHERE t.relname = 'ai_review_queue' AND c.contype = 'f' AND c.confdeltype = 'c'`,
+    ),
   };
 
   // host ของ DB (ปกปิด user/password) เพื่อยืนยันว่าเป็น DB ตัวเดียวกับ Vercel production

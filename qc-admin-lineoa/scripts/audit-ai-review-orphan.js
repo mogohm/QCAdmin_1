@@ -21,9 +21,12 @@ if (!B || !K) {
     res.on("data", (c) => (body += c));
     res.on("end", () => {
       try {
-        const orphans = JSON.parse(body).ai_review_orphans;
-        if (orphans === 0) done(0, "✅ PASS — ai_review_queue orphan = 0 (FK ON DELETE CASCADE ทำงาน)");
-        else done(1, `❌ FAIL — ai_review_queue orphan = ${orphans} (ต้อง = 0) · รัน migrate-uat เพื่อ cleanup+FK`);
+        const j = JSON.parse(body);
+        const orphans = j.ai_review_orphans;
+        const fk = j.ai_review_fk_cascade; // จำนวน FK ON DELETE CASCADE บน ai_review_queue (>=1 = มี)
+        if (orphans === 0 && fk >= 1) done(0, `✅ PASS — ai_review_queue orphan = 0 · FK ON DELETE CASCADE = มี (${fk})`);
+        else if (orphans !== 0) done(1, `❌ FAIL — ai_review_queue orphan = ${orphans} (ต้อง = 0) · รัน migrate-uat เพื่อ cleanup+FK`);
+        else done(1, `❌ FAIL — orphan = 0 แต่ไม่พบ FK ON DELETE CASCADE · รัน migrate-uat เพื่อเพิ่ม FK`);
       } catch (e) {
         done(0, "⏭️  SKIP — parse /api/debug/counts ไม่ได้: " + e.message);
       }
