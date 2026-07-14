@@ -56,10 +56,12 @@ const api = (e) => fetch(`${B}${e}`, { headers: { "x-api-key": K } }).then((r) =
       d.chat_review_rows + x.admin_messages_without_id === d.admin_messages ? "EXPLAINED" : "BUG",
       `+no_id(${x.admin_messages_without_id}) = admin_messages`);
     // ai_review = ตารางแยก คีย์ด้วย timestamp ของตัวเอง — ไม่ใช่ subset ต่อวันของ qc
-    //   BUG เฉพาะเมื่อมี ai_review row ที่ qc_score_id ชี้ไปเคสที่ไม่มีอยู่ (dangling)
-    mark("ai_review_queue_count", d.ai_review_queue_count,
-      x.ai_review_no_qc_link === 0 ? "EXPLAINED" : "BUG",
-      `same_day(${x.ai_review_qc_same_day})+diff_day(${x.ai_review_qc_diff_day})+no_qc(${x.ai_review_no_qc_link}) — ตารางแยก ฐานวันต่าง`);
+    //   ต่างวัน = EXPLAINED (คร่อมเที่ยงคืน); orphan (dangling/null) = DATA-HYGIENE แยก ไม่ใช่บั๊กเรื่องวัน
+    mark("ai_review_queue_count", d.ai_review_queue_count, "EXPLAINED",
+      `same_day(${x.ai_review_qc_same_day})+diff_day(${x.ai_review_qc_diff_day})+orphan(${x.ai_review_no_qc_link}) — ตารางแยก ฐานวันต่าง`);
+    if (x.ai_review_no_qc_link)
+      mark("  ↳ ai_review orphan", x.ai_review_no_qc_link, "HYGIENE",
+        `dangling(${x.ai_review_qc_id_dangling ?? "?"})/null(${x.ai_review_qc_id_null ?? "?"}) — qc ถูกลบ (prod ไม่มี ON DELETE CASCADE) · ไม่เกี่ยว case_at`);
     // evidence exact verified — subset ของ qc
     mark("evidence_exact_verified", d.evidence_exact_verified,
       d.evidence_exact_verified <= d.qc_scores_by_case_at ? "EXPLAINED" : "BUG",
@@ -70,7 +72,7 @@ const api = (e) => fetch(`${B}${e}`, { headers: { "x-api-key": K } }).then((r) =
 
     console.log(`\n===== ${date} (Asia/Bangkok) =====`);
     for (const c of checks) {
-      const tag = c.verdict === "BUG" ? "❌ BUG" : c.verdict === "INFO" ? "  ·  " : c.verdict === "EXPECTED" ? "✅ EXPECTED" : "🟡 EXPLAINED";
+      const tag = c.verdict === "BUG" ? "❌ BUG" : c.verdict === "INFO" ? "  ·  " : c.verdict === "EXPECTED" ? "✅ EXPECTED" : c.verdict === "HYGIENE" ? "⚠️  HYGIENE" : "🟡 EXPLAINED";
       if (c.verdict === "BUG") bugs++;
       console.log(`  ${String(c.label).padEnd(24)} ${String(c.value).padStart(8)}  ${tag}${c.note ? "  (" + c.note + ")" : ""}`);
     }
@@ -78,7 +80,11 @@ const api = (e) => fetch(`${B}${e}`, { headers: { "x-api-key": K } }).then((r) =
       date, chat_review: d.chat_review_rows, dashboard: d.dashboard_total_cases,
       ranking: d.ranking_case_sum, commission: d.commission_case_count,
       ai_review: d.ai_review_queue_count,
-      mismatch_status: checks.some((c) => c.verdict === "BUG") ? "BUG" : "OK",
+      mismatch_status: checks.some((c) => c.verdict === "BUG")
+        ? "BUG"
+        : checks.some((c) => c.verdict === "EXPLAINED" || c.verdict === "HYGIENE")
+          ? "EXPLAINED"
+          : "PASS",
     });
   }
 
