@@ -37,7 +37,16 @@ export async function GET(req) {
         (SELECT count(*)::int FROM case_evidence e JOIN qc_scores q ON q.id=e.qc_score_id
            WHERE q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz
              AND e.verification_status='verified' AND e.match_status='exact') AS evidence_exact_verified,
-        (SELECT count(*)::int FROM qc_scores WHERE case_at IS NULL) AS qc_case_at_null_total
+        -- manual case: qc ที่ admin message เป็น source='manual' (qc_scores.source ไม่ครบใน row เก่า)
+        (SELECT count(*)::int FROM qc_scores q JOIN messages am ON am.id=q.admin_message_id
+           WHERE q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz AND am.source='manual') AS manual_cases_count,
+        -- disputes ที่ผูกกับ qc case ของวันนี้ (ตาม case_at ของ qc)
+        (SELECT count(*)::int FROM qc_disputes d JOIN qc_scores q ON q.id=d.qc_score_id
+           WHERE q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz) AS disputes_count,
+        (SELECT count(*)::int FROM qc_scores WHERE case_at IS NULL) AS qc_case_at_null_total,
+        -- case_date (customer day, ใช้กับ case_ref) vs case_at day (admin day, ใช้กับ dashboard) ต่างกันกี่เคส (ทั้งตาราง)
+        (SELECT count(*)::int FROM qc_scores
+           WHERE case_date IS DISTINCT FROM (case_at AT TIME ZONE 'Asia/Bangkok')::date) AS case_date_ne_caseat_total
     `
     )[0];
 
@@ -74,8 +83,12 @@ export async function GET(req) {
       ranking_case_sum: r.ranking_case_sum,
       commission_case_count: r.ranking_case_sum,
       chat_review_rows: r.admin_messages_with_id,
+      dashboard_total_chats: r.messages_total, // kpiExt.totalChats = ข้อความทั้งหมดในหน้าต่างวัน
       ai_review_queue_count: r.ai_review_count,
       evidence_exact_verified: r.evidence_exact_verified,
+      manual_cases_count: r.manual_cases_count,
+      disputes_count: r.disputes_count,
+      case_date_ne_caseat_total: r.case_date_ne_caseat_total,
       // sub-counts อธิบายส่วนต่าง (ให้ script mark EXPLAINED)
       _explain: {
         qc_no_admin: r.qc_no_admin,
