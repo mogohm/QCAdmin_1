@@ -54,7 +54,9 @@ export async function GET(req) {
       SELECT
         count(*) FILTER (WHERE q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz)::int AS same_day,
         count(*) FILTER (WHERE q.case_at IS NOT NULL AND NOT (q.case_at BETWEEN ${lo}::timestamptz AND ${hi}::timestamptz))::int AS diff_day,
-        count(*) FILTER (WHERE q.id IS NULL)::int AS no_qc_link
+        count(*) FILTER (WHERE q.id IS NULL)::int AS no_qc_link,
+        count(*) FILTER (WHERE air.qc_score_id IS NULL)::int AS qc_id_null,
+        count(*) FILTER (WHERE air.qc_score_id IS NOT NULL AND q.id IS NULL)::int AS qc_id_dangling
       FROM air LEFT JOIN qc_scores q ON q.id = air.qc_score_id`
     )[0];
 
@@ -85,6 +87,8 @@ export async function GET(req) {
         ai_review_qc_same_day: air.same_day,
         ai_review_qc_diff_day: air.diff_day,
         ai_review_no_qc_link: air.no_qc_link,
+        ai_review_qc_id_null: air.qc_id_null,
+        ai_review_qc_id_dangling: air.qc_id_dangling,
       },
     });
   } catch (e) {
