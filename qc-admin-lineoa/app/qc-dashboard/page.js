@@ -319,6 +319,10 @@ export default function QCDashboard() {
             เฝ้าดูคะแนน QC ทีมงาน · เคสผิดร้ายแรง/ผิดเล็กน้อย · เวลาตอบ ·
             เคสที่ต้องตรวจสอบ
           </div>
+          <div style={{ fontSize: 11.5, color: "#7f9bc4", marginTop: 3 }}>
+            ℹ️ วันที่บนแดชบอร์ด = <b>วันที่ประเมิน QC (วันที่แอดมินตอบ)</b> ·
+            ต่างจากรหัสเคส QC-YYYYMMDD ที่อิง<b>วันที่ลูกค้าติดต่อ</b> — ต่างกันได้เมื่อตอบข้ามวัน (ปกติ)
+          </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <input

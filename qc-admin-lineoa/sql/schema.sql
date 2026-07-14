@@ -468,7 +468,8 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 CREATE TABLE IF NOT EXISTS ai_review_queue (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  qc_score_id UUID, conversation_id UUID, message_id UUID,
+  -- FK ON DELETE CASCADE: qc ถูกลบ → คิว ai_review ถูกลบตาม (กัน orphan โผล่ในคิวแต่เปิดไม่ได้)
+  qc_score_id UUID REFERENCES qc_scores(id) ON DELETE CASCADE, conversation_id UUID, message_id UUID,
   customer_name TEXT, admin_name TEXT, customer_text TEXT, admin_text TEXT,
   detected_intent TEXT, intent_confidence NUMERIC,
   matched_sop_id INTEGER, sop_confidence NUMERIC,

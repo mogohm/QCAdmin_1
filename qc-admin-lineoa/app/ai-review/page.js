@@ -188,6 +188,11 @@ export default function AiReview() {
         </div>
       ) : (
         <div className="glass">
+          <div style={{ fontSize: 12, color: "#94a3b8", padding: "2px 4px 10px", lineHeight: 1.7 }}>
+            ℹ️ <b style={{ color: "#cbd5e1" }}>รหัสเคส</b> (QC-YYYYMMDD) = <b>วันที่ลูกค้าติดต่อ</b> ·
+            ส่วน <b style={{ color: "#cbd5e1" }}>วันที่บนแดชบอร์ด</b> = <b>วันที่ประเมิน QC (วันที่แอดมินตอบ)</b> —
+            สองวันนี้อาจต่างกันได้ถ้าลูกค้าทักคืนหนึ่งแล้วแอดมินตอบวันถัดไป (เป็นเรื่องปกติ)
+          </div>
           <table className="table">
             <thead>
               <tr>

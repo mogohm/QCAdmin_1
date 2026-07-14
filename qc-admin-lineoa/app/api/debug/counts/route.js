@@ -50,6 +50,11 @@ export async function GET(req) {
     messages_by_day:
       await query`SELECT ((created_at AT TIME ZONE 'Asia/Bangkok')::date)::text d, count(*)::int n
         FROM messages GROUP BY 1 ORDER BY 1 DESC LIMIT 7`.catch(() => []),
+    // ai_review orphan ทั้งตาราง — ต้อง = 0 หลัง migrate (FK ON DELETE CASCADE + cleanup)
+    ai_review_orphans: await one(
+      () => query`SELECT count(*)::int n FROM ai_review_queue r
+        WHERE r.qc_score_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM qc_scores q WHERE q.id = r.qc_score_id)`,
+    ),
   };
 
   // host ของ DB (ปกปิด user/password) เพื่อยืนยันว่าเป็น DB ตัวเดียวกับ Vercel production

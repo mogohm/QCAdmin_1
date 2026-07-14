@@ -31,6 +31,22 @@ export async function POST(req) {
       reviewed_by UUID, review_action TEXT, corrected_intent TEXT, corrected_sop_id INTEGER,
       reviewer_note TEXT, created_at TIMESTAMPTZ DEFAULT now(), reviewed_at TIMESTAMPTZ)`;
     await query`CREATE INDEX IF NOT EXISTS idx_ai_review_status ON ai_review_queue (status, created_at DESC)`;
+    // ---- HYGIENE: ล้าง ai_review_queue orphan + เพิ่ม FK ON DELETE CASCADE (กันเกิดซ้ำ) ----
+    //   prod เดิมสร้างตารางแบบไม่มี FK → qc_score_id ค้างชี้เคสที่ถูกลบ (โผล่ในคิวแต่เปิดไม่ได้)
+    const aiOrphanDel = await query`DELETE FROM ai_review_queue r
+      WHERE r.qc_score_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM qc_scores q WHERE q.id = r.qc_score_id)
+      RETURNING r.id`.catch(() => []);
+    await query`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_ai_review_qc_score') THEN
+        ALTER TABLE ai_review_queue
+          ADD CONSTRAINT fk_ai_review_qc_score
+          FOREIGN KEY (qc_score_id) REFERENCES qc_scores(id) ON DELETE CASCADE;
+      END IF;
+    END $$;`;
+    const aiOrphanRemaining = (await query`SELECT count(*)::int AS n FROM ai_review_queue r
+      WHERE r.qc_score_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM qc_scores q WHERE q.id = r.qc_score_id)`.catch(() => [{ n: -1 }]))[0].n;
     // แก้ชนิดคอลัมน์ให้ตรง sop_scripts.id ถ้าตารางถูกสร้างเป็น uuid มาก่อน (ปลอดภัย: ตารางว่าง)
     await query`DO $$ BEGIN
       IF (SELECT data_type FROM information_schema.columns WHERE table_name='ai_review_queue' AND column_name='matched_sop_id') = 'uuid' THEN
@@ -241,8 +257,10 @@ export async function POST(req) {
         "ai_review_queue.case_detail_linkage",
         "evidence.exact_pair_contract",
         "qc_scores.case_at",
+        "ai_review_queue.fk_cascade+orphan_cleanup",
       ],
       case_at_report: caseAtReport,
+      ai_review_orphans: { deleted: aiOrphanDel.length, remaining: aiOrphanRemaining },
     });
   } catch (e) {
     // คืน error message เพื่อ debug ตอน deploy
